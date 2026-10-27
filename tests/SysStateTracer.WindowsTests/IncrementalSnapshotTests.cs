@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.Win32;
+using SysStateTracer.Core.Comparison;
 using SysStateTracer.Core.Ignore;
 using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Model;
@@ -73,6 +74,37 @@ public class IncrementalSnapshotTests
         Assert.Equal(SnapshotMode.Incremental, incremental.Meta.Mode);
         Assert.Contains(incremental.Meta.FileSystemMethods, m => m.Contains("incremental", StringComparison.Ordinal));
         AssertSameFiles(full, incremental, data.Path);
+
+        // The comparison engine on real snapshots: no difference between incremental and full,
+        // and every scripted change between the first and the last snapshot.
+        Assert.Equal(0, SnapshotComparer.Compare(full, incremental).FileSystem.Count);
+        var diff = SnapshotComparer.Compare(first, full);
+        var tree = diff.FileSystem;
+        var changes = Enumerable.Range(0, tree.Count)
+            .Where(n => tree.Change(n) != ChangeKind.Unchanged)
+            .Select(n => (Path: diff.FullPath(tree, n)[(data.Path.Length + 1)..], Change: tree.Change(n)))
+            .ToHashSet();
+        var expected = new[]
+        {
+            (@"keep\grow.txt", ChangeKind.Modified),
+            (@"keep\attrib.txt", ChangeKind.Modified),
+            (@"keep\touch.txt", ChangeKind.Modified),
+            (@"keep\linked.txt", ChangeKind.Modified),
+            (@"other\link-to-linked.txt", ChangeKind.Modified),
+            (@"keep\rename-me.txt", ChangeKind.Deleted),
+            (@"keep\renamed.txt", ChangeKind.New),
+            (@"keep\delete-me.txt", ChangeKind.Deleted),
+            (@"keep\new-file.txt", ChangeKind.New),
+            ("rename-folder", ChangeKind.Deleted),
+            ("renamed-folder", ChangeKind.New),
+            ("move-folder", ChangeKind.Deleted),
+            (@"target\moved-folder", ChangeKind.New),
+            ("delete-folder", ChangeKind.Deleted),
+            ("new-folder", ChangeKind.New),
+            (@"bulk\f7.dat", ChangeKind.Modified),
+        };
+        Assert.Empty(expected.Except(changes));
+        Assert.Equal(expected.Length, changes.Count);
     }
 
     [Fact]
