@@ -65,6 +65,22 @@ internal static partial class NativeMethods
         byte* data,
         ref uint dataLength);
 
+    internal const uint KeySetValue = 0x0002;
+
+    [LibraryImport(Advapi32, EntryPoint = "RegCreateKeyExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int RegCreateKeyEx(
+        nint key, string subKey, uint reserved, nint className, uint options, uint samDesired, nint securityAttributes,
+        out SafeRegKeyHandle result, out uint disposition);
+
+    [LibraryImport(Advapi32, EntryPoint = "RegQueryValueExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static unsafe partial int RegQueryValueEx(SafeRegKeyHandle key, string valueName, nint reserved, out uint type, byte* data, ref uint dataLength);
+
+    [LibraryImport(Advapi32, EntryPoint = "RegSetValueExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static unsafe partial int RegSetValueEx(SafeRegKeyHandle key, string valueName, uint reserved, uint type, byte* data, uint dataLength);
+
+    [LibraryImport(Advapi32, EntryPoint = "RegDeleteValueW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int RegDeleteValue(SafeRegKeyHandle key, string valueName);
+
     [LibraryImport(Advapi32)]
     internal static partial int RegCloseKey(nint key);
 }

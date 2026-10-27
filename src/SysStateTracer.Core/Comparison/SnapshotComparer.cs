@@ -25,11 +25,24 @@ public sealed class DiffResult
 
     public Snapshot Right { get; }
 
+    /// <summary>The first snapshot passed to the comparison; New/Deleted are relative to it before any swap.</summary>
+    public Snapshot Older => FileSystem.IsSwapped ? Right : Left;
+
+    /// <summary>The second snapshot passed to the comparison (exports and reverts use it as "the newer one").</summary>
+    public Snapshot Newer => FileSystem.IsSwapped ? Left : Right;
+
     public DiffTree FileSystem { get; }
 
     public DiffTree Registry { get; }
 
     public DiffTree Services { get; }
+
+    public DiffTree Tree(DiffArea area) => area switch
+    {
+        DiffArea.FileSystem => FileSystem,
+        DiffArea.Registry => Registry,
+        _ => Services,
+    };
 
     /// <summary>Right on the left and vice versa; New and Deleted trade places. Instant.</summary>
     public DiffResult Swap() => new(Right, Left, FileSystem.Swap(), Registry.Swap(), Services.Swap());

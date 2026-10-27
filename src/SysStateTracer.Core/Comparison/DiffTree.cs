@@ -108,6 +108,15 @@ public sealed class DiffTree
     /// <summary>Index of the item in the right snapshot, or -1.</summary>
     public int Right(int node) => _swapped ? _older[node] : _newer[node];
 
+    /// <summary>Index in the older snapshot (the first argument of the comparison), whatever the display order.</summary>
+    public int OlderIndex(int node) => _older[node];
+
+    /// <summary>Index in the newer snapshot (the second argument of the comparison), whatever the display order.</summary>
+    public int NewerIndex(int node) => _newer[node];
+
+    /// <summary>Change from the older to the newer snapshot, whatever the display order.</summary>
+    public ChangeKind ChangeFromOlder(int node) => _change[node];
+
     /// <summary>Changed items in this node's subtree, itself included (the "(12)" after a folder).</summary>
     public int ChangedItems(int node) => _changedItems[node];
 
