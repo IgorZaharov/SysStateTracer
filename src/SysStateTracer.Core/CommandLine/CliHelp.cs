@@ -62,7 +62,7 @@ public static class CliHelp
         Example(text, "Nightly snapshot from a batch file, named with the date and time (waits for it and checks the exit code):");
         Example(text, "  start \"\" /wait SysStateTracer.exe /new-snap");
         Example(text, "  if errorlevel 1 echo Snapshot failed with code %ERRORLEVEL%");
-        Example(text, "The same from PowerShell:");
+        Example(text, "From PowerShell, waiting for it and reading the exit code:");
         Example(text, "  $p = Start-Process SysStateTracer.exe '/new-snap \"Before driver update\"' -Wait -PassThru; $p.ExitCode");
         text.Append(nl);
         text.Append("Everything printed is also written to SysStateTracer.log.").Append(nl);
