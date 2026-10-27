@@ -111,7 +111,9 @@ public class ExportAndRevertTests
         var undone = Take(test.HkcuPath, output);
         var check = SnapshotComparer.Compare(newer, undone);
         Assert.Equal(1, check.RegistryCounts.Total);
-        Assert.Equal(ChangeKind.New, check.Registry.Change(check.Registry.Roots().SelectMany(check.Registry.Children).Single()));
+        var added = Enumerable.Range(0, check.Registry.Count).Single(n => check.Registry.Change(n) != ChangeKind.Unchanged);
+        Assert.Equal(ChangeKind.New, check.Registry.Change(added));
+        Assert.Equal(test.StoredPath + @"\gone", check.FullPath(check.Registry, added), StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
