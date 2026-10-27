@@ -70,6 +70,8 @@ public static class SettingsStore
             settings.IgnoreListRemoteLocation = RemoteIgnoreSource.DefaultLocation;
         }
 
+        settings.Scope ??= new SnapshotScope();
+        settings.Scope.RegistryRoots ??= new SnapshotScope().RegistryRoots;
         return settings;
     }
 

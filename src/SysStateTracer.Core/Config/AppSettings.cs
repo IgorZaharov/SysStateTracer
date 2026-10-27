@@ -43,5 +43,25 @@ public sealed class AppSettings
     /// <summary>URL (http/https) or file path (also \\server\share\file.txt) of the remote Global Ignore list.</summary>
     public string IgnoreListRemoteLocation { get; set; } = RemoteIgnoreSource.DefaultLocation;
 
+    /// <summary>What New Snapshot (W3) and /new-snap read; saved from W3.</summary>
+    public SnapshotScope Scope { get; set; } = new();
+
     public static AppSettings CreateDefault() => new();
+}
+
+/// <summary>
+/// The saved snapshot scope (plan D9 by default): all fixed drives, HKLM and HKU, Win32 services.
+/// </summary>
+public sealed class SnapshotScope
+{
+    /// <summary>Drives or folders such as "C:\" or "D:\Data"; null = every fixed drive at the time of the snapshot.</summary>
+    public List<string>? FileSystemRoots { get; set; }
+
+    /// <summary>"HKLM", "HKU" or keys below them.</summary>
+    public List<string> RegistryRoots { get; set; } = ["HKLM", "HKU"];
+
+    public bool IncludeServices { get; set; } = true;
+
+    /// <summary>Kernel drivers as well as services (off by default, plan 2.16).</summary>
+    public bool IncludeDrivers { get; set; }
 }

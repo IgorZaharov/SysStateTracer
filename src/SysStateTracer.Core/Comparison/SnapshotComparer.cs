@@ -12,8 +12,9 @@ public readonly record struct DiffCounts(long New, long Deleted, long Modified)
 /// <summary>Two snapshots and how they differ, with the left one shown first (normally the older).</summary>
 public sealed class DiffResult
 {
-    internal DiffResult(Snapshot left, Snapshot right, DiffTree fileSystem, DiffTree registry, DiffTree services)
+    internal DiffResult(Snapshot left, Snapshot right, DiffTree fileSystem, DiffTree registry, DiffTree services, IgnoreMatcher ignore)
     {
+        Ignore = ignore;
         Left = left;
         Right = right;
         FileSystem = fileSystem;
@@ -37,6 +38,12 @@ public sealed class DiffResult
 
     public DiffTree Services { get; }
 
+    /// <summary>
+    /// The Global Ignore rules the comparison was made with. A new or deleted folder or key is one node,
+    /// so exports apply these rules again to what is inside it.
+    /// </summary>
+    public IgnoreMatcher Ignore { get; }
+
     public DiffTree Tree(DiffArea area) => area switch
     {
         DiffArea.FileSystem => FileSystem,
@@ -45,7 +52,7 @@ public sealed class DiffResult
     };
 
     /// <summary>Right on the left and vice versa; New and Deleted trade places. Instant.</summary>
-    public DiffResult Swap() => new(Right, Left, FileSystem.Swap(), Registry.Swap(), Services.Swap());
+    public DiffResult Swap() => new(Right, Left, FileSystem.Swap(), Registry.Swap(), Services.Swap(), Ignore);
 
     public DiffCounts FileSystemCounts => Count(FileSystem, n => n.Kind == DiffItemKind.Folder ? Size(Side(FileSystem, n.Node).FileSystem.Descendants, Index(FileSystem, n.Node)) : 0);
 
@@ -132,7 +139,7 @@ public static class SnapshotComparer
         var reg = Task.Run(() => new RegistryWalk(older, newer, ignore, cancellationToken).Run(), cancellationToken);
         var services = CompareServices(older, newer, ignore);
         Task.WhenAll(fs, reg).GetAwaiter().GetResult();
-        return new DiffResult(older, newer, fs.Result, reg.Result, services);
+        return new DiffResult(older, newer, fs.Result, reg.Result, services, ignore);
     }
 
     private static int CompareNames(ReadOnlySpan<char> a, ReadOnlySpan<char> b) => a.CompareTo(b, StringComparison.OrdinalIgnoreCase);

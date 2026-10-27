@@ -59,6 +59,27 @@ public sealed class SnapshotRequest
         IncludeServices = true,
         Ignore = ignore,
     };
+
+    /// <summary>A request for the saved scope (Preferences / W3); fixed drives are looked up now when the scope has none.</summary>
+    public static SnapshotRequest ForScope(
+        string name, string outputDirectory, Config.SnapshotScope scope, GlobalIgnoreList ignore, string? cachePath, bool fullRescan = false)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return new SnapshotRequest
+        {
+            Name = name,
+            OutputDirectory = outputDirectory,
+            FileSystemRoots = scope.FileSystemRoots is { } roots
+                ? [.. roots]
+                : [.. VolumeDiscovery.GetFixedVolumes().Select(v => v.RootPath)],
+            RegistryRoots = [.. scope.RegistryRoots],
+            IncludeServices = scope.IncludeServices,
+            IncludeDrivers = scope.IncludeDrivers,
+            Ignore = ignore,
+            CachePath = cachePath,
+            FullRescan = fullRescan,
+        };
+    }
 }
 
 public sealed record SnapshotResult(string Path, SnapshotMeta Meta);

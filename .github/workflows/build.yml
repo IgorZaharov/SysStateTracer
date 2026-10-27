@@ -120,6 +120,41 @@ jobs:
             exit 1
           }
 
+      # Plan Step 39: the published exe answers on the command line (output, exit codes)
+      - name: Command-line smoke test
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'cli'
+          New-Item -ItemType Directory $dir -Force | Out-Null
+          Copy-Item publish/SysStateTracer.exe $dir
+          $exe = Join-Path $dir 'SysStateTracer.exe'
+          function Invoke-Cli([string]$arguments) {
+            $out = Join-Path $dir 'out.txt'
+            $p = Start-Process $exe -ArgumentList $arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput $out
+            [pscustomobject]@{ Code = $p.ExitCode; Text = (Get-Content $out -Raw) }
+          }
+          $failed = $false
+          $help = Invoke-Cli '/?'
+          if ($help.Code -ne 0 -or $help.Text -notmatch 'Examples:' -or $help.Text -notmatch [regex]::Escape('https://github.com/IgorZaharov/SysStateTracer')) {
+            Write-Host "::error title=CLI /?::exit $($help.Code); output: $(($help.Text -split "`r?`n" | Select-Object -First 5) -join ' | ')"
+            $failed = $true
+          }
+          $expected = @{ '/no-such-switch' = 1; '/rename-snap "only one name"' = 1; '/delete-snap "No such snapshot"' = 2; '/compare-snap' = 2 }
+          foreach ($case in $expected.GetEnumerator()) {
+            $r = Invoke-Cli $case.Key
+            if ($r.Code -ne $case.Value) {
+              Write-Host "::error title=CLI $($case.Key)::exit $($r.Code), expected $($case.Value): $($r.Text)"
+              $failed = $true
+            }
+          }
+          $lines = ($help.Text -split "`r?`n").Count
+          Write-Host "::notice title=Command line::/? printed $lines lines; exit codes for wrong arguments and missing snapshots as expected"
+          "### SysStateTracer.exe /?" >> $env:GITHUB_STEP_SUMMARY
+          '```' >> $env:GITHUB_STEP_SUMMARY
+          $help.Text >> $env:GITHUB_STEP_SUMMARY
+          '```' >> $env:GITHUB_STEP_SUMMARY
+          if ($failed) { exit 1 }
+
       # SysStateTracer.Bench.exe for measuring on real PCs (docs/benchmarks.md), kept on the "bench" pre-release
       - name: Publish benchmark tool
         if: github.event_name == 'push'

@@ -1,4 +1,5 @@
 using SysStateTracer.Core.Comparison;
+using SysStateTracer.Core.Ignore;
 using SysStateTracer.Core.Model;
 
 namespace SysStateTracer.Core.Export;
@@ -10,7 +11,9 @@ public sealed record FileToCopy(string Source, string RelativeTarget, long Size)
 /// What an export covers, from selected comparison items (plan §10.6, 2.6, 2.9, F3): new and modified
 /// items as found by the comparison, taken from the newer snapshot. Deleted items are not exported.
 /// A selected folder or key covers everything below it, including a whole top-level drive or hive;
-/// items marked non-important are left out together with everything below them.
+/// items marked non-important are left out together with everything below them. Global Ignore rules
+/// (<see cref="DiffResult.Ignore"/>) are applied inside new folders and keys too, which the comparison
+/// keeps as one node each.
 /// </summary>
 public static class DiffExport
 {
@@ -75,19 +78,30 @@ public static class DiffExport
             for (var k = key; k <= key + reg.Descendants[key]; k++)
             {
                 var path = reg.GetFullPath(k, newer.Names);
+                if (k != key && diff.Ignore.RuleCount > 0 && diff.Ignore.IsIgnoredEntry(IgnoreTarget.Registry, path))
+                {
+                    k += reg.Descendants[k];
+                    continue;
+                }
+
                 file.AddKey(path);
                 var first = reg.FirstValue[k];
                 for (var v = first; v < first + reg.KeyValueCount[k]; v++)
                 {
-                    AddValue(path, v);
+                    AddValue(path, v, checkIgnore: true);
                 }
             }
         }
 
-        void AddValue(string keyPath, int value)
+        void AddValue(string keyPath, int value, bool checkIgnore = false)
         {
             var reg = newer.Registry;
             var name = newer.Names.GetString(reg.ValueName[value]);
+            if (checkIgnore && diff.Ignore.RuleCount > 0 && diff.Ignore.IsIgnoredEntry(IgnoreTarget.Registry, keyPath + "\\" + name))
+            {
+                return;
+            }
+
             if (!reg.IsValueDataStored(value))
             {
                 notStored.Add(keyPath + "\\" + name);
@@ -155,6 +169,12 @@ public static class DiffExport
                 // A new folder: every file inside it.
                 for (var e = index + 1; e <= index + fs.Descendants[index]; e++)
                 {
+                    if (diff.Ignore.RuleCount > 0 && diff.Ignore.IsIgnoredEntry(IgnoreTarget.FileSystem, fs.GetFullPath(e, newer.Names)))
+                    {
+                        e += fs.Descendants[e];
+                        continue;
+                    }
+
                     if (!fs.IsDirectory(e))
                     {
                         Add(e);

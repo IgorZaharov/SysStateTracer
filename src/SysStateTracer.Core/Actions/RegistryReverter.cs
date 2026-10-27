@@ -1,6 +1,7 @@
 using System.Globalization;
 using SysStateTracer.Core.Comparison;
 using SysStateTracer.Core.Export;
+using SysStateTracer.Core.Ignore;
 using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Model;
 
@@ -86,7 +87,10 @@ public static class RegistryReverter
                     var first = target.Registry.FirstValue[inTarget];
                     for (var v = first; v < first + target.Registry.KeyValueCount[inTarget]; v++)
                     {
-                        Add(Restore(path, target, v));
+                        if (!Ignored(path, target.Names.GetString(target.Registry.ValueName[v])))
+                        {
+                            Add(Restore(path, target, v));
+                        }
                     }
                 }
                 else if (inOther >= 0)
@@ -96,7 +100,11 @@ public static class RegistryReverter
                     var first = other.Registry.FirstValue[inOther];
                     for (var v = first; v < first + other.Registry.KeyValueCount[inOther]; v++)
                     {
-                        Add(new RevertItem(path, other.Names.GetString(other.Registry.ValueName[v]), RevertAction.Delete, 0, [], null));
+                        var name = other.Names.GetString(other.Registry.ValueName[v]);
+                        if (!Ignored(path, name))
+                        {
+                            Add(new RevertItem(path, name, RevertAction.Delete, 0, [], null));
+                        }
                     }
                 }
             }
@@ -120,6 +128,10 @@ public static class RegistryReverter
                 Add(new RevertItem(path, other.Names.GetString(other.Registry.ValueName[inOther]), RevertAction.Delete, 0, [], null));
             }
         }
+
+        // Values inside a new or deleted key are not nodes of their own, so the comparison's rules are checked here.
+        bool Ignored(string keyPath, string valueName) =>
+            diff.Ignore.RuleCount > 0 && diff.Ignore.IsIgnoredEntry(IgnoreTarget.Registry, keyPath + "\\" + valueName);
 
         void Add(RevertItem item)
         {
