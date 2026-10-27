@@ -53,7 +53,9 @@ public class SnapshotComparerTests
 
         var diff = SnapshotComparer.Compare(a, b);
         var fs = diff.FileSystem;
-        var byPath = Enumerable.Range(0, fs.Count).ToDictionary(n => diff.FullPath(fs, n), StringComparer.OrdinalIgnoreCase);
+        var byPath = Enumerable.Range(0, fs.Count)
+            .GroupBy(n => diff.FullPath(fs, n), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase); // "swap" appears twice
 
         AssertNode(diff, fs, byPath[@"C:\Windows\notepad.exe"], ChangeKind.Modified, ChangedFields.Size);
         AssertNode(diff, fs, byPath[@"C:\Windows\regedit.exe"], ChangeKind.Modified, ChangedFields.LastWriteTime);
