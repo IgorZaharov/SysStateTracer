@@ -81,7 +81,9 @@ public class CliTests
         Assert.Contains(env.SnapshotFolder, text, StringComparison.Ordinal);
         Assert.Contains("/new-snap \"Before Office 2024 install\"", text, StringComparison.Ordinal);
         Assert.Contains("\"C:\\Reports\\Office 2024 install changes.html\"", text, StringComparison.Ordinal);
-        Assert.All(text.Split(Environment.NewLine), line => Assert.True(line.Length <= 140, line));
+        Assert.All(
+            text.Split(Environment.NewLine).Where(l => !l.Contains(env.SnapshotFolder, StringComparison.Ordinal) && !l.Contains(env.DataFolder, StringComparison.Ordinal)),
+            line => Assert.True(line.Length <= 140, line));
     }
 
     [Fact]

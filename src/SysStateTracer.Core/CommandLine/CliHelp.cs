@@ -38,8 +38,8 @@ public static class CliHelp
         text.Append("Comparisons and exports leave out everything matched by the Global Ignore list chosen in Preferences.").Append(nl);
         text.Append(nl);
         text.Append("Folders:").Append(nl);
-        text.Append("  Snapshots:                  ").Append(snapshotFolder).Append(nl);
-        text.Append("  Reports, .reg files, Files: ").Append(dataFolder).Append(nl);
+        text.Append("  Snapshots:                       ").Append(snapshotFolder).Append(nl);
+        text.Append("  Reports, .reg files, Files, log: ").Append(dataFolder).Append(nl);
         text.Append(nl);
         text.Append("Exit codes:").Append(nl);
         text.Append("  0 success   1 wrong arguments   2 snapshot not found   3 administrator rights needed").Append(nl);
@@ -65,7 +65,7 @@ public static class CliHelp
         Example(text, "The same from PowerShell:");
         Example(text, "  $p = Start-Process SysStateTracer.exe '/new-snap \"Before driver update\"' -Wait -PassThru; $p.ExitCode");
         text.Append(nl);
-        text.Append("Output is also written to SysStateTracer.log in ").Append(dataFolder).Append('.').Append(nl);
+        text.Append("Everything printed is also written to SysStateTracer.log.").Append(nl);
         text.Append("Documentation and source: ").Append(AppInfo.GitHubUrl).Append(nl);
         return text.ToString();
 

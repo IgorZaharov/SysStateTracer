@@ -84,8 +84,10 @@ public sealed class SnapshotCatalog
             return null;
         }
 
-        var path = Path.Combine(Folder, name + SnapshotNaming.FileExtension);
-        return File.Exists(path) ? path : null;
+        // Enumerated rather than combined, so the result has the file's own spelling.
+        return Directory.Exists(Folder)
+            ? Directory.EnumerateFiles(Folder, name + SnapshotNaming.FileExtension).FirstOrDefault()
+            : null;
     }
 
     /// <summary>Path a snapshot named <paramref name="name"/> has in this folder.</summary>
