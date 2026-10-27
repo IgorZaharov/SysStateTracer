@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Windows Forms UI + command line + entry point -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>SysStateTracer</RootNamespace>
+    <AssemblyName>SysStateTracer</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Explorer icon (all sizes 16-256 px); drawn by tools/icon/make_icon.py -->
+    <ApplicationIcon>SysStateTracer.ico</ApplicationIcon>
+    <!-- Read by ApplicationConfiguration.Initialize(); DPI is set here, not in app.manifest -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationVisualStyles>true</ApplicationVisualStyles>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+  </PropertyGroup>
+
+  <!-- Single-file publish: `dotnet publish -c Release` gives one SysStateTracer.exe (plan §14.1) -->
+  <PropertyGroup>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- false on purpose: any native DLL that would need extracting to %TEMP% shows up
+         beside the exe instead, and the CI single-file check fails (plan Step 5) -->
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+    <!-- Faster startup; keep only if Step 5 measurements show it pays for its size -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The same icon for window title bars and the taskbar -->
+    <EmbeddedResource Include="SysStateTracer.ico" LogicalName="SysStateTracer.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SysStateTracer.Core\SysStateTracer.Core.csproj" />
+  </ItemGroup>
+
+</Project>

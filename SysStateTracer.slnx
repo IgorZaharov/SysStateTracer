@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SysStateTracer/SysStateTracer.csproj" />
+    <Project Path="src/SysStateTracer.Core/SysStateTracer.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SysStateTracer.Core.Tests/SysStateTracer.Core.Tests.csproj" />
+    <Project Path="tests/SysStateTracer.WindowsTests/SysStateTracer.WindowsTests.csproj" />
+    <Project Path="tests/SysStateTracer.Benchmarks/SysStateTracer.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path=".editorconfig" />
+    <File Path="README.md" />
+  </Folder>
+</Solution>

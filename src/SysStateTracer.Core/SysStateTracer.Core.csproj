@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Engine: scanning, storage, comparison, exports. No UI code here. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>SysStateTracer.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Ignore\default-ignore.txt" LogicalName="SysStateTracer.Core.DefaultIgnore.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SysStateTracer.Core.Tests" />
+    <InternalsVisibleTo Include="SysStateTracer.WindowsTests" />
+    <InternalsVisibleTo Include="SysStateTracer.Bench" />
+  </ItemGroup>
+
+</Project>

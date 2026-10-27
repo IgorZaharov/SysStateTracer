@@ -1,0 +1,15 @@
+# Normalize text files; keep CRLF for Windows-specific formats
+* text=auto
+
+*.cs      text diff=csharp
+*.csproj  text
+*.props   text
+*.slnx    text
+*.json    text
+*.md      text
+*.yml     text
+*.manifest text eol=crlf
+
+*.ico     binary
+*.png     binary
+*.stsnap   binary

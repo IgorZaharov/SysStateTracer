@@ -1,0 +1,76 @@
+name: benchmark
+
+# Plan Step 21: full snapshots of a fresh runner (cold cache), then again (warm cache).
+# Started by hand: Actions -> benchmark -> Run workflow. Each matrix entry runs on its own new VM,
+# so every first snapshot is a cold one.
+on:
+  workflow_dispatch:
+    inputs:
+      parallel:
+        description: 'Folder workers to compare, as a JSON list (0 = automatic)'
+        default: '[0]'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        parallel: ${{ fromJSON(github.event.inputs.parallel) }}
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build benchmark
+        shell: pwsh
+        run: .github/scripts/run.ps1 dotnet build tests/SysStateTracer.Benchmarks -c Release
+
+      # Each snapshot is its own step: GitHub shows at most 10 notices per step
+      - name: Cold snapshot (automatic = file table, writes the cache)
+        shell: pwsh
+        timeout-minutes: 20
+        run: .github/scripts/bench.ps1 -Label cold -Parallel ${{ matrix.parallel }} -Extra '--cache','cache\SysStateTracer.cache'
+
+      - name: Consecutive snapshot (incremental)
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label consecutive -Parallel ${{ matrix.parallel }} -Extra '--cache','cache\SysStateTracer.cache'
+
+      - name: Consecutive snapshot again
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label consecutive-2 -Parallel ${{ matrix.parallel }} -Extra '--cache','cache\SysStateTracer.cache'
+
+      - name: Full rescan (warm)
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label full-rescan -Parallel ${{ matrix.parallel }} -Extra '--cache','cache\SysStateTracer.cache','--full-rescan'
+
+      - name: Warm snapshot
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label warm -Parallel ${{ matrix.parallel }}
+
+      - name: Files only, file table
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label fs-mft -Parallel ${{ matrix.parallel }} -Extra '--only','fs','--method','mft'
+
+      - name: Files only, folder listing (warm)
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label fs-list -Parallel ${{ matrix.parallel }} -Extra '--only','fs','--method','list'
+
+      - name: Registry only
+        shell: pwsh
+        timeout-minutes: 15
+        run: .github/scripts/bench.ps1 -Label reg-only -Parallel ${{ matrix.parallel }} -Extra '--only','reg'

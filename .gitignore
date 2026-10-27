@@ -1,0 +1,40 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+BenchmarkDotNet.Artifacts/
+TestResults/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.rsuser
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Files SysStateTracer creates beside the exe when run from a dev folder
+*.stsnap
+*.stsnap.tmp
+SysStateTracer.cache
+SysStateTracer.config
+SysStateTracer.log
+SysStateTracer.ignore-url.txt
+Files/
+Backups/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

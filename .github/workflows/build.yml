@@ -1,0 +1,151 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # the "bench" pre-release
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so the version carries the commit hash
+
+      - name: Set up .NET SDK (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Each dotnet step runs through run.ps1, which turns errors into annotations on failure
+      - name: Restore
+        shell: pwsh
+        run: .github/scripts/run.ps1 dotnet restore SysStateTracer.slnx
+
+      - name: Build
+        shell: pwsh
+        run: .github/scripts/run.ps1 dotnet build SysStateTracer.slnx -c Release --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: .github/scripts/run.ps1 dotnet test SysStateTracer.slnx -c Release --no-build --logger trx --results-directory TestResults
+
+      # Measurements printed by tests (memory, timings) become notices on the run page
+      - name: Report test measurements
+        if: always()
+        shell: pwsh
+        run: |
+          try {
+            $trx = @(Get-ChildItem TestResults -Filter *.trx -Recurse -ErrorAction SilentlyContinue)
+            $total = 0; $passed = 0; $withOutput = 0
+            foreach ($file in $trx) {
+              $doc = [System.Xml.XmlDocument]::new()
+              $doc.Load($file.FullName)
+              foreach ($result in $doc.GetElementsByTagName('UnitTestResult')) {
+                $total++
+                if ($result.GetAttribute('outcome') -eq 'Passed') { $passed++ }
+                elseif ($result.GetAttribute('outcome') -eq 'Failed') {
+                  # Failure details as annotations: run logs are not always reachable
+                  $message = ($result.GetElementsByTagName('Message') | Select-Object -First 1).InnerText
+                  $stack = ($result.GetElementsByTagName('StackTrace') | Select-Object -First 1).InnerText
+                  $where = ($stack -split "`r?`n" | Where-Object { $_ -match ' in .*:line \d+' } | Select-Object -First 2) -join ' | '
+                  $text = (($message -split "`r?`n") -join ' | ') + ' @ ' + $where.Trim()
+                  if ($text.Length -gt 3000) { $text = $text.Substring(0, 3000) }
+                  Write-Host ('::error title=FAILED {0}::{1}' -f $result.GetAttribute('testName'), $text)
+                }
+                $outputs = $result.GetElementsByTagName('StdOut')
+                if ($outputs.Count -gt 0 -and $outputs[0].InnerText.Trim().Length -gt 0) {
+                  $withOutput++
+                  $test = ($result.GetAttribute('testName') -split '\.')[-1]
+                  $lines = $outputs[0].InnerText -split "`r?`n" | Where-Object { $_.Trim().Length -gt 0 }
+                  $text = $lines -join ' | '
+                  Write-Host ('::notice title={0}::{1}' -f $test, $text)
+                }
+              }
+            }
+            Write-Host ('::notice title=Tests::{0} of {1} passed in {2} result files; {3} printed measurements' -f $passed, $total, $trx.Count, $withOutput)
+          }
+          catch {
+            Write-Host ('::warning title=Report step::{0} (line {1})' -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)
+          }
+          exit 0
+
+      - name: Publish single-file exe
+        shell: pwsh
+        run: .github/scripts/run.ps1 dotnet publish src/SysStateTracer/SysStateTracer.csproj -c Release -o publish
+
+      - name: Upload SysStateTracer.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: SysStateTracer-${{ github.sha }}
+          path: publish/
+          if-no-files-found: error
+
+      # Plan Step 5: the publish folder must hold SysStateTracer.exe and nothing else
+      - name: Check single-file output
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem publish -File
+          $exe = Get-Item publish/SysStateTracer.exe
+          $sizeMb = [math]::Round($exe.Length / 1MB, 1)
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+
+          "### SysStateTracer.exe" >> $env:GITHUB_STEP_SUMMARY
+          "| Item | Value |" >> $env:GITHUB_STEP_SUMMARY
+          "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+          "| Size | $sizeMb MB |" >> $env:GITHUB_STEP_SUMMARY
+          "| SHA-256 | ``$hash`` |" >> $env:GITHUB_STEP_SUMMARY
+          "| Files in publish folder | $($files.Name -join ', ') |" >> $env:GITHUB_STEP_SUMMARY
+
+          $extra = $files | Where-Object { $_.Name -ne 'SysStateTracer.exe' }
+          if ($extra) {
+            Write-Error "Publish folder must contain only SysStateTracer.exe; also found: $($extra.Name -join ', ')"
+            exit 1
+          }
+
+      # SysStateTracer.Bench.exe for measuring on real PCs (docs/benchmarks.md), kept on the "bench" pre-release
+      - name: Publish benchmark tool
+        if: github.event_name == 'push'
+        shell: pwsh
+        # Called directly: passing "-p:Name=value" through a script splits it at the colon
+        run: |
+          dotnet publish tests/SysStateTracer.Benchmarks/SysStateTracer.Benchmarks.csproj -c Release -r win-x64 --self-contained '-p:PublishSingleFile=true' '-p:IncludeNativeLibrariesForSelfExtract=true' '-p:EnableCompressionInSingleFile=true' -o bench
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Update "bench" pre-release
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view bench *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create bench --prerelease --target $env:GITHUB_SHA --title "Benchmark tool" --notes "SysStateTracer.Bench.exe: double-click it (administrator rights needed) to measure snapshot speed on drive C:. Results are saved beside the exe. Updated by CI on every push to main."
+          }
+          gh release upload bench bench/SysStateTracer.Bench.exe --clobber
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: ignore

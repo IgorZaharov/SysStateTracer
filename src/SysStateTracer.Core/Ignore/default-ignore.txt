@@ -1,0 +1,57 @@
+# SysStateTracer local Global Ignore list (SysStateTracer.ignore.txt beside the exe).
+# These places change all the time without anything being installed or configured.
+# Remove any rule whose changes you want to see; syntax: docs/ignore-list.md in the repository.
+
+# ---- File system: temporary files, caches and logs ----
+FS:C:\Windows\Temp
+FS:*\AppData\Local\Temp
+FS:C:\Windows\Prefetch
+FS:C:\Windows\Logs
+FS:C:\Windows\System32\LogFiles
+FS:C:\Windows\System32\winevt\Logs
+FS:C:\Windows\System32\sru
+FS:C:\Windows\SoftwareDistribution\DataStore
+FS:C:\Windows\SoftwareDistribution\Download
+FS:C:\ProgramData\Microsoft\Windows\WER
+FS:C:\ProgramData\Microsoft\Diagnosis
+FS:C:\ProgramData\Microsoft\Windows Defender\Scans
+FS:C:\ProgramData\Microsoft\Windows Defender\Support
+FS:*\AppData\Local\Microsoft\Windows\INetCache
+FS:*\AppData\Local\Microsoft\Windows\WebCache
+FS:*\AppData\Local\Microsoft\Windows\Explorer\thumbcache_*
+FS:*\AppData\Local\Microsoft\Windows\Explorer\iconcache_*
+FS:*\AppData\Local\Microsoft\Edge\User Data\*Cache
+FS:*\AppData\Local\Google\Chrome\User Data\*Cache
+
+# ---- File system: registry hive files (the registry itself is snapshotted separately) ----
+FS:*\NTUSER.DAT*
+FS:*\AppData\Local\Microsoft\Windows\UsrClass.dat*
+FS:C:\Windows\System32\config\*.LOG?
+FS:C:\Windows\System32\config\*.blf
+FS:C:\Windows\System32\config\*.regtrans-ms
+FS:C:\Windows\System32\config\TxR
+
+# ---- File system: system files rewritten by Windows ----
+FS:C:\pagefile.sys
+FS:C:\hiberfil.sys
+FS:C:\swapfile.sys
+FS:C:\DumpStack.log.tmp
+FS:C:\$Recycle.Bin
+FS:C:\System Volume Information
+
+# ---- Registry: security-sensitive hives (never stored) ----
+REG:HKLM\SAM
+REG:HKLM\SECURITY
+
+# ---- Registry: usage tracking and Explorer view state ----
+REG:HKLM\SYSTEM\CurrentControlSet\Services\bam\State
+REG:HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache
+REG:HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist
+REG:HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs
+REG:HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32
+REG:HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage
+REG:HKCU\Software\Microsoft\Windows\Shell\BagMRU
+REG:HKCU\Software\Microsoft\Windows\Shell\Bags
+REG:HKU\*_Classes\Local Settings\Software\Microsoft\Windows\Shell\BagMRU
+REG:HKU\*_Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags
+REG:HKU\*_Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache
