@@ -82,6 +82,19 @@ The registry is now the slowest part: every key is still visited (only reading v
 visiting 562,000 keys takes about 7 s. Peak memory is about 100 MB higher than a full snapshot because the
 previous snapshot is in memory during the scan.
 
+## Comparison (Phase F), 2026-10-27
+
+Test `LargeComparisonTests` on the GitHub runner: two synthetic snapshots of 2,098,001 entries each.
+
+| Case | Changed items | Diff nodes | Time | Target (§9.6) |
+| --- | --- | --- | --- | --- |
+| Few changes (every 500th file resized) | 3,996 | 8,093 | 23–38 ms | < 1 s |
+| Everything changed (every file resized) | 1,998,000 | 2,098,001 | 304–412 ms | 5–10 s |
+
+Unchanged folders are skipped by their subtree digest, so the cost follows the number of changes.
+A folder's own time is not compared (it changes whenever its contents do); its changed contents
+appear below it. Names are matched ignoring case, so a case-only rename is not a change.
+
 ## Open question: reading the NTFS master file table directly
 
 Listing folders one by one costs one or more random disk reads per folder. Reading the NTFS master
