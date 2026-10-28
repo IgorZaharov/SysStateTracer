@@ -166,7 +166,8 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             using (var form = Ui.Show(new NewSnapshotForm(app.Paths, app.Settings)))
             {
                 var start = Controls(form).OfType<ThemedButton>().Single(b => b.Text == "Start");
-                Ui.PumpUntil(() => start.Enabled, 10_000);
+                form.NameBox.Text = "Small folder";
+                Assert.True(Ui.PumpUntil(() => start.Enabled, 10_000), "Start stayed disabled");
                 start.PerformClick();
                 Assert.True(Ui.PumpUntil(() => form.CreatedPath is not null && !form.IsRunning, 60_000), "the snapshot did not finish");
                 Assert.True(File.Exists(form.CreatedPath));
@@ -182,7 +183,8 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 var buttons = Controls(form).OfType<ThemedButton>().ToList();
                 var start = buttons.Single(b => b.Text == "Start");
                 var stop = buttons.Single(b => b.Text == "Stop");
-                Ui.PumpUntil(() => start.Enabled, 10_000);
+                form.NameBox.Text = "Stopped run";   // the default name could equal the first one, taken within the same second
+                Assert.True(Ui.PumpUntil(() => start.Enabled, 10_000), "Start stayed disabled");
                 start.PerformClick();
                 Assert.True(Ui.PumpUntil(() => stop.Enabled, 5_000));
                 stop.PerformClick();

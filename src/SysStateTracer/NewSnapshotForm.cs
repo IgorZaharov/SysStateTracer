@@ -99,6 +99,8 @@ internal sealed class NewSnapshotForm : ThemedDialog
 
     internal ScopeTree Tree => _tree;
 
+    internal TextBox NameBox => _name;
+
     internal bool IsRunning => _running;
 
     protected override void OnShown(EventArgs e)

@@ -100,6 +100,7 @@ public class ScreenshotTests
                 {
                     var buttons = WindowTests.Controls(running).OfType<ThemedButton>().ToList();
                     var start = buttons.Single(b => b.Text == "Start");
+                    running.NameBox.Text = "Before Office 2024 install " + palette.IsDark;
                     Ui.PumpUntil(() => start.Enabled, 10_000);
                     start.PerformClick();
                     Ui.Pump(3500);
