@@ -25,6 +25,29 @@ public sealed class SnapshotMeta
 
     public string UserName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// True when taken as administrator, false when as a standard user (protected folders and keys are then
+    /// missing); null in snapshots from before this was recorded.
+    /// </summary>
+    public bool? TakenAsAdministrator { get; set; }
+
+    /// <summary>
+    /// A warning when one snapshot was taken as administrator and the other was not: what only an administrator
+    /// can read then shows as new or deleted. Null when both were taken with the same rights (or it is unknown).
+    /// </summary>
+    public static string? RightsWarning(SnapshotMeta a, SnapshotMeta b)
+    {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+        if (a.TakenAsAdministrator is not { } first || b.TakenAsAdministrator is not { } second || first == second)
+        {
+            return null;
+        }
+
+        var standard = first ? b : a;
+        return $"\"{standard.Name}\" was taken without administrator rights, so folders and registry keys that need them show as {(standard == b ? "deleted" : "new")}.";
+    }
+
     /// <summary>e.g. "Windows 11 Pro 25H2".</summary>
     public string OsEdition { get; set; } = string.Empty;
 

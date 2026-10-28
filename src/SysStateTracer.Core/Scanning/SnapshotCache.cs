@@ -20,6 +20,11 @@ internal sealed class CacheInfo
 
     public string IgnoreFingerprint { get; set; } = string.Empty;
 
+    /// <summary>Who took it, and with which rights: what could be read depends on both (F9).</summary>
+    public string UserName { get; set; } = string.Empty;
+
+    public bool Elevated { get; set; }
+
     /// <summary>Change-journal checkpoints, taken before the scan started.</summary>
     public List<CacheVolume> Volumes { get; set; } = [];
 }

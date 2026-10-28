@@ -2,11 +2,12 @@
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <assemblyIdentity version="1.0.0.0" name="SysStateTracer.app" />
 
-  <!-- D7: always ask for administrator rights (UAC prompt at launch) -->
+  <!-- F9 (replaces D7): start without a UAC prompt, with the rights of the user who starts it.
+       Complete snapshots need administrator rights: the window offers "Restart as administrator". -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

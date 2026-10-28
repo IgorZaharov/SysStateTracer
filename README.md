@@ -13,8 +13,9 @@ can check in PowerShell with `(Get-FileHash .\SysStateTracer.exe).Hash`.
 
 On first start:
 
-- **Administrator rights:** Windows asks for them (UAC). They are needed to read protected folders and registry
-  keys and to read whole drives quickly.
+- **No UAC prompt:** it starts with your own rights, and works for a standard user too. Snapshots are then
+  missing the folders and registry keys only an administrator can read (they are greyed out in New Snapshot).
+  For complete snapshots — and much faster reading of whole drives — click **Restart as administrator**.
 - **SmartScreen:** the exe is not code-signed, so Windows may say "Windows protected your PC". Choose
   **More info → Run anyway**, or tick **Unblock** in the file's Properties.
 

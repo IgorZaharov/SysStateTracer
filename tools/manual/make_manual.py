@@ -286,8 +286,10 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story += bullets([
         f'Download <b>SysStateTracer.exe</b> from <a href="{RELEASES}" color="#005FB8">{RELEASES}</a>. It is a single file for '
         "Windows 10 and 11 x64; nothing needs to be installed. Put it in any folder you can write to.",
-        "Windows asks for administrator rights when it starts. They are needed to read protected folders and "
-        "registry keys, and to read whole drives quickly.",
+        "It starts without a UAC prompt, with your own rights, and also works for a standard user. Without "
+        "administrator rights, snapshots miss the folders and registry keys only an administrator can read (New Snapshot "
+        "shows them greyed out) and whole drives are read more slowly. For complete snapshots, click <b>Restart as "
+        "administrator</b> in the main window.",
         "The program is not code-signed, so on first start Windows SmartScreen may say “Windows protected your "
         "PC”: choose <b>More info → Run anyway</b>, or tick <b>Unblock</b> in the file's Properties. Each release lists "
         "the file's SHA-256 checksum, so you can check that the file is the published one.",
@@ -408,8 +410,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(p("3&nbsp;&nbsp;Command-line usage", "h1"))
     story.append(p(
         "Every task can be run from a command prompt, a script or a scheduled task. With a switch, SysStateTracer runs "
-        "that one task and exits; without one, the main window opens. Run it from a console opened with "
-        "<b>Run as administrator</b> to see the output there; everything it prints is also written to "
+        "that one task and exits; without one, the main window opens. It runs with the rights of the console that "
+        "starts it: from a console opened with <b>Run as administrator</b> snapshots are complete; from a normal console, "
+        "what needs administrator rights is skipped and a note says so. Everything it prints is also written to "
         "SysStateTracer.log beside the exe."))
     story.append(p("Switches", "h2"))
     story.append(table([
@@ -437,7 +440,6 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["0", "Success"],
         ["1", "Wrong arguments: unknown switch, wrong number of names, a name that cannot be used or is taken"],
         ["2", "Snapshot not found, or fewer than two snapshots for /compare-snap and /export"],
-        ["3", "/new-snap or /export without administrator rights"],
         ["4", "A file could not be read or written (also a damaged or newer-format snapshot)"],
         ["5", "Cancelled with Ctrl+C"],
     ], [18 * mm, CONTENT_W - 18 * mm]))

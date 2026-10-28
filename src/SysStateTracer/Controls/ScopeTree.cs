@@ -30,6 +30,12 @@ internal sealed class ScopeItem(ScopeKind kind, string path)
 
     public bool Ignored { get; set; }
 
+    /// <summary>The current user cannot read it (F9): greyed out, unchecked, skipped by the scan anyway.</summary>
+    public bool NoAccess { get; set; }
+
+    /// <summary>Left out whatever the check box says: in the Global Ignore list, or not readable.</summary>
+    public bool Unavailable => Ignored || NoAccess;
+
     public bool ChildrenLoaded { get; set; }
 
     /// <summary>Check state: <see cref="ScopeTree.Unchecked"/>, <see cref="ScopeTree.Checked"/> or <see cref="ScopeTree.Mixed"/>.</summary>
@@ -82,6 +88,12 @@ internal sealed class ScopeTree : TreeView, IThemed
 
     /// <summary>Raised when an ignored item is clicked: it cannot be included while it is in the Global Ignore list.</summary>
     public event EventHandler<ScopeItem>? IgnoredItemClicked;
+
+    /// <summary>Raised when an item the current user cannot read is clicked.</summary>
+    public event EventHandler<ScopeItem>? NoAccessItemClicked;
+
+    /// <summary>False for a standard user: sub-folders and sub-keys are checked for access as they load (F9).</summary>
+    public bool Elevated { get; set; } = true;
 
     /// <summary>Raised whenever a check state changes.</summary>
     public event EventHandler? ScopeChanged;
@@ -229,6 +241,12 @@ internal sealed class ScopeTree : TreeView, IThemed
         ArgumentNullException.ThrowIfNull(node);
         var item = (ScopeItem)node.Tag!;
         var target = StateOf(node) == Checked ? Unchecked : Checked;
+        if (item.NoAccess && target == Checked)
+        {
+            NoAccessItemClicked?.Invoke(this, item);
+            return;
+        }
+
         if (item.Ignored && target == Checked)
         {
             IgnoredItemClicked?.Invoke(this, item);
@@ -355,10 +373,19 @@ internal sealed class ScopeTree : TreeView, IThemed
     private void Label(TreeNode node)
     {
         var item = (ScopeItem)node.Tag!;
-        const string Suffix = "  (ignored)";
-        var text = node.Text.EndsWith(Suffix, StringComparison.Ordinal) ? node.Text[..^Suffix.Length] : node.Text;
-        node.Text = item.Ignored ? text + Suffix : text;
-        node.ForeColor = item.Ignored ? _palette.SecondaryText : _palette.Text;
+        const string IgnoredSuffix = "  (ignored)";
+        const string NoAccessSuffix = "  (no access: needs administrator rights)";
+        var text = node.Text;
+        foreach (var suffix in new[] { IgnoredSuffix, NoAccessSuffix })
+        {
+            if (text.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                text = text[..^suffix.Length];
+            }
+        }
+
+        node.Text = item.NoAccess ? text + NoAccessSuffix : item.Ignored ? text + IgnoredSuffix : text;
+        node.ForeColor = item.Unavailable ? _palette.SecondaryText : _palette.Text;
         node.NodeFont = item.Kind == ScopeKind.Category ? UiFonts.Bold : null;
     }
 
@@ -368,7 +395,7 @@ internal sealed class ScopeTree : TreeView, IThemed
         {
             if (!IsPlaceholder(node))
             {
-                node.ForeColor = ((ScopeItem)node.Tag!).Ignored ? _palette.SecondaryText : _palette.Text;
+                node.ForeColor = ((ScopeItem)node.Tag!).Unavailable ? _palette.SecondaryText : _palette.Text;
             }
         }
     }
@@ -382,8 +409,10 @@ internal sealed class ScopeTree : TreeView, IThemed
         foreach (var (childPath, label, kind) in ReadChildren(item))
         {
             var target = kind is ScopeKind.Folder ? IgnoreTarget.FileSystem : IgnoreTarget.Registry;
-            var state = parentState == Unchecked ? Unchecked : StartState(true, childPath, target);
-            AddNode(node.Nodes, new ScopeItem(kind, childPath), label, state, lazy: true);
+            var noAccess = !Elevated && !CanRead(kind, childPath);
+            var state = parentState == Unchecked || noAccess ? Unchecked : StartState(true, childPath, target);
+            var child = new ScopeItem(kind, childPath) { NoAccess = noAccess };
+            AddNode(node.Nodes, child, label, state, lazy: !noAccess);
         }
 
         UpdateFromChildren(node);
@@ -429,6 +458,38 @@ internal sealed class ScopeTree : TreeView, IThemed
 
             default:
                 return [];
+        }
+    }
+
+    /// <summary>Whether the current user can list the folder or open the key.</summary>
+    internal static bool CanRead(ScopeKind kind, string path)
+    {
+        try
+        {
+            if (kind is ScopeKind.Folder or ScopeKind.Volume)
+            {
+                using var entries = Directory.EnumerateFileSystemEntries(path).GetEnumerator();
+                _ = entries.MoveNext();
+                return true;
+            }
+
+            var slash = path.IndexOf('\\', StringComparison.Ordinal);
+            if (slash < 0)
+            {
+                return true;
+            }
+
+            using var root = RegistryKey.OpenBaseKey(path[..slash] == "HKU" ? RegistryHive.Users : RegistryHive.LocalMachine, RegistryView.Registry64);
+            using var key = root.OpenSubKey(path[(slash + 1)..]);
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return true; // gone or not ready: not an access problem
         }
     }
 
@@ -482,7 +543,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     private void SetState(TreeNode node, int state, bool cascade)
     {
         var item = (ScopeItem)node.Tag!;
-        Show(node, item.Ignored ? Unchecked : state);
+        Show(node, item.Unavailable ? Unchecked : state);
         if (!cascade)
         {
             return;
@@ -508,7 +569,7 @@ internal sealed class ScopeTree : TreeView, IThemed
 
         // Ignored children are left out anyway, so they do not make their parent mixed.
         var anyIncluded = children.Any(c => StateOf(c) != Unchecked);
-        var allChecked = children.All(c => StateOf(c) == Checked || ((ScopeItem)c.Tag!).Ignored);
+        var allChecked = children.All(c => StateOf(c) == Checked || ((ScopeItem)c.Tag!).Unavailable);
         Show(node, !anyIncluded ? Unchecked : allChecked ? Checked : Mixed);
     }
 
@@ -546,7 +607,7 @@ internal sealed class ScopeTree : TreeView, IThemed
             var childItem = (ScopeItem)child.Tag!;
             if (StateOf(child) == Unchecked)
             {
-                if (!childItem.Ignored && childItem.RuleLine is { } line)
+                if (!childItem.Unavailable && childItem.RuleLine is { } line)
                 {
                     excluded.Add(line);
                 }

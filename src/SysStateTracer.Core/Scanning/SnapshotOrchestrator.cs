@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime;
 using SysStateTracer.Core.Ignore;
+using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Model;
 using SysStateTracer.Core.Scanning.Fs;
 using SysStateTracer.Core.Scanning.Reg;
@@ -123,6 +124,7 @@ public static class SnapshotOrchestrator
             StartedAt = DateTimeOffset.Now,
             ComputerName = Environment.MachineName,
             UserName = Environment.UserName,
+            TakenAsAdministrator = ProcessPrivileges.IsElevated,
             OsEdition = OsInfo.Edition,
             OsVersion = OsInfo.Version,
             AppVersion = AppInfo.Version,
@@ -303,6 +305,8 @@ public static class SnapshotOrchestrator
                 FileSystemRoots = fsRoots,
                 RegistryRoots = regRoots,
                 IgnoreFingerprint = request.Ignore.Fingerprint,
+                UserName = Environment.UserName,
+                Elevated = ProcessPrivileges.IsElevated,
                 Volumes = checkpoints,
             });
         }

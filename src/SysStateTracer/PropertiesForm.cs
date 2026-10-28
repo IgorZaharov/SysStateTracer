@@ -58,7 +58,12 @@ internal sealed class PropertiesForm : ThemedDialog
         Row("Size", $"{ItemFormat.Size(info.FileLength)} ({info.FileLength.ToString("N0", CultureInfo.CurrentCulture)} bytes)");
         Row("Created", $"{meta.StartedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss} local · {meta.StartedAt.ToUniversalTime():yyyy-MM-dd HH:mm:ss} UTC");
         Row("Computer", meta.ComputerName);
-        Row("User", meta.UserName);
+        Row("User", meta.UserName + meta.TakenAsAdministrator switch
+        {
+            true => " (as administrator)",
+            false => " (standard user: folders and keys that need administrator rights were skipped)",
+            _ => string.Empty,
+        });
         Row("Windows", $"{meta.OsEdition} ({meta.OsVersion})");
         Row("Taken with", $"SysStateTracer {meta.AppVersion} · file format {info.FormatMajor}.{info.FormatMinor}");
 

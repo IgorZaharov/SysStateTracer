@@ -17,6 +17,7 @@ public enum CliExitCode
     Success = 0,
     BadArguments = 1,
     SnapshotNotFound = 2,
+    /// <summary>No longer used: since 1.0.0 a standard user can run every switch (F9).</summary>
     NotElevated = 3,
     ReadWriteError = 4,
     Cancelled = 5,

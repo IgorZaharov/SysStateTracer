@@ -308,4 +308,5 @@ internal static class Glyphs
     public const string Folder = "\uE8B7";
     public const string Stop = "\uE71A";
     public const string Play = "\uE768";
+    public const string Shield = "\uEA18";
 }

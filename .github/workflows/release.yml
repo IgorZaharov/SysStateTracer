@@ -106,7 +106,7 @@ jobs:
 
           ## Download
 
-          **SysStateTracer.exe** ($size MB): one file for Windows 10 and 11 x64, nothing to install. It asks for administrator rights when it starts.
+          **SysStateTracer.exe** ($size MB): one file for Windows 10 and 11 x64, nothing to install. It starts with your own rights (no UAC prompt); use **Restart as administrator** for complete snapshots.
 
           SHA-256: ``$hash``
 

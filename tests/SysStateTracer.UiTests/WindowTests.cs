@@ -93,6 +93,52 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    public void ScopeTree_StandardUser_GreysOutWhatCannotBeRead()
+    {
+        Ui.Run(() =>
+        {
+            using var app = new TestApp();
+            var root = Directory.CreateDirectory(Path.Combine(app.Root, "scope")).FullName;
+            var open = Directory.CreateDirectory(Path.Combine(root, "open")).FullName;
+            var locked = Directory.CreateDirectory(Path.Combine(root, "locked"));
+            var rule = new System.Security.AccessControl.FileSystemAccessRule(
+                System.Security.Principal.WindowsIdentity.GetCurrent().User!,
+                System.Security.AccessControl.FileSystemRights.ListDirectory | System.Security.AccessControl.FileSystemRights.ReadData,
+                System.Security.AccessControl.AccessControlType.Deny);
+            var acl = locked.GetAccessControl();
+            acl.AddAccessRule(rule);
+            locked.SetAccessControl(acl);
+            try
+            {
+                using var form = new Form();
+                var tree = new ScopeTree { Dock = DockStyle.Fill, Elevated = false };
+                form.Controls.Add(tree);
+                Ui.Show(form);
+                tree.Load(new SnapshotScope { FileSystemRoots = [root], RegistryRoots = [], IncludeServices = false }, []);
+
+                var folder = Find(tree.Nodes, root);
+                folder.Expand();
+                var lockedNode = Find(folder.Nodes, locked.FullName);
+                Assert.True(((ScopeItem)lockedNode.Tag!).NoAccess);
+                Assert.Contains("no access", lockedNode.Text, StringComparison.Ordinal);
+                Assert.Equal(ScopeTree.Unchecked, ScopeTree.StateOf(lockedNode));
+                Assert.Equal(ScopeTree.Checked, ScopeTree.StateOf(Find(folder.Nodes, open)));
+                Assert.Equal(ScopeTree.Checked, ScopeTree.StateOf(folder));
+
+                tree.Toggle(lockedNode);
+                Assert.Equal(ScopeTree.Unchecked, ScopeTree.StateOf(lockedNode));
+                Assert.Empty(tree.ToScope().Excluded);
+                form.Close();
+            }
+            finally
+            {
+                acl.RemoveAccessRule(rule);
+                locked.SetAccessControl(acl);
+            }
+        });
+    }
+
+    [Fact]
     public void ScopeTree_RoundTripsTheSavedScope()
     {
         Ui.Run(() =>

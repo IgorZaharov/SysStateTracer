@@ -1,4 +1,5 @@
 using System.Globalization;
+using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Model;
 using SysStateTracer.Core.Scanning.Fs.Ntfs;
 
@@ -71,6 +72,14 @@ internal sealed class PreviousSnapshot
         if (!string.Equals(info.IgnoreFingerprint, request.Ignore.Fingerprint, StringComparison.Ordinal))
         {
             return None("the Global Ignore list changed");
+        }
+
+        // Parts that could not be read last time must not be reused as if they were empty.
+        if (info.Elevated != ProcessPrivileges.IsElevated || !string.Equals(info.UserName, Environment.UserName, StringComparison.OrdinalIgnoreCase))
+        {
+            return None(ProcessPrivileges.IsElevated
+                ? "the previous snapshot was taken without administrator rights or by another user"
+                : "the previous snapshot was taken with administrator rights or by another user");
         }
 
         var registryReason = regRoots.Count == 0 ? null

@@ -20,16 +20,15 @@ internal sealed class MainForm : Form
     private readonly AppPaths _paths;
     private readonly AppSettings _settings;
     private readonly ThemedListView _list = new() { Dock = DockStyle.Fill, MultiSelect = true, AllowDrop = true, ShowItemToolTips = true };
-    private readonly Label _warning = new()
+    private readonly Panel _warning = new() { Dock = DockStyle.Top, Height = 40, Padding = new Padding(16, 5, 16, 5), Visible = false };
+    private readonly Label _warningText = new()
     {
-        Dock = DockStyle.Top,
+        Dock = DockStyle.Fill,
         AutoSize = false,
-        Height = 30,
-        Padding = new Padding(16, 0, 16, 0),
         TextAlign = ContentAlignment.MiddleLeft,
-        Visible = false,
-        Text = "Not running as administrator: snapshots will miss the folders and registry keys that need administrator rights, and whole drives are read more slowly. Start SysStateTracer with \"Run as administrator\".",
+        Text = "Not running as administrator: snapshots miss the folders and registry keys that need administrator rights, and whole drives are read more slowly.",
     };
+    private readonly ThemedButton _elevate = new() { Text = "Restart as administrator", Glyph = Glyphs.Shield, Dock = DockStyle.Right, Width = 200 };
     private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 190, Anchor = AnchorStyles.Top | AnchorStyles.Right };
     private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
     private readonly Label _empty = new() { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Visible = false };
@@ -71,6 +70,15 @@ internal sealed class MainForm : Form
 
         BuildLayout();
         BuildMenu();
+        _warning.Controls.Add(_warningText);
+        _warning.Controls.Add(_elevate);
+        _elevate.Click += (_, _) =>
+        {
+            if (Elevation.RestartAsAdministrator(this))
+            {
+                Close();
+            }
+        };
         _warning.Visible = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
         ResumeLayout(performLayout: true);
 
@@ -89,7 +97,7 @@ internal sealed class MainForm : Form
     private void ColorWarning()
     {
         var p = ThemeManager.Current;
-        _warning.ForeColor = p.Modified;
+        _warningText.ForeColor = p.Modified;
         _warning.BackColor = Palette.Blend(p.Modified, p.Background, p.IsDark ? 0.85 : 0.9);
     }
 

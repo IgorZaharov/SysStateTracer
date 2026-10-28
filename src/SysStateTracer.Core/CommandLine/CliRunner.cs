@@ -77,10 +77,12 @@ public static class CliRunner
                 }
 
                 Say($"{AppInfo.Name} {AppInfo.Version}");
+                // F9: a standard user can take snapshots and export too; what needs administrator rights is skipped.
                 if (command.Kind is CliCommandKind.NewSnap or CliCommandKind.Export && !env.IsElevated)
                 {
-                    Error($"{CliParser.SwitchName(command.Kind)} needs administrator rights. Run it from a console opened with \"Run as administrator\".");
-                    return CliExitCode.NotElevated;
+                    Say(command.Kind == CliCommandKind.NewSnap
+                        ? "Note: not running as administrator. Folders and registry keys that need administrator rights are skipped, and whole drives are read more slowly. For a complete snapshot, run from a console opened with \"Run as administrator\"."
+                        : "Note: not running as administrator. Files in protected folders cannot be copied.");
                 }
 
                 return command.Kind switch
@@ -420,6 +422,11 @@ public static class CliRunner
             left.Meta.Name = Path.GetFileNameWithoutExtension(first);
             right.Meta.Name = Path.GetFileNameWithoutExtension(second);
             Say($"Comparing \"{left.Meta.Name}\" ({Stamp(left.Meta)}) with \"{right.Meta.Name}\" ({Stamp(right.Meta)})");
+            var (olderMeta, newerMeta) = left.Meta.StartedAt <= right.Meta.StartedAt ? (left.Meta, right.Meta) : (right.Meta, left.Meta);
+            if (SnapshotMeta.RightsWarning(olderMeta, newerMeta) is { } rights)
+            {
+                Say("Note: " + rights);
+            }
 
             var leftIsOlder = left.Meta.StartedAt <= right.Meta.StartedAt;
             var diff = leftIsOlder

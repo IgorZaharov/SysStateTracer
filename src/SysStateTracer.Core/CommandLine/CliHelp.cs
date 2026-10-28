@@ -44,8 +44,11 @@ public static class CliHelp
         text.Append("  Reports, .reg files, Files, log: ").Append(dataFolder).Append(nl);
         text.Append(nl);
         text.Append("Exit codes:").Append(nl);
-        text.Append("  0 success   1 wrong arguments   2 snapshot not found   3 administrator rights needed").Append(nl);
-        text.Append("  4 file could not be read or written   5 cancelled (Ctrl+C)").Append(nl);
+        text.Append("  0 success   1 wrong arguments   2 snapshot not found   4 file could not be read or written").Append(nl);
+        text.Append("  5 cancelled (Ctrl+C)").Append(nl);
+        text.Append(nl);
+        text.Append("Run from a console opened with \"Run as administrator\" for complete snapshots; as a standard user,").Append(nl);
+        text.Append("folders and registry keys that need administrator rights are skipped.").Append(nl);
         text.Append(nl);
         text.Append("Examples:").Append(nl);
         Example(text, "Snapshot before and after installing an application:");

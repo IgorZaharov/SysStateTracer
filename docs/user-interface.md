@@ -6,6 +6,9 @@ changes. Screenshots of every window in both themes are saved by the UI tests on
 
 ## Main window (W1)
 
+- **Standard user (F9):** the program starts without a UAC prompt, with the rights of the user who starts it.
+  Without administrator rights a yellow bar says what is missing and offers **Restart as administrator**.
+
 - **Sidebar:** + New Snapshot, Delete Snapshot, Preferences, Help/About; Exit at the bottom. Hover shows the name.
 - **List:** Name, Created, Computer, Duration, Size, read from the snapshot headers only (100 snapshots list in
   well under half a second). Sort by date (newest first) or name; the choice is remembered. The list follows the
@@ -26,7 +29,8 @@ reasons.
 - **Name:** prefilled with `YYYYMMDD_HH-MM-SS_COMPUTERNAME`; problems (invalid characters, name in use) show at once.
 - **What to include:** drives, registry (HKLM, HKU with each user) and services, with tri-state checkboxes.
   Sub-folders and sub-keys load when expanded. Items in the Global Ignore list are unchecked and marked
-  "(ignored)"; to include one, remove its rule in Preferences. Unchecking a folder or key inside an included
+  "(ignored)"; to include one, remove its rule in Preferences. Without administrator rights, folders and keys
+  your user cannot read are greyed out as "(no access)", with a link to restart as administrator. Unchecking a folder or key inside an included
   drive or hive leaves it out of this and later snapshots. The scope is remembered and also used by `/new-snap`.
 - **Full rescan:** reads everything again instead of reusing unchanged parts of the previous snapshot.
 - **Start / Stop:** progress bar, elapsed time ticking every second, current phase and path, items per second.
@@ -66,7 +70,8 @@ Version, the GitHub link, and the command-line help (the same text as `SysStateT
 
 ## Manual test script
 
-Run on a Windows PC with the published `SysStateTracer.exe` (administrator rights are asked for at start):
+Run on a Windows PC with the published `SysStateTracer.exe`. It starts without a UAC prompt; click
+**Restart as administrator** in the main window for complete snapshots (and once without, to see the standard-user view):
 
 1. Start the program with no snapshots: the list says there are none. Click **+**, keep the default name, Start.
    The timer ticks, the phase and path change, Stop becomes available; at the end the summary shows and the new

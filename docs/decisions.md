@@ -10,7 +10,7 @@ Confirmed by the project owner on 27 Oct 2026 (plan Step 1).
 | D4 | `.\Files` path | System drive: `.\Files\ProgramData\Test`. Other drives: `.\Files\_D\Data\X`. |
 | D5 | Non-important marks | Kept only while the comparison window is open; not saved. |
 | D6 | Repository | https://github.com/IgorZaharov/SysStateTracer |
-| D7 | Elevation | Manifest requests administrator rights at every launch. |
+| D7 | Elevation | ~~Manifest requests administrator rights at every launch.~~ Replaced by F9 (28 Oct 2026). |
 | D8 | Code signing | Releases are unsigned; each release publishes the exe's SHA-256. |
 | D9 | Default scope | All fixed drives, HKLM without SAM/SECURITY, HKU, Win32 services; kernel drivers off. |
 | D10 | Cold file-system scan | Whole NTFS drives are read from the master file table (one sequential read of the table instead of one or more reads per folder). Folder listing remains for other file systems, single-folder roots, and whenever the table cannot be read. Confirmed 27 Oct 2026; see [benchmarks.md](benchmarks.md). |
@@ -38,3 +38,4 @@ GitHub + CI (plan §4.3 mode B): code is pushed to this repository and GitHub Ac
 | F6 | Command-line snapshot names may carry .stsnap or be paths | Every switch accepts `name`, `name.stsnap` or a path to a `.stsnap` file; `/new-snap` with a path saves there, `/rename-snap` with a path moves the file | H, done |
 | F7 | `/export` writes a PowerShell script into .\Files that copies everything back | `Files\Restore-Files.ps1` maps the folder layout back (system drive, `_D` → `D:`), supports `-WhatIf`; also written by Copy to .\Files in the comparison window | G/H, done |
 | F8 | Manual.pdf with screenshots | Built by `tools/manual/make_manual.py` in CI from the screenshots and `/?` text of the same build; title page, contents, Introduction, Common usage, Command-line usage, Editing the Global Ignore list, Preferences; on the `ui-preview` pre-release and attached to every release | J, done |
+| F9 | Run as a standard user; no UAC prompt at start | Manifest `asInvoker`: the program runs with the rights of the user who starts it. Without administrator rights a bar in the main window explains what is missing and offers **Restart as administrator** (UAC prompt then); New Snapshot greys out folders and keys the user cannot read; snapshots record whether they were taken as administrator, the cache is not reused across different rights or users, and a comparison of a standard-user and an administrator snapshot says why protected items show as new or deleted. The command line runs every switch as a standard user with a note (exit code 3 is no longer used). | I/J, done |

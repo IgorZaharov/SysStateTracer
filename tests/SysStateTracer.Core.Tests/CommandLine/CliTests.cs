@@ -229,12 +229,14 @@ public class CliTests
     }
 
     [Fact]
-    public void NewSnapAndExport_NeedAdministratorRights()
+    public void Export_WorksWithoutAdministratorRights_WithANote()
     {
         using var env = new TestEnvironment { Elevated = false };
+        env.AddSnapshot("before", day: 1);
+        env.AddSnapshot("after", day: 2, extraFile: true);
 
-        Assert.Equal(3, env.Run("/new-snap"));
-        Assert.Equal(3, env.Run("/export"));
+        Assert.Equal(0, env.Run("/export"));
+        Assert.Contains("not running as administrator", env.Text, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

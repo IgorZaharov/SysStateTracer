@@ -23,7 +23,7 @@ Use the release candidate (`v1.0.0-rc.N` pre-release) and tick each row.
 | Windows 10 22H2 x64 | Same flow; the command-line examples from `/?`; Light, Dark and Follow Windows. |
 | Windows 11 25H2 x64 | Same flow; Jump to Explorer, Regedit and the Services console. |
 | 100 %, 150 %, 200 % display scaling | Windows, icons and the comparison tree stay sharp and aligned. |
-| Standard user account | The UAC prompt appears; declining it just doesn't start the program. |
+| Standard user account | Starts without a UAC prompt; the yellow bar shows; New Snapshot greys out folders and keys the user cannot read; a snapshot works; Restart as administrator asks for an administrator's password. |
 | Microsoft Defender real-time protection on | No detection when downloading, starting and taking a snapshot. Note what SmartScreen shows on first start. |
 | Real scenario (§13.4) | Install and uninstall 7-Zip between snapshots: its folder, uninstall key and file associations show as new, then deleted. Change a service's startup type: the comparison shows it. |
 | Windows UI | The manual test script in [user-interface.md](user-interface.md#manual-test-script). |

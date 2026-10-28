@@ -22,12 +22,13 @@ internal sealed class NewSnapshotForm : ThemedDialog
     private readonly AppSettings _settings;
     private readonly TextBox _name = new() { BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill };
     private readonly Label _nameProblem = new() { AutoSize = true, Text = " " };
+    private readonly LinkLabel _elevateLink = new() { Text = "Restart SysStateTracer as administrator", AutoSize = true, Visible = false };
     private readonly Label _notElevated = new()
     {
         AutoSize = true,
         Visible = false,
         MaximumSize = new Size(700, 0),
-        Text = "Not running as administrator: folders and registry keys that need administrator rights are skipped, and whole drives are read more slowly.",
+        Text = "Not running as administrator: folders and registry keys that need administrator rights are greyed out and skipped, and whole drives are read more slowly.",
     };
     private readonly Label _folder = new() { AutoSize = true, AutoEllipsis = true };
     private readonly ScopeTree _tree = new() { Dock = DockStyle.Fill };
@@ -60,7 +61,17 @@ internal sealed class NewSnapshotForm : ThemedDialog
         MinimumSize = new Size(620, 560);
 
         BuildLayout();
-        _notElevated.Visible = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
+        var standardUser = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
+        _notElevated.Visible = standardUser;
+        _elevateLink.Visible = standardUser;
+        _tree.Elevated = !standardUser;
+        _elevateLink.LinkClicked += (_, _) =>
+        {
+            if (!IsRunning && Elevation.RestartAsAdministrator(this))
+            {
+                Close();
+            }
+        };
         _close = AddButton("Close", DialogResult.Cancel);
         _stop = AddButton("Stop", DialogResult.None);
         _start = AddButton("Start", DialogResult.None, primary: true);
@@ -78,6 +89,10 @@ internal sealed class NewSnapshotForm : ThemedDialog
             this,
             "Ignored item",
             $"{item.Path} is in the Global Ignore list, so it is always left out. Remove its rule in Preferences → Global Ignore list to include it.");
+        _tree.NoAccessItemClicked += (_, item) => MessageDialog.Inform(
+            this,
+            "No access",
+            $"Your user account cannot read {item.Path}, so it is left out. Restart SysStateTracer as administrator to include it.");
         _clock.Tick += (_, _) => _elapsed.Text = FormatElapsed(_watch.Elapsed);
 
         IReadOnlyList<VolumeInfo> volumes;
@@ -166,6 +181,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
         info.Controls.Add(_folder);
         info.Controls.Add(_nameProblem);
         info.Controls.Add(_notElevated);
+        info.Controls.Add(_elevateLink);
         layout.Controls.Add(info);
 
         var scopeTitle = new Label { Text = "What to include", AutoSize = true, Margin = new Padding(0, 8, 0, 6) };

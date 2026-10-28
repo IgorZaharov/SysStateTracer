@@ -424,6 +424,11 @@ internal sealed class ComparisonForm : Form
             parts.Add(string.Create(CultureInfo.CurrentCulture, $"Global Ignore list: {origin}, {state.List.Rules.Count + _sessionRules.Count:N0} rules"));
         }
 
+        if (SnapshotMeta.RightsWarning(_diff.Older.Meta, _diff.Newer.Meta) is { } rights)
+        {
+            parts.Insert(0, "⚠ " + rights);
+        }
+
         parts.Add("Right-click for actions");
         _status.Text = string.Join("  ·  ", parts);
     }

@@ -1,8 +1,9 @@
 # Command line
 
 `SysStateTracer.exe` with a switch runs one task and exits; without a switch the main window opens.
-The exe asks for administrator rights at start (decision D7), so run it from a console opened with
-**Run as administrator** to see the output there. Everything printed also goes to `SysStateTracer.log`.
+It runs with the rights of the console that starts it (F9). From a console opened with **Run as administrator**
+snapshots are complete; from a normal console, folders and registry keys that need administrator rights are
+skipped (a note says so) and whole drives are read more slowly. Everything printed also goes to `SysStateTracer.log`.
 
 A window application does not hold up an interactive `cmd` prompt, so the prompt can come back before the
 output. In batch files use `start "" /wait`, in PowerShell `Start-Process … -Wait`, to wait for the result
@@ -42,8 +43,11 @@ Folders:
   Reports, .reg files, Files, log: C:\Tools\SysStateTracer
 
 Exit codes:
-  0 success   1 wrong arguments   2 snapshot not found   3 administrator rights needed
-  4 file could not be read or written   5 cancelled (Ctrl+C)
+  0 success   1 wrong arguments   2 snapshot not found   4 file could not be read or written
+  5 cancelled (Ctrl+C)
+
+Run from a console opened with "Run as administrator" for complete snapshots; as a standard user,
+folders and registry keys that need administrator rights are skipped.
 
 Examples:
   Snapshot before and after installing an application:
@@ -97,6 +101,6 @@ The folders shown are the real ones on the PC where it runs.
 | 0 | Success |
 | 1 | Wrong arguments: unknown switch, wrong number of names, invalid or already used name |
 | 2 | Snapshot not found, or fewer than two snapshots for /compare-snap and /export |
-| 3 | /new-snap or /export run without administrator rights |
+| 3 | Not used since 1.0.0: a standard user can run every switch (F9) |
 | 4 | A file could not be read or written (also a damaged snapshot) |
 | 5 | Cancelled with Ctrl+C |
