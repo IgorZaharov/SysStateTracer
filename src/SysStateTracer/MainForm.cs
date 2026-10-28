@@ -386,7 +386,7 @@ internal sealed class MainForm : Form
 
     /// <summary>Selected rows, readable or not, as (name, path).</summary>
     private List<(string Name, string Path)> SelectedFiles() =>
-        [.. _list.SelectedItems.Cast<ListViewItem>().Select(i => i.Tag switch
+        [.. _list.SelectedItems.Cast<ListViewItem>().Select<ListViewItem, (string Name, string Path)>(i => i.Tag switch
         {
             SnapshotInfo info => (info.Name, info.Path),
             UnreadableSnapshot bad => (System.IO.Path.GetFileNameWithoutExtension(bad.Path), bad.Path),
