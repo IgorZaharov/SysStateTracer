@@ -31,6 +31,7 @@ from reportlab.platypus.tableofcontents import TableOfContents
 GITHUB = "https://github.com/IgorZaharov/SysStateTracer"
 RELEASES = GITHUB + "/releases"
 LATEST = RELEASES + "/latest/download"
+FEATURE_REQUESTS = GITHUB + "/blob/main/docs/featurerequest.md"
 ACCENT = colors.HexColor("#005FB8")
 TEXT = colors.HexColor("#1B1B1B")
 SECONDARY = colors.HexColor("#616161")
@@ -310,6 +311,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["Latest manual", f'<a href="{LATEST}/Manual.pdf" color="#005FB8">{LATEST}/Manual.pdf</a>'],
         ["All versions", f'<a href="{RELEASES}" color="#005FB8">{RELEASES}</a>'],
         ["Questions and problem reports", f'<a href="{GITHUB}/issues" color="#005FB8">{GITHUB}/issues</a>'],
+        ["Feature requests and their status", f'<a href="{FEATURE_REQUESTS}" color="#005FB8">{FEATURE_REQUESTS}</a>'],
     ], [60 * mm, CONTENT_W - 60 * mm], header=False))
     story.append(PageBreak())
 
@@ -534,6 +536,30 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story += screens.figure("w1-main-dark", "The main window in the dark theme.", width=135 * mm)
     story.append(p("Global Ignore list", "h2"))
     story.append(p("The second tab turns the shared remote list on or off and edits the local list; see chapter 4."))
+    story.append(PageBreak())
+
+    # ---- 6 Feedback
+    story.append(p("6&nbsp;&nbsp;Feedback, issues and feature requests", "h1"))
+    story.append(p(
+        "SysStateTracer is developed in the open on GitHub. Ideas, problems and requests are welcome, and every one "
+        "is tracked in one list in the repository:"))
+    story.append(p(f'<a href="{FEATURE_REQUESTS}" color="#005FB8"><b>{FEATURE_REQUESTS}</b></a>'))
+    story += bullets([
+        "Each line is a feature request or a bug, numbered in the order it came in. Finished ones are marked "
+        "<b>[DONE]</b>, so the list also shows what is planned and what each new version brought.",
+        "To ask for something new or report a problem, add it to the list (edit the file on GitHub and propose the "
+        f'change), or open an issue at <a href="{GITHUB}/issues" color="#005FB8">{GITHUB}/issues</a>.',
+    ])
+    story.append(p("What helps in a problem report", "h2"))
+    story += bullets([
+        "The version (Help / About, or the first line of <font face=\"Mono\">SysStateTracer.exe /?</font>) and the Windows version.",
+        "What you did, what you expected and what happened; a screenshot of the window if it shows the problem.",
+        "The lines about it from <b>SysStateTracer.log</b>, beside the exe.",
+        "For a Global Ignore rule that does not work: the rule as written and the full path it should match.",
+    ])
+    story.append(p(
+        "<b>Do not attach snapshot files publicly.</b> They contain registry data, which can include product keys "
+        "and other sensitive settings; describe the items instead, or share a snapshot privately.", "note"))
     story.append(Spacer(1, 10))
     story.append(p(f'More documentation, the source code and new versions: <a href="{GITHUB}" color="#005FB8">{GITHUB}</a>', "small"))
     return story
