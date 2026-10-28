@@ -6,6 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/SysStateTracer.Core.Tests/SysStateTracer.Core.Tests.csproj" />
     <Project Path="tests/SysStateTracer.WindowsTests/SysStateTracer.WindowsTests.csproj" />
+    <Project Path="tests/SysStateTracer.UiTests/SysStateTracer.UiTests.csproj" />
     <Project Path="tests/SysStateTracer.Benchmarks/SysStateTracer.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">

@@ -72,6 +72,7 @@ public static class SettingsStore
 
         settings.Scope ??= new SnapshotScope();
         settings.Scope.RegistryRoots ??= new SnapshotScope().RegistryRoots;
+        settings.Scope.Excluded ??= [];
         return settings;
     }
 

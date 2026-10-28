@@ -30,6 +30,8 @@ internal static class Program
         var settings = SettingsStore.Load(paths.ConfigFile);
 
         ApplicationConfiguration.Initialize();
+        Application.SetDefaultFont(Theming.UiFonts.Normal);
+        Theming.ThemeManager.SetPreference(settings.Theme);
         Application.Run(new MainForm(paths, settings));
 
         Log.Info($"{AppInfo.Name} exited.");

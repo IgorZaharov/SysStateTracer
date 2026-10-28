@@ -45,7 +45,26 @@ jobs:
 
       - name: Test
         shell: pwsh
+        env:
+          SYSSTATETRACER_SCREENSHOTS: ${{ github.workspace }}\screenshots   # UI tests save every window in both themes
         run: .github/scripts/run.ps1 dotnet test SysStateTracer.slnx -c Release --no-build --logger trx --results-directory TestResults
+
+      # Window screenshots for review without a Windows PC, kept on the "ui-preview" pre-release
+      - name: Update "ui-preview" pre-release
+        if: always() && github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = @(Get-ChildItem screenshots -Filter *.png -ErrorAction SilentlyContinue)
+          if ($files.Count -eq 0) { Write-Host '::warning title=Screenshots::No screenshots were saved'; exit 0 }
+          gh release view ui-preview *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create ui-preview --prerelease --target $env:GITHUB_SHA --title "UI preview" --notes "Screenshots of every window in the light and dark theme, saved by the UI tests. Updated by CI on every push to main."
+          }
+          gh release upload ui-preview $files.FullName --clobber
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Write-Host "::notice title=Screenshots::$($files.Count) screenshots uploaded to the ui-preview pre-release"
 
       # Measurements printed by tests (memory, timings) become notices on the run page
       - name: Report test measurements

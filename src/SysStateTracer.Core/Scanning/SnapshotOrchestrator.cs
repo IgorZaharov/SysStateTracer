@@ -60,7 +60,10 @@ public sealed class SnapshotRequest
         Ignore = ignore,
     };
 
-    /// <summary>A request for the saved scope (Preferences / W3); fixed drives are looked up now when the scope has none.</summary>
+    /// <summary>
+    /// A request for the saved scope (W3, /new-snap); fixed drives are looked up now when the scope has none.
+    /// Items unchecked in W3 (<see cref="Config.SnapshotScope.Excluded"/>) are added to the Global Ignore rules.
+    /// </summary>
     public static SnapshotRequest ForScope(
         string name, string outputDirectory, Config.SnapshotScope scope, GlobalIgnoreList ignore, string? cachePath, bool fullRescan = false)
     {
@@ -75,7 +78,9 @@ public sealed class SnapshotRequest
             RegistryRoots = [.. scope.RegistryRoots],
             IncludeServices = scope.IncludeServices,
             IncludeDrivers = scope.IncludeDrivers,
-            Ignore = ignore,
+            Ignore = scope.Excluded.Count == 0
+                ? ignore
+                : GlobalIgnoreList.Build(ignore.Rules.Select(r => r.Text).Concat(scope.Excluded)),
             CachePath = cachePath,
             FullRescan = fullRescan,
         };

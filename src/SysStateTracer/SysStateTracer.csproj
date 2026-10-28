@@ -16,6 +16,10 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationVisualStyles>true</ApplicationVisualStyles>
     <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+    <!-- LibraryImport (dark title bars, window capture) generates unsafe code -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Windows are built in code, not with the designer, so designer serialization hints do not apply -->
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
 
   <!-- Single-file publish: `dotnet publish -c Release` gives one SysStateTracer.exe (plan §14.1) -->
@@ -32,6 +36,10 @@
   <ItemGroup>
     <!-- The same icon for window title bars and the taskbar -->
     <EmbeddedResource Include="SysStateTracer.ico" LogicalName="SysStateTracer.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SysStateTracer.UiTests" />
   </ItemGroup>
 
   <ItemGroup>

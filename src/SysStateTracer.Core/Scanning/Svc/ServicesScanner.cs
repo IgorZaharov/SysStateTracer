@@ -45,6 +45,24 @@ public sealed class ServicesScanner
 
     public int ServicesScanned => Volatile.Read(ref _services);
 
+    /// <summary>Names and display names of the installed services, sorted by display name (Preferences: Add service).</summary>
+    public static List<(string Name, string DisplayName)> ListInstalled(bool includeDrivers = false)
+    {
+        var names = new NameTable();
+        var builder = new ServiceTableBuilder(names);
+        new ServicesScanner(builder, new Lock(), new SkippedCollector())
+            .Scan(new ServicesScanOptions { IncludeServices = true, IncludeDrivers = includeDrivers });
+        var table = builder.Build();
+        var result = new List<(string Name, string DisplayName)>(table.Count);
+        for (var i = 0; i < table.Count; i++)
+        {
+            result.Add((names.GetString(table.Name[i]), names.GetString(table.DisplayName[i])));
+        }
+
+        result.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.CurrentCultureIgnoreCase));
+        return result;
+    }
+
     public void Scan(ServicesScanOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
