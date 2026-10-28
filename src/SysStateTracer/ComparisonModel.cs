@@ -351,7 +351,8 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
         var names = snapshot.Names;
         if (column == StatusColumn)
         {
-            return snapshot == Diff.Newer ? "+" : "−";
+            // As for the other rows: in the right-hand snapshot only = new, so Swap turns + into −.
+            return snapshot == Diff.Right ? "+" : "−";
         }
 
         if (InsideArea(id) == DiffArea.FileSystem)

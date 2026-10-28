@@ -44,9 +44,9 @@ public class UnblockScreenshotTests(Xunit.Abstractions.ITestOutputHelper output)
             }
 
             nint sheet = 0;
-            if (!Ui.PumpUntil(() => (sheet = FindOwnWindow("SysStateTracer.exe Properties")) != 0, 20_000))
+            if (!Ui.PumpUntil(() => (sheet = FindWindow(t => t.Contains("SysStateTracer.exe", StringComparison.OrdinalIgnoreCase) && t.Contains("Properties", StringComparison.OrdinalIgnoreCase))) != 0, 20_000))
             {
-                output.WriteLine("The Properties window did not appear; no screenshot.");
+                output.WriteLine("The Properties window did not appear; no screenshot. Windows open: " + string.Join(" | ", Titles()));
                 return;
             }
 
@@ -87,15 +87,14 @@ public class UnblockScreenshotTests(Xunit.Abstractions.ITestOutputHelper output)
         bitmap.Save(path, ImageFormat.Png);
     }
 
-    private static nint FindOwnWindow(string title)
+    /// <summary>A visible top-level window whose title matches, in this process or another (the shell may host the sheet).</summary>
+    private static nint FindWindow(Func<string, bool> match)
     {
-        var pid = (uint)Environment.ProcessId;
         nint found = 0;
         EnumWindows(
             (hwnd, unused) =>
             {
-                _ = GetWindowThreadProcessId(hwnd, out var owner);
-                if (owner == pid && IsWindowVisible(hwnd) && Text(hwnd) == title)
+                if (IsWindowVisible(hwnd) && match(Text(hwnd)))
                 {
                     found = hwnd;
                     return false;
@@ -105,6 +104,24 @@ public class UnblockScreenshotTests(Xunit.Abstractions.ITestOutputHelper output)
             },
             0);
         return found;
+    }
+
+    private static List<string> Titles()
+    {
+        var titles = new List<string>();
+        EnumWindows(
+            (hwnd, unused) =>
+            {
+                var text = Text(hwnd);
+                if (IsWindowVisible(hwnd) && text.Length > 0)
+                {
+                    titles.Add(text);
+                }
+
+                return true;
+            },
+            0);
+        return titles;
     }
 
     private static nint FindChild(nint parent, Func<string, bool> match)
@@ -146,9 +163,6 @@ public class UnblockScreenshotTests(Xunit.Abstractions.ITestOutputHelper output)
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool EnumChildWindows(nint parent, EnumWindowsProc callback, nint lParam);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint hwnd, out uint processId);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
