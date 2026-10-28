@@ -7,3 +7,5 @@ Requested Features:
 7. Command-line switches: /export should also create .ps1 script under .\Files to copy all folders/subfolders/files back to their place (e.g.: .\Files\C\Test\test1.txt > to C:\Test\test1.txt).
 8. Generate professional looking Manual.pdf with screenshots: Title page - utility name and description, table of contents: Introduction (description and links to GitHub), Common usage using UI, Command-line usage, Editing Global Ignore List, Preferences.
 9. Evaluate and add possibility to run SysSnapTracer under standard limited User, knowing it's restrictions. Grey out folders/registry that is impossible for user to read (e.g. under HKU/USERS/...) during New Snapshot creation. Get rid of UAC prompt at start if possible.
+10. Comparing snapshots window: should show created registry values, not only keys - when key is expanded.
+11. UI: Windows state/size not saved. Resized windows return to defaults when Application closed.
