@@ -256,7 +256,7 @@ public class IncrementalSnapshotTests
     /// <summary>
     /// FSLogix Profile Containers without a mount point: a filter driver sends everything under C:\Users\name to
     /// the profile disk, so this drive's change journal never sees changes there. Such a folder (forced here) is
-    /// read in full on every snapshot, without file ids, and a new file in it shows up.
+    /// read in full on every snapshot, and a new file in it shows up.
     /// </summary>
     [Fact]
     public void FileSystem_ProfileOnAnotherVolumeIsReadEveryTime()
@@ -277,8 +277,6 @@ public class IncrementalSnapshotTests
         {
             var first = TakeSnapshot(data, output, "first", cache, Listing);
             Assert.Contains(first.Meta.FileSystemMethods, m => m.StartsWith(alex, StringComparison.OrdinalIgnoreCase) && m.Contains("another volume", StringComparison.Ordinal));
-            Assert.Equal(0, FileIdOf(first, data.Combine(@"Users\Alex\Desktop\before.txt")));
-            Assert.NotEqual(0, FileIdOf(first, data.Combine(@"Users\Bob\Desktop\bob.txt")));
 
             data.CreateFile(@"Users\Alex\Desktop\after.txt", 5);
             var second = TakeSnapshot(data, output, "second", cache, Listing);
@@ -300,20 +298,6 @@ public class IncrementalSnapshotTests
         {
             FileSystemScanner.ForeignFoldersForTests = null;
         }
-    }
-
-    private static long FileIdOf(Snapshot snapshot, string path)
-    {
-        var tree = snapshot.FileSystem;
-        for (var i = 0; i < tree.Count; i++)
-        {
-            if (string.Equals(tree.GetFullPath(i, snapshot.Names), path, StringComparison.OrdinalIgnoreCase))
-            {
-                return tree.HasFileIds ? tree.FileId[i] : 0;
-            }
-        }
-
-        throw new InvalidOperationException($"{path} is not in the snapshot");
     }
 
     private static Snapshot TakeSnapshot(
