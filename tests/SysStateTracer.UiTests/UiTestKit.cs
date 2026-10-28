@@ -63,7 +63,7 @@ internal static class Ui
     {
         var titles = new List<string>();
         var pid = (uint)Environment.ProcessId;
-        EnumWindows((hwnd, _) =>
+        EnumWindows((hwnd, lParam) =>
         {
             _ = GetWindowThreadProcessId(hwnd, out var owner);
             if (owner == pid && IsWindowVisible(hwnd))
@@ -194,7 +194,7 @@ internal sealed class TestApp : IDisposable
     public AppSettings Settings { get; }
 
     /// <summary>Writes a small snapshot taken "<paramref name="hoursAgo"/>" hours ago.</summary>
-    public string AddSnapshot(string name, double hoursAgo, string computer = "OFFICE-PC", int extraFiles = 0, bool withSkipped = false)
+    public string AddSnapshot(string name, double hoursAgo, string computer = "OFFICE-PC", int extraFiles = 0, bool withSkipped = false, bool installed = false)
     {
         var names = new NameTable();
         var fs = new FsTreeBuilder(names);
@@ -208,13 +208,48 @@ internal sealed class TestApp : IDisposable
             fs.Add(app, $"plugin{i:D2}.dll", 0x20, 40_000 + i, time);
         }
 
+        if (installed)
+        {
+            var office = fs.Add(programs, "Microsoft Office", FsTree.DirectoryAttribute, 0, time);
+            var root = fs.Add(office, "root", FsTree.DirectoryAttribute, 0, time);
+            for (var i = 0; i < 12; i++)
+            {
+                fs.Add(root, $"office{i:D2}.dll", 0x20, 1_200_000 + (i * 1000), time);
+            }
+
+            var temp = fs.Add(c, "Temp", FsTree.DirectoryAttribute, 0, time);
+            fs.Add(temp, "setup.log", 0x20, 81_920, time);
+        }
+        else
+        {
+            var temp = fs.Add(c, "Temp", FsTree.DirectoryAttribute, 0, time);
+            fs.Add(temp, "old-installer.msi", 0x20, 48_000_000, time);
+        }
+
         var reg = new RegTreeBuilder(names);
         var hklm = reg.AddRoot("HKLM", time);
         var software = reg.AddKey(hklm, "SOFTWARE", time);
         var vendor = reg.AddKey(software, "Contoso", time);
-        reg.AddValue(vendor, "Version", 1, System.Text.Encoding.Unicode.GetBytes("1.0\0"));
+        reg.AddValue(vendor, "Version", 1, System.Text.Encoding.Unicode.GetBytes((installed ? "2.4" : "1.0") + "\0"));
+        reg.AddValue(vendor, "Flags", 4, BitConverter.GetBytes(installed ? 7 : 3));
+        if (installed)
+        {
+            var microsoft = reg.AddKey(software, "Microsoft", time);
+            var officeKey = reg.AddKey(microsoft, "Office", time);
+            var sixteen = reg.AddKey(officeKey, "16.0", time);
+            reg.AddValue(sixteen, "InstallPath", 1, System.Text.Encoding.Unicode.GetBytes(@"C:\Program Files\Microsoft Office\root" + "\0"));
+        }
+        else
+        {
+            reg.AddValue(vendor, "LegacyMode", 4, BitConverter.GetBytes(1));
+        }
+
         var svc = new ServiceTableBuilder(names);
-        svc.Add("Spooler", "Print Spooler", 0x10, 4, 2, ServiceFlags.None);
+        svc.Add("Spooler", "Print Spooler", 0x10, installed ? 1u : 4u, 2, ServiceFlags.None);
+        if (installed)
+        {
+            svc.Add("ClickToRunSvc", "Microsoft Office Click-to-Run Service", 0x10, 4, 2, ServiceFlags.None);
+        }
 
         var started = DateTimeOffset.Now.AddHours(-hoursAgo);
         var meta = new SnapshotMeta

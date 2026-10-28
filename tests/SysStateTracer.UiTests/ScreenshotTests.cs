@@ -21,8 +21,8 @@ public class ScreenshotTests
         Ui.Run(() =>
         {
             using var app = new TestApp();
-            app.AddSnapshot("Before Office 2024 install", hoursAgo: 30, extraFiles: 3);
-            var after = app.AddSnapshot("After Office 2024 install", hoursAgo: 29, extraFiles: 8, withSkipped: true);
+            var before = app.AddSnapshot("Before Office 2024 install", hoursAgo: 30, extraFiles: 3);
+            var after = app.AddSnapshot("After Office 2024 install", hoursAgo: 29, extraFiles: 8, withSkipped: true, installed: true);
             app.AddSnapshot("Monthly baseline October", hoursAgo: 260);
             app.AddSnapshot("20261027_14-30-00_OFFICE-PC", hoursAgo: 20);
             app.AddSnapshot("Build server before agent update", hoursAgo: 120, computer: "BUILD-07");
@@ -62,6 +62,31 @@ public class ScreenshotTests
                     preferences.Close();
                 }
 
+                using (var comparison = Ui.Show(new ComparisonForm(app.Paths, app.Settings, before, after)))
+                {
+                    Ui.PumpUntil(() => comparison.Diff is not null && !comparison.IsLoading, 30_000);
+                    var grid = comparison.Grid;
+                    foreach (var area in new[] { Core.Comparison.DiffArea.FileSystem, Core.Comparison.DiffArea.Registry, Core.Comparison.DiffArea.Services })
+                    {
+                        ExpandAll(grid, ComparisonModel.CategoryId(area));
+                    }
+
+                    var model = (ComparisonModel)grid.Model!;
+                    var temp = Enumerable.Range(0, comparison.Diff!.FileSystem.Count)
+                        .FirstOrDefault(n => comparison.Diff.Name(comparison.Diff.FileSystem, n) == "Temp", -1);
+                    if (temp >= 0)
+                    {
+                        comparison.Marks.Toggle([new Core.Comparison.DiffItem(Core.Comparison.DiffArea.FileSystem, temp)]);
+                    }
+
+                    grid.Select(model.Roots[1]);
+                    grid.Focus();
+                    Ui.Screenshot(comparison, "w4-comparison");
+                    comparison.Swap();
+                    Ui.Screenshot(comparison, "w4-comparison-swapped");
+                    comparison.Close();
+                }
+
                 using (var about = Ui.Show(new AboutForm(app.Paths, app.Settings)))
                 {
                     Ui.Screenshot(about, "w6-about");
@@ -77,6 +102,18 @@ public class ScreenshotTests
 
             ThemeManager.SetPalette(Palette.Light);
         });
+    }
+
+    private static void ExpandAll(VirtualTreeGrid grid, long id)
+    {
+        grid.Expand(id);
+        foreach (var child in grid.Model!.Children(id))
+        {
+            if (grid.Model.HasChildren(child) && grid.RowCount < 60)
+            {
+                ExpandAll(grid, child);
+            }
+        }
     }
 
     /// <summary>Shared controls in their states: buttons, sidebar icons, progress, menu.</summary>

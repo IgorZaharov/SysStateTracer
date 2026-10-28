@@ -24,6 +24,8 @@ public sealed class ImportanceMarks
 
     public int Count => _marked.Count;
 
+    public void Clear() => _marked.Clear();
+
     public bool IsMarked(DiffItem item) => _marked.Contains(item);
 
     public bool IsMarked(DiffArea area, int node) => _marked.Contains(new DiffItem(area, node));
