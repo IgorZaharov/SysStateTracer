@@ -31,6 +31,7 @@ internal sealed class ComparisonForm : Form
     private readonly Label _rightDate = new() { AutoSize = true };
     private readonly ThemedButton _swap = new() { Text = "Swap", Glyph = Glyphs.Swap, Width = 96 };
     private readonly ThemedButton _refresh = new() { Text = "Refresh", Glyph = Glyphs.Refresh, Width = 104, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+    private readonly CheckBox _showUnchanged = new() { Text = "Show unchanged", AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right };
     private readonly ThemedProgressBar _progress = new() { Dock = DockStyle.Top, Height = 4 };
     private readonly Label _status = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
     private readonly ContextMenuStrip _menu = new();
@@ -84,6 +85,15 @@ internal sealed class ComparisonForm : Form
     internal VirtualTreeGrid Grid => _grid;
 
     internal ImportanceMarks Marks => _marks;
+
+    /// <summary>"Show unchanged" (issue #4): off when the window opens.</summary>
+    internal bool ShowUnchanged
+    {
+        get => _showUnchanged.Checked;
+        set => _showUnchanged.Checked = value;
+    }
+
+    private ComparisonModel NewModel(DiffResult diff) => new(diff, _marks, _currentSid) { ShowUnchanged = _showUnchanged.Checked };
 
     internal bool IsLoading => _loading;
 
@@ -146,12 +156,32 @@ internal sealed class ComparisonForm : Form
         bar.Controls.Add(_swap);
         bar.Controls.Add(right);
         bar.Controls.Add(_refresh);
+        bar.Controls.Add(_showUnchanged);
         void Arrange()
         {
             _swap.Location = new Point(Math.Max(left.Right + 16, 300), 16);
             right.Location = new Point(_swap.Right + 16, 10);
             _refresh.Location = new Point(bar.ClientSize.Width - bar.Padding.Right - _refresh.Width, 16);
+            _showUnchanged.Location = new Point(_refresh.Left - _showUnchanged.Width - 20, 22);
         }
+
+        // Unchanged items are listed inside what is opened; the open folders, selection and scroll stay.
+        _showUnchanged.CheckedChanged += (_, _) =>
+        {
+            if (_diff is null || _loading)
+            {
+                return;
+            }
+
+            var view = CaptureView();
+            ShowDiff(keepState: false);
+            if (view is not null)
+            {
+                RestoreView(view);
+            }
+
+            UpdateStatus();
+        };
 
         bar.Resize += (_, _) => Arrange();
         left.SizeChanged += (_, _) => Arrange();
@@ -170,9 +200,9 @@ internal sealed class ComparisonForm : Form
         _grid.ShowToolTips = false; // F19: the status bar shows the selected item's full path instead
         _grid.RowActivated += (_, id) =>
         {
-            if (ComparisonModel.IsInside(id))
+            if (ComparisonModel.IsExtra(id))
             {
-                JumpInside(id);
+                JumpExtra(id);
             }
             else
             {
@@ -205,9 +235,9 @@ internal sealed class ComparisonForm : Form
     {
         _jump.Click += (_, _) =>
         {
-            if (InsideSelected() is { } inside)
+            if (ExtraSelected() is { } extra)
             {
-                JumpInside(inside);
+                JumpExtra(extra);
             }
             else
             {
@@ -224,7 +254,7 @@ internal sealed class ComparisonForm : Form
         {
             var selection = Selection();
             e.Cancel = _diff is null || _grid.SelectedIds.Count == 0;
-            if (_grid.SelectedIds.Any(ComparisonModel.IsInside))
+            if (_grid.SelectedIds.Any(ComparisonModel.IsExtra))
             {
                 // What a whole new or deleted folder or key holds is shown for information (F10, F11);
                 // the actions work on that folder's or key's own row.
@@ -234,8 +264,15 @@ internal sealed class ComparisonForm : Form
                 }
 
                 _mark.Checked = false;
-                _jump.Enabled = InsideSelected() is not null;
-                _jump.Text = InsideSelected() is { } one && ComparisonModel.InsideArea(one) == DiffArea.FileSystem ? "Jump to (Explorer)" : "Jump to (Regedit)";
+                _jump.Enabled = ExtraSelected() is not null;
+                _jump.Text = ExtraSelected() is { } one
+                    ? ComparisonModel.ExtraArea(one) switch
+                    {
+                        DiffArea.FileSystem => "Jump to (Explorer)",
+                        DiffArea.Registry => "Jump to (Regedit)",
+                        _ => "Jump to (Services)",
+                    }
+                    : "Jump to";
                 ThemeManager.ApplyMenu(_menu, ThemeManager.Current);
                 return;
             }
@@ -257,13 +294,13 @@ internal sealed class ComparisonForm : Form
         };
     }
 
-    private List<DiffItem> Selection() => ComparisonModel.Items(_grid.SelectedIds.Where(id => !ComparisonModel.IsInside(id)));
+    private List<DiffItem> Selection() => ComparisonModel.Items(_grid.SelectedIds.Where(id => !ComparisonModel.IsExtra(id)));
 
-    /// <summary>The selected row when it is the only one and lies inside a whole new or deleted folder or key.</summary>
-    private long? InsideSelected() =>
-        _grid.SelectedIds.Count == 1 && _grid.SelectedIds.First() is var id && ComparisonModel.IsInside(id) ? id : null;
+    /// <summary>The selected row when it is the only one and is for information only (inside a new folder, or unchanged).</summary>
+    private long? ExtraSelected() =>
+        _grid.SelectedIds.Count == 1 && _grid.SelectedIds.First() is var id && ComparisonModel.IsExtra(id) ? id : null;
 
-    private void JumpInside(long id)
+    private void JumpExtra(long id)
     {
         if (_grid.Model is not ComparisonModel model)
         {
@@ -272,13 +309,19 @@ internal sealed class ComparisonForm : Form
 
         try
         {
-            if (ComparisonModel.InsideArea(id) == DiffArea.FileSystem)
+            switch (ComparisonModel.ExtraArea(id))
             {
-                ShellLauncher.OpenInExplorer(model.InsidePath(id));
-            }
-            else
-            {
-                ShellLauncher.OpenInRegedit(model.InsidePath(id));
+                case DiffArea.FileSystem:
+                    ShellLauncher.OpenInExplorer(model.JumpPath(id));
+                    break;
+                case DiffArea.Registry:
+                    ShellLauncher.OpenInRegedit(model.JumpPath(id));
+                    break;
+                default:
+                    var display = model.Text(id, ComparisonModel.NameColumn);
+                    var paren = display.LastIndexOf("  (", StringComparison.Ordinal);
+                    _ = JumpToServiceAsync(paren > 0 ? display[..paren] : display);
+                    break;
             }
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
@@ -395,7 +438,7 @@ internal sealed class ComparisonForm : Form
         _rightDate.Text = Stamp(_diff.Right.Meta);
         _grid.Columns[ComparisonModel.LeftColumn].Header = _diff.Left.Meta.Name;
         _grid.Columns[ComparisonModel.RightColumn].Header = _diff.Right.Meta.Name;
-        var model = new ComparisonModel(_diff, _marks, _currentSid);
+        var model = NewModel(_diff);
         if (keepState)
         {
             var expanded = _grid.Model?.Roots.Concat(AllExpanded()).ToList() ?? [];
@@ -525,7 +568,7 @@ internal sealed class ComparisonForm : Form
         var expanded = AllExpanded().ToList();
         var selected = _grid.SelectedIds.ToList();
         _diff = _diff.Swap();
-        _grid.Model = new ComparisonModel(_diff, _marks, _currentSid);
+        _grid.Model = NewModel(_diff);
         _leftName.Text = _diff.Left.Meta.Name;
         _leftDate.Text = Stamp(_diff.Left.Meta);
         _rightName.Text = _diff.Right.Meta.Name;
@@ -623,17 +666,17 @@ internal sealed class ComparisonForm : Form
         }
     }
 
-    private async Task JumpToServiceAsync(DiffItem item)
+    private Task JumpToServiceAsync(DiffItem item)
     {
         var tree = _diff!.Tree(item.Area);
         var snapshot = tree.Left(item.Node) >= 0 ? _diff.Left : _diff.Right;
         var index = tree.Left(item.Node) >= 0 ? tree.Left(item.Node) : tree.Right(item.Node);
         var display = snapshot.Names.GetString(snapshot.Services.DisplayName[index]);
-        if (string.IsNullOrEmpty(display))
-        {
-            display = _diff.Name(tree, item.Node);
-        }
+        return JumpToServiceAsync(string.IsNullOrEmpty(display) ? _diff.Name(tree, item.Node) : display);
+    }
 
+    private async Task JumpToServiceAsync(string display)
+    {
         _status.Text = $"Opening Services and selecting \"{display}\"… (the name is also on the clipboard)";
         var selected = await ServicesConsole.OpenAndSelectAsync(display);
         if (!selected)

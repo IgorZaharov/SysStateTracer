@@ -176,6 +176,35 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             form.Swap();
             model = (ComparisonModel)form.Grid.Model!;
 
+            // Show unchanged (issue #4): the same items on both sides appear inside what is opened.
+            var contoso = Enumerable.Range(0, diff.FileSystem.Count).Single(n => diff.FullPath(diff.FileSystem, n) == @"C:\Program Files\Contoso");
+            var contosoId = ComparisonModel.NodeId(DiffArea.FileSystem, contoso);
+            form.Grid.Expand(contosoId);
+            var changedRows = model.Children(contosoId).Count;
+            var rowsBefore = form.Grid.RowCount;
+            form.ShowUnchanged = true;
+            model = (ComparisonModel)form.Grid.Model!;
+            Assert.True(model.ShowUnchanged);
+            Assert.Equal(rowsBefore + 4, form.Grid.RowCount); // contoso.exe and plugin00–02, in the Contoso folder that stays open
+            var withUnchanged = model.Children(contosoId);
+            Assert.Equal(changedRows + 4, withUnchanged.Count);
+            var exe = Assert.Single(withUnchanged, id => model.Text(id, ComparisonModel.NameColumn) == "contoso.exe");
+            Assert.True(ComparisonModel.IsUnchanged(exe));
+            Assert.Equal(string.Empty, model.Text(exe, ComparisonModel.StatusColumn));
+            Assert.Contains("MB", model.Text(exe, ComparisonModel.LeftColumn), StringComparison.Ordinal);
+            Assert.Equal(model.Text(exe, ComparisonModel.LeftColumn), model.Text(exe, ComparisonModel.RightColumn));
+            Assert.Null(model.Style(exe).TextColor);
+            Assert.Equal(@"C:\Program Files\Contoso\contoso.exe", model.JumpPath(exe));
+            Assert.Contains(withUnchanged, id => model.Text(id, ComparisonModel.NameColumn) == "plugin03.dll" && !ComparisonModel.IsUnchanged(id));
+            var names = withUnchanged.Select(id => model.Text(id, ComparisonModel.NameColumn)).ToList();
+            Assert.Equal(names.Order(StringComparer.OrdinalIgnoreCase), names);
+
+            // Unticking puts the view back.
+            form.ShowUnchanged = false;
+            model = (ComparisonModel)form.Grid.Model!;
+            Assert.Equal(rowsBefore, form.Grid.RowCount);
+            Assert.Equal(changedRows, model.Children(contosoId).Count);
+
             // Menu rules (§10.6).
             var fsCategory = DiffActions.Category(DiffArea.FileSystem);
             var value = new DiffItem(DiffArea.Registry, version);

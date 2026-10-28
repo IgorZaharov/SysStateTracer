@@ -44,7 +44,10 @@ reasons.
 
 ## Comparison (W4)
 
-- **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Refresh. Swap is instant: columns trade places and new ↔ deleted.
+- **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Show unchanged · Refresh. Swap is instant: columns trade places and new ↔ deleted.
+- **Show unchanged** (off when the window opens; issue #4): opened folders, keys and categories also list the items that
+  are the same in both snapshots, in normal text without a sign, and these open further too. Nothing more is read until
+  something is opened, so the comparison stays as fast. Only Jump to works on them; counts still count changes only.
 - **Tree:** File system, Registry and Services, each with its counts; only changed items and the folders or keys
   leading to them. New is green (+), modified yellow (~), deleted red (−); the sign is in the first column (F29)
   and the colour runs through every column (F27). A parent shows how many changes it

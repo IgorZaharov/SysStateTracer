@@ -376,6 +376,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "registry values, state and startup type for services. Hover for full paths, exact sizes and long values.",
         "<b>Swap</b> exchanges the two sides: new and deleted trade places. <b>Refresh</b> compares again, for "
         "example after the Global Ignore list was changed.",
+        "<b>Show unchanged</b> (off by default) also lists, in every folder or key you open, the items that are the same "
+        "in both snapshots — in normal text, without a sign — so you can see a change among its neighbours.",
         "Select several items with Ctrl+click and Shift+click, then right-click for the actions below.",
     ])
     story.append(CondPageBreak(75 * mm))

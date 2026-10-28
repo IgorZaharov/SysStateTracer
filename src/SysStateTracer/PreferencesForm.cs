@@ -23,8 +23,8 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly RadioButton _themeLight = new() { Text = "Light", AutoSize = true };
     private readonly RadioButton _themeDark = new() { Text = "Dark", AutoSize = true };
     private readonly CheckBox _remote = new() { Text = "Also use the shared remote list (a URL or network file, shared by several PCs)", AutoSize = true };
-    private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 400 };
-    private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(600, 0), Text = " " };
+    private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 600 };
+    private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(860, 0), Text = " " };
     private readonly ThemedListView _rules = new() { Dock = DockStyle.Fill, MultiSelect = true };
     private readonly Label _rulesCaption = new() { AutoSize = true };
     private readonly Panel _generalPage = new() { Dock = DockStyle.Fill };
@@ -45,8 +45,8 @@ internal sealed class PreferencesForm : ThemedDialog
 
         FormBorderStyle = FormBorderStyle.Sizable;
         // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
-        Size = new Size(720, 580);
-        MinimumSize = new Size(640, 460);
+        Size = new Size(940, 580);
+        MinimumSize = new Size(940, 460); // issue #5: the Global Ignore list buttons fit on one row
         WindowLayout.Remember(this, "Preferences", paths, settings, keepPosition: false);
 
         var tabs = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 12), WrapContents = false };
@@ -198,7 +198,7 @@ internal sealed class PreferencesForm : ThemedDialog
         var title = new Label { Text = "Lists in use", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
         ThemeManager.SetRole(title, ThemeRole.Heading);
         top.Controls.Add(title);
-        var always = new Label { Text = "The local list below (SysStateTracer.ignore.txt beside the program) is always used.", AutoSize = true, MaximumSize = new Size(660, 0), Margin = new Padding(0, 0, 0, 6) };
+        var always = new Label { Text = "The local list below (SysStateTracer.ignore.txt beside the program) is always used.", AutoSize = true, MaximumSize = new Size(860, 0), Margin = new Padding(0, 0, 0, 6) };
         top.Controls.Add(always);
         top.Controls.Add(_remote);
         var remoteRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 4, 0, 0) };
@@ -217,7 +217,7 @@ internal sealed class PreferencesForm : ThemedDialog
         {
             Text = "Rules from both lists apply. When the remote list cannot be read, the local list is used alone. \"Add to Global Ignore list\" in the comparison window adds to the local list.",
             AutoSize = true,
-            MaximumSize = new Size(660, 0),
+            MaximumSize = new Size(860, 0),
             Margin = new Padding(0, 6, 0, 16),
         };
         ThemeManager.SetRole(fallback, ThemeRole.Secondary);

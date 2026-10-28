@@ -16,7 +16,7 @@ namespace SysStateTracer;
 /// registry value, bit 60 when they come from the newer snapshot, bit 59 for the file system, and the
 /// entry, key or value index in the low 32 bits.
 /// </summary>
-internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, string? currentUserSid) : ITreeGridModel
+internal sealed partial class ComparisonModel(DiffResult diff, ImportanceMarks marks, string? currentUserSid) : ITreeGridModel
 {
     // The change glyph comes first, left of the tree (F29).
     public const int StatusColumn = 0;
@@ -90,6 +90,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
         if (id < 0)
         {
             return "#" + (-id).ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (IsUnchanged(id))
+        {
+            return $"{(int)ExtraArea(id)}|{ExtraPath(id, forRowKey: true)}";
         }
 
         if (IsInside(id))
@@ -200,10 +205,20 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
             return !IsValue(id) && HoldsAnything(InsideArea(id), SideOf(id), Index(id));
         }
 
+        if (IsUnchanged(id))
+        {
+            return UnchangedHasChildren(id);
+        }
+
         var item = Item(id);
         if (IsWhole(item, out _, out _))
         {
             return true;
+        }
+
+        if (ShowUnchanged && OnBothSides(item) is { } both)
+        {
+            return UnchangedHolds(item.Area, both.Older, both.Newer);
         }
 
         var tree = Diff.Tree(item.Area);
@@ -219,6 +234,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
                 : InsideChildren(InsideArea(id), (id & NewerFlag) != 0, Index(id), owner);
         }
 
+        if (IsUnchanged(id))
+        {
+            return WithUnchanged(ExtraArea(id), UnchangedOlder(id), UnchangedNewer(id), []);
+        }
+
         var item = Item(id);
         if (IsWhole(item, out var newer, out var index))
         {
@@ -227,6 +247,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
 
         var tree = Diff.Tree(item.Area);
         var children = DiffActions.IsCategory(item) ? tree.Roots() : tree.Children(item.Node);
+        if (ShowUnchanged && OnBothSides(item) is { } both)
+        {
+            return WithUnchanged(item.Area, both.Older, both.Newer, [.. children]);
+        }
+
         return [.. children.Select(n => NodeId(item.Area, n))];
     }
 
@@ -235,6 +260,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
         if (IsInside(id))
         {
             return InsideText(id, column);
+        }
+
+        if (IsUnchanged(id))
+        {
+            return UnchangedText(id, column);
         }
 
         var item = Item(id);
@@ -264,6 +294,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
         if (IsInside(id))
         {
             return InsideToolTip(id, column);
+        }
+
+        if (IsUnchanged(id))
+        {
+            return column == NameColumn ? ExtraPath(id, forRowKey: false) : null;
         }
 
         var item = Item(id);
@@ -306,6 +341,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
 
     public GridRowStyle Style(long id)
     {
+        if (IsUnchanged(id))
+        {
+            return new GridRowStyle(null, Strikeout: false, Dim: false, Bold: false, UnchangedIcon(id));
+        }
+
         if (IsInside(id))
         {
             var insideIcon = InsideArea(id) == DiffArea.FileSystem
