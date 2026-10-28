@@ -1,3 +1,5 @@
+<img src="docs/images/icon.png" alt="SysStateTracer icon" width="96">
+
 # SysStateTracer
 
 Portable Windows utility that takes snapshots of the file system, registry and services, and compares two
