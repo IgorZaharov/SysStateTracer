@@ -148,7 +148,14 @@ internal sealed class NewSnapshotForm : ThemedDialog
         if (disposing)
         {
             _clock.Dispose();
-            _cancel?.Dispose();
+            if (_running)
+            {
+                _cancel?.Cancel(); // the snapshot task still holds the token; it ends and nothing is saved
+            }
+            else
+            {
+                _cancel?.Dispose();
+            }
         }
 
         base.Dispose(disposing);
@@ -361,6 +368,11 @@ internal sealed class NewSnapshotForm : ThemedDialog
             _clock.Stop();
             _watch.Stop();
             _progress.Marquee = false;
+        }
+
+        if (IsDisposed || Disposing)
+        {
+            return; // the window went away while the snapshot was stopping
         }
 
         _elapsed.Text = FormatElapsed(_watch.Elapsed);

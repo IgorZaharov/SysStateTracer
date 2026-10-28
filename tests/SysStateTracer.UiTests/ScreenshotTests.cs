@@ -106,7 +106,7 @@ public class ScreenshotTests
                     Ui.Pump(3500);
                     Ui.Screenshot(running, "w3-new-snapshot-running");
                     buttons.Single(b => b.Text == "Stop").PerformClick();
-                    Ui.PumpUntil(() => !running.IsRunning, 60_000);
+                    Assert.True(Ui.PumpUntil(() => !running.IsRunning, 180_000), "The snapshot did not stop within 3 minutes.");
                     running.Close();
                 }
 
