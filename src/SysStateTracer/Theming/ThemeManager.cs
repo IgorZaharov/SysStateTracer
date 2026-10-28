@@ -42,6 +42,25 @@ internal static class ThemeManager
 
     public static Palette Current { get; private set; } = Palette.Light;
 
+    /// <summary>Lines between rows and columns in lists and the comparison grid (Preferences → General).</summary>
+    public static bool GridLines { get; private set; }
+
+    /// <summary>Every other row shaded in lists and the comparison grid (Preferences → General).</summary>
+    public static bool ZebraStripes { get; private set; }
+
+    /// <summary>Sets grid lines and zebra striping and redraws open windows when either changes.</summary>
+    public static void SetListStyle(bool gridLines, bool zebraStripes)
+    {
+        if (GridLines == gridLines && ZebraStripes == zebraStripes)
+        {
+            return;
+        }
+
+        GridLines = gridLines;
+        ZebraStripes = zebraStripes;
+        Changed?.Invoke(null, EventArgs.Empty);
+    }
+
     /// <summary>Sets the preference (from Preferences) and recolours open windows when the result changes.</summary>
     public static void SetPreference(ThemePreference preference)
     {

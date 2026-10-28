@@ -17,6 +17,8 @@ public class SettingsStoreTests
         Assert.Equal(SnapshotSortOrder.Date, settings.SortOrder);
         Assert.Equal(IgnoreListSource.Remote, settings.IgnoreListSource);
         Assert.Equal(RemoteIgnoreSource.DefaultLocation, settings.IgnoreListRemoteLocation);
+        Assert.False(settings.ShowGridLines);
+        Assert.False(settings.ZebraStripes);
     }
 
     [Fact]
@@ -31,6 +33,8 @@ public class SettingsStoreTests
             SortOrder = SnapshotSortOrder.Name,
             IgnoreListSource = IgnoreListSource.Local,
             IgnoreListRemoteLocation = @"\\server\share\ignore.txt",
+            ShowGridLines = true,
+            ZebraStripes = true,
         };
 
         SettingsStore.Save(path, original);
@@ -41,6 +45,8 @@ public class SettingsStoreTests
         Assert.Equal(original.SortOrder, loaded.SortOrder);
         Assert.Equal(original.IgnoreListSource, loaded.IgnoreListSource);
         Assert.Equal(original.IgnoreListRemoteLocation, loaded.IgnoreListRemoteLocation);
+        Assert.True(loaded.ShowGridLines);
+        Assert.True(loaded.ZebraStripes);
         Assert.Equal(AppSettings.CurrentFormatVersion, loaded.FormatVersion);
     }
 

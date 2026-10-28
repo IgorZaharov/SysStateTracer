@@ -7,6 +7,7 @@ namespace SysStateTracer.Controls;
 /// drop-target row (W1 drag-and-drop compare). The last column fills the width so the header has no bare strip.
 /// A whole row, every column, is drawn in <see cref="OnDrawItem"/>: the list sometimes repaints a row without
 /// asking for its other columns (with the mouse over it or between rows), which left them blank (F15).
+/// Grid lines and zebra stripes follow <see cref="ThemeManager.GridLines"/> and <see cref="ThemeManager.ZebraStripes"/>.
 /// </summary>
 internal sealed class ThemedListView : ListView, IThemed
 {
@@ -191,6 +192,7 @@ internal sealed class ThemedListView : ListView, IThemed
         var p = _palette;
         var back = e.ItemIndex == _dropTarget ? p.DropTarget
             : e.Item.Selected ? (Focused ? p.Selection : p.SelectionInactive)
+            : ThemeManager.ZebraStripes && e.ItemIndex % 2 == 1 ? p.Stripe
             : p.Background;
         using (var brush = new SolidBrush(back))
         {
@@ -210,6 +212,19 @@ internal sealed class ThemedListView : ListView, IThemed
             }
 
             x += width;
+        }
+
+        if (ThemeManager.GridLines)
+        {
+            using var pen = new Pen(p.GridLine);
+            var bottom = e.Bounds.Bottom - 1;
+            e.Graphics.DrawLine(pen, e.Bounds.Left, bottom, e.Bounds.Right, bottom);
+            var line = e.Bounds.Left;
+            for (var column = 0; column < Columns.Count - 1; column++)
+            {
+                line += Columns[column].Width;
+                e.Graphics.DrawLine(pen, line - 1, e.Bounds.Top, line - 1, bottom);
+            }
         }
     }
 

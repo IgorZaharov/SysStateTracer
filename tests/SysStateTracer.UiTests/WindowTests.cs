@@ -382,6 +382,12 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 Assert.True(ThemeManager.Current.IsDark);
                 all.OfType<CheckBox>().Single(r => r.Text.StartsWith("Also use the shared remote list", StringComparison.Ordinal)).Checked = true;
 
+                // Grid lines and zebra striping show at once in open windows.
+                form.GridLinesBox.Checked = true;
+                form.ZebraBox.Checked = true;
+                Assert.True(ThemeManager.GridLines);
+                Assert.True(ThemeManager.ZebraStripes);
+
                 // A rule is edited in place, e.g. to add a wildcard (F25).
                 var rules = all.OfType<ThemedListView>().Single();
                 var sam = rules.Items.Cast<ListViewItem>().Single(i => i.SubItems[1].Text == @"REG:HKLM\SAM");
@@ -396,6 +402,8 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal(other, saved.SnapshotFolder);
             Assert.Equal(ThemePreference.Dark, saved.Theme);
             Assert.Equal(IgnoreListSource.Remote, saved.IgnoreListSource);
+            Assert.True(saved.ShowGridLines);
+            Assert.True(saved.ZebraStripes);
             Assert.Contains(@"REG:HKLM\SAM*", File.ReadAllText(app.Paths.LocalIgnoreFile), StringComparison.Ordinal);
 
             // The rules dialog accepts only valid rules (F20).
@@ -415,6 +423,8 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             {
                 Controls(form).OfType<RadioButton>().Single(r => r.Text == "Light").Checked = true;
                 Assert.False(ThemeManager.Current.IsDark);
+                form.ZebraBox.Checked = false;
+                Assert.False(ThemeManager.ZebraStripes);
 
                 // Only one theme is chosen at a time, whether its picture or its button is clicked (F13).
                 var radios = Controls(form).OfType<RadioButton>().Where(r => r.Text is "Follow Windows" or "Light" or "Dark").ToList();
@@ -432,7 +442,9 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             }
 
             Assert.True(ThemeManager.Current.IsDark);
+            Assert.True(ThemeManager.ZebraStripes); // Cancel put it back too
             ThemeManager.SetPreference(ThemePreference.Light);
+            ThemeManager.SetListStyle(false, false);
         });
     }
 

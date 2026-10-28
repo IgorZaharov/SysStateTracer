@@ -61,6 +61,12 @@ internal sealed record Palette(
         Input: Hex(0x2D2D2D),
         DropTarget: Hex(0x245A85));
 
+    /// <summary>Background of every other row when zebra striping is on.</summary>
+    public Color Stripe => Blend(Background, Text, IsDark ? 0.05 : 0.035);
+
+    /// <summary>Grid lines between rows and columns.</summary>
+    public Color GridLine => Blend(Background, Text, IsDark ? 0.14 : 0.11);
+
     /// <summary>A colour between <paramref name="a"/> (0) and <paramref name="b"/> (1).</summary>
     public static Color Blend(Color a, Color b, double amount) => Color.FromArgb(
         (int)Math.Round(a.R + ((b.R - a.R) * amount)),

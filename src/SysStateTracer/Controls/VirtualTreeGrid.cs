@@ -836,6 +836,9 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         var last = Math.Min(_rows.Count, _top + VisibleRowCount + 1);
         using var selected = new SolidBrush(Focused ? p.Selection : p.SelectionInactive);
         using var focusPen = new Pen(p.Accent) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot };
+        using var stripe = new SolidBrush(p.Stripe);
+        using var gridPen = new Pen(p.GridLine);
+        var gridLines = ThemeManager.GridLines;
         for (var row = _top; row < last; row++)
         {
             var id = _rows[row];
@@ -844,6 +847,21 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             if (_selected.Contains(id))
             {
                 g.FillRectangle(selected, rect);
+            }
+            else if (ThemeManager.ZebraStripes && row % 2 == 1)
+            {
+                g.FillRectangle(stripe, rect);
+            }
+
+            if (gridLines)
+            {
+                g.DrawLine(gridPen, 0, y + RowHeight - 1, ClientSize.Width, y + RowHeight - 1);
+                var line = -_left;
+                for (var c = 0; c < Columns.Count - 1; c++)
+                {
+                    line += Columns[c].Width;
+                    g.DrawLine(gridPen, line - 1, y, line - 1, y + RowHeight - 1);
+                }
             }
 
             if (row == _focus && Focused)

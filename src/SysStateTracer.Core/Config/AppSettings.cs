@@ -48,6 +48,12 @@ public sealed class AppSettings
     /// <summary>Size, position and maximized state of each window, by window name (F12).</summary>
     public Dictionary<string, WindowPlacement> Windows { get; set; } = [];
 
+    /// <summary>Lines between rows and columns in the snapshot list and the comparison window.</summary>
+    public bool ShowGridLines { get; set; }
+
+    /// <summary>Every other row slightly shaded in the snapshot list and the comparison window.</summary>
+    public bool ZebraStripes { get; set; }
+
     /// <summary>Which Global Ignore list is used (F1): the remote one, or the local file beside the exe.</summary>
     public IgnoreListSource IgnoreListSource { get; set; } = IgnoreListSource.Remote;
 

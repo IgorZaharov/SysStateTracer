@@ -38,6 +38,11 @@ public class ScreenshotTests
                     Ui.Screenshot(main, "w1-main");
                     main.List.DropTargetIndex = 3;
                     Ui.Screenshot(main, "w1-main-drop-target");
+                    main.List.DropTargetIndex = -1;
+                    ThemeManager.SetListStyle(true, true);
+                    Ui.Pump();
+                    Ui.Screenshot(main, "w1-main-grid-zebra");
+                    ThemeManager.SetListStyle(false, false);
                     main.Close();
                 }
 
@@ -86,6 +91,10 @@ public class ScreenshotTests
                     grid.ScrollTo(0);
                     grid.Focus();
                     Ui.Screenshot(comparison, "w4-comparison");
+                    ThemeManager.SetListStyle(true, true);
+                    Ui.Pump();
+                    Ui.Screenshot(comparison, "w4-comparison-grid-zebra");
+                    ThemeManager.SetListStyle(false, false);
                     comparison.Swap();
                     Ui.Screenshot(comparison, "w4-comparison-swapped");
                     comparison.Close();

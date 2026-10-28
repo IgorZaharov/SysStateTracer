@@ -527,7 +527,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     # ---- 5 Preferences
     story.append(p("5&nbsp;&nbsp;Preferences", "h1"))
     story.append(p("Open Preferences with the gear icon in the main window. Changes are saved with <b>OK</b>; <b>Cancel</b> leaves everything as it was."))
-    story += screens.figure("w5-preferences-general-light", "Preferences → General: the snapshot folder and the theme.", max_height=105 * mm)
+    story += screens.figure("w5-preferences-general-light", "Preferences → General: the snapshot folder, the theme and the list options.", max_height=105 * mm)
     story.append(p("Snapshot folder", "h2"))
     story.append(p(
         "Where new snapshots are saved, and which folder the main window lists. <b>Browse</b> picks another folder; "
@@ -539,6 +539,11 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "switches with it; <b>Light</b> and <b>Dark</b> fix the look. Click a picture or its button: every open window "
         "changes at once."))
     story += screens.figure("w1-main-dark", "The main window in the dark theme.", width=135 * mm)
+    story.append(p("Lists", "h2"))
+    story.append(p(
+        "<b>Show grid lines</b> draws lines between the rows and columns, and <b>Use zebra striping</b> shades every "
+        "other row, in the snapshot list of the main window and in the comparison window. Both are off by default, and "
+        "open windows change at once."))
     story.append(p("Global Ignore list", "h2"))
     story.append(p("The second tab turns the shared remote list on or off and edits the local list; see chapter 4."))
     story.append(PageBreak())

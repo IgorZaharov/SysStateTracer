@@ -73,7 +73,8 @@ The tree list paints only the rows on screen: with a million rows, scrolling and
 
 - **General:** snapshot folder (Browse…, or the program folder; it must be writable) and theme, each choice with a
   small picture of the window in that theme (F5; click the picture or the button). The theme applies live; Cancel
-  restores it.
+  restores it. **Lists:** Show grid lines and Use zebra striping (both off by default) for the snapshot list and
+  the comparison window; they also apply live and Cancel restores them.
 - **Global Ignore list:** the local list (`SysStateTracer.ignore.txt` beside the program) is always used; **Also use
   the shared remote list** (URL or network file, with Check now) adds its rules too (F22). The local list's rules can
   be typed (Add rule…, with wildcards), edited in place (Edit…, double-click or F2), added from a folder, registry key

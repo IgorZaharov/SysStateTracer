@@ -32,6 +32,7 @@ internal static class Program
         ApplicationConfiguration.Initialize();
         Application.SetDefaultFont(Theming.UiFonts.Normal);
         Theming.ThemeManager.SetPreference(settings.Theme);
+        Theming.ThemeManager.SetListStyle(settings.ShowGridLines, settings.ZebraStripes);
         Application.Run(new MainForm(paths, settings));
 
         Log.Info($"{AppInfo.Name} exited.");

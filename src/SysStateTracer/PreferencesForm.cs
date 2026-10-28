@@ -22,6 +22,8 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly RadioButton _themeSystem = new() { Text = "Follow Windows", AutoSize = true };
     private readonly RadioButton _themeLight = new() { Text = "Light", AutoSize = true };
     private readonly RadioButton _themeDark = new() { Text = "Dark", AutoSize = true };
+    private readonly CheckBox _gridLines = new() { Text = "Show grid lines", AutoSize = true };
+    private readonly CheckBox _zebra = new() { Text = "Use zebra striping", AutoSize = true };
     private readonly CheckBox _remote = new() { Text = "Also use the shared remote list (a URL or network file, shared by several PCs)", AutoSize = true };
     private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 600 };
     private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(860, 0), Text = " " };
@@ -81,6 +83,11 @@ internal sealed class PreferencesForm : ThemedDialog
         if (DialogResult != DialogResult.OK && ThemeManager.Preference != _originalTheme)
         {
             ThemeManager.SetPreference(_originalTheme);
+        }
+
+        if (DialogResult != DialogResult.OK)
+        {
+            ThemeManager.SetListStyle(_settings.ShowGridLines, _settings.ZebraStripes);
         }
 
         base.OnFormClosed(e);
@@ -185,8 +192,31 @@ internal sealed class PreferencesForm : ThemedDialog
             };
         }
 
+        // Lists (grid lines, zebra striping): shown at once in open windows, like the theme.
+        var listsTitle = new Label { Text = "Lists", AutoSize = true, Margin = new Padding(0, 24, 0, 6) };
+        ThemeManager.SetRole(listsTitle, ThemeRole.Heading);
+        layout.Controls.Add(listsTitle);
+        var lists = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0), WrapContents = false };
+        _gridLines.Checked = ThemeManager.GridLines;
+        _zebra.Checked = ThemeManager.ZebraStripes;
+        _gridLines.Margin = new Padding(2, 0, 24, 0);
+        _zebra.Margin = new Padding(0);
+        lists.Controls.AddRange([_gridLines, _zebra]);
+        layout.Controls.Add(lists);
+        var listsHint = new Label { Text = "For the snapshot list in the main window and the comparison window.", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+        ThemeManager.SetRole(listsHint, ThemeRole.Secondary);
+        layout.Controls.Add(listsHint);
+        _gridLines.CheckedChanged += (_, _) => ThemeManager.SetListStyle(_gridLines.Checked, _zebra.Checked);
+        _zebra.CheckedChanged += (_, _) => ThemeManager.SetListStyle(_gridLines.Checked, _zebra.Checked);
+
         _generalPage.Controls.Add(layout);
     }
+
+    /// <summary>"Show grid lines" (tests).</summary>
+    internal CheckBox GridLinesBox => _gridLines;
+
+    /// <summary>"Use zebra striping" (tests).</summary>
+    internal CheckBox ZebraBox => _zebra;
 
     private ThemePreference SelectedTheme() =>
         _themeLight.Checked ? ThemePreference.Light : _themeDark.Checked ? ThemePreference.Dark : ThemePreference.System;
@@ -560,6 +590,8 @@ internal sealed class PreferencesForm : ThemedDialog
 
         _settings.SnapshotFolder = folder;
         _settings.Theme = SelectedTheme();
+        _settings.ShowGridLines = _gridLines.Checked;
+        _settings.ZebraStripes = _zebra.Checked;
         _settings.IgnoreListSource = _remote.Checked ? IgnoreListSource.Remote : IgnoreListSource.Local;
         var location = _remoteLocation.Text.Trim();
         _settings.IgnoreListRemoteLocation = location.Length == 0 ? RemoteIgnoreSource.DefaultLocation : location;

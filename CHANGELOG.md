@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Preferences
+- **Show grid lines** and **Use zebra striping** (Preferences → General → Lists) for the snapshot list and the comparison window. Both are off by default and apply at once.
+
 ## [1.0.0] — 2026-10-28
 
 The first release.
