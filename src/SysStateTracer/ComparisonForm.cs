@@ -120,7 +120,13 @@ internal sealed class ComparisonForm : Form
     private static string Stamp(SnapshotMeta meta) =>
         meta.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " · " + meta.ComputerName;
 
-    private void OnThemeChanged(object? sender, EventArgs e) => _grid.Invalidate();
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        if (!IsDisposed && IsHandleCreated)
+        {
+            BeginInvoke(_grid.Invalidate);
+        }
+    }
 
     private void BuildLayout()
     {
@@ -272,8 +278,13 @@ internal sealed class ComparisonForm : Form
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SnapshotFormatException)
         {
-            _status.Text = "The snapshots could not be read: " + ex.Message;
-            MessageDialog.Error(this, "The snapshots could not be compared.", ex);
+            _status.Text = "The snapshots could not be read: " + FriendlyErrors.Describe(ex);
+            MessageDialog.Error(
+                this,
+                _diff is null
+                    ? "The snapshots could not be compared."
+                    : "Refresh failed. The comparison shown is still the one loaded before.",
+                ex);
         }
         finally
         {

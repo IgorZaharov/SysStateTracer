@@ -1,16 +1,74 @@
 # SysStateTracer
 
-Portable Windows utility that takes snapshots of the file system, registry and services, and compares two snapshots to show what was created, modified or deleted in between.
+Portable Windows utility that takes snapshots of the file system, registry and services, and compares two
+snapshots to show what was created, modified or deleted in between — for example, what an installer really did.
 
-> **Status:** under development. Nothing is released yet.
+![Comparison window](docs/images/comparison.png)
 
-## Highlights (planned)
+## Download
 
-- One `SysStateTracer.exe` for Windows 10/11 x64 — no installer, nothing to install first.
-- Snapshots record metadata only (names, sizes, dates, registry values, service states); file contents are never read.
-- Consecutive snapshots are fast: the NTFS USN Change Journal tells SysStateTracer what changed since the last one.
-- Comparison view: new items green, modified yellow, deleted red; export to `.reg`, copy changed files, revert registry values.
-- Command line: `/new-snap`, `/delete-snap`, `/rename-snap`, `/compare-snap`, `/export`.
+Get **SysStateTracer.exe** from [Releases](https://github.com/IgorZaharov/SysStateTracer/releases). It is one
+file for Windows 10 and 11 x64; nothing needs to be installed. Each release lists the exe's SHA-256, which you
+can check in PowerShell with `(Get-FileHash .\SysStateTracer.exe).Hash`.
+
+On first start:
+
+- **Administrator rights:** Windows asks for them (UAC). They are needed to read protected folders and registry
+  keys and to read whole drives quickly.
+- **SmartScreen:** the exe is not code-signed, so Windows may say "Windows protected your PC". Choose
+  **More info → Run anyway**, or tick **Unblock** in the file's Properties.
+
+SysStateTracer keeps its files beside the exe (settings, the ignore list, a cache for faster snapshots, a log,
+and the `Files` and `Backups` folders). If that folder cannot be written to, it uses
+`%LOCALAPPDATA%\SysStateTracer` instead.
+
+## How to use it
+
+1. Click **+** and **Start** to take a snapshot (the default scope is every fixed drive, the registry and services).
+2. Make the change you want to trace: install a program, change a setting, run an update.
+3. Take a second snapshot — it is faster, because only what changed is read again.
+4. Drag one snapshot onto the other. The comparison shows only what changed: new in green, modified in yellow,
+   deleted in red.
+5. Right-click items to open them in Explorer, Regedit or Services, export registry changes to a `.reg` file,
+   copy new and modified files to `.\Files`, revert registry values, or hide noise with the Global Ignore list.
+
+![Main window in the dark theme](docs/images/main-dark.png)
+
+Everything also works from the command line, for scripts and scheduled tasks:
+
+```bat
+SysStateTracer.exe /new-snap "Before Office 2024 install"
+SysStateTracer.exe /new-snap "After Office 2024 install"
+SysStateTracer.exe /compare-snap "Before Office 2024 install" "After Office 2024 install" "C:\Reports\Office 2024 install changes.html"
+SysStateTracer.exe /export "Before Office 2024 install" "After Office 2024 install"
+```
+
+`SysStateTracer.exe /?` lists every switch with examples; see [docs/command-line.md](docs/command-line.md).
+
+## What it records — and what it does not
+
+- **Files and folders:** names, sizes, dates and attributes. File contents are never read, so a file rewritten
+  with the same size and date is not seen as changed.
+- **Registry:** HKLM and every user under HKU, with values up to 1 MB (larger values are recorded by size and hash).
+  `HKLM\SAM` and `HKLM\SECURITY` are left out by default.
+- **Services:** state and startup type; kernel drivers optionally.
+- Anything that cannot be read is skipped and listed in the snapshot's properties.
+
+**Snapshots contain registry data, which can include sensitive settings such as product keys.** Treat `.stsnap`
+files like a registry backup and don't share them publicly.
+
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [docs/user-interface.md](docs/user-interface.md) | The windows, keyboard shortcuts, and the manual test script |
+| [docs/command-line.md](docs/command-line.md) | Switches, examples, exit codes |
+| [docs/ignore-list.md](docs/ignore-list.md) | Global Ignore list: Remote or Local, rule syntax |
+| [docs/exports.md](docs/exports.md) | `.reg` export, copy to `.\Files`, Revert Value |
+| [docs/benchmarks.md](docs/benchmarks.md) | Measured speed and memory |
+| [docs/format.md](docs/format.md) | The `.stsnap` file format |
+| [docs/decisions.md](docs/decisions.md) | Design decisions |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each release |
 
 ## Building
 
@@ -22,18 +80,13 @@ dotnet test                                      # run tests
 dotnet publish src/SysStateTracer -c Release     # single-file SysStateTracer.exe
 ```
 
-The published exe is in `src/SysStateTracer/bin/Release/net10.0-windows/win-x64/publish/`.
-Every push also builds it on GitHub Actions — download it from the run's **Artifacts**.
-
-## Repository layout
+Every push to `main` is built and tested on GitHub Actions (including window screenshots in both themes on the
+[`ui-preview`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/ui-preview) pre-release, and an
+end-to-end run on clean Windows Server 2022 and 2025 runners). A tag such as `v1.0.0` publishes a release.
 
 | Path | Contents |
 | --- | --- |
 | `src/SysStateTracer` | Windows Forms UI, command line, entry point |
 | `src/SysStateTracer.Core` | Scanning, snapshot storage, comparison, exports (no UI code) |
 | `tests/` | Unit tests, Windows integration tests, window tests with screenshots, benchmarks |
-| `docs/` | Decisions, file format, windows, exports and actions, benchmarks, command-line reference |
-
-## Note on snapshot files
-
-Snapshots contain registry data, which can include sensitive settings. Treat `.stsnap` files like a registry backup and don't share them publicly.
+| `docs/` | Documentation |

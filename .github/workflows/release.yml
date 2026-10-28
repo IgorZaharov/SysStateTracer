@@ -1,0 +1,104 @@
+name: release
+
+# Plan Step 56 / §14.4: a tag such as v1.0.0 (or v1.0.0-rc.1 for a pre-release) builds, tests and
+# publishes SysStateTracer.exe with its SHA-256 and the release notes from CHANGELOG.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET SDK (from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $version = $tag.TrimStart('v')
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') { Write-Error "Tag $tag is not vX.Y.Z or vX.Y.Z-label"; exit 1 }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$(if ($version.Contains('-')) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
+
+      - name: Build and test
+        shell: pwsh
+        run: |
+          .github/scripts/run.ps1 dotnet build SysStateTracer.slnx -c Release "-p:Version=${{ steps.version.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          .github/scripts/run.ps1 dotnet test SysStateTracer.slnx -c Release --no-build --blame-hang-timeout 10m
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Publish SysStateTracer.exe
+        shell: pwsh
+        run: |
+          dotnet publish src/SysStateTracer/SysStateTracer.csproj -c Release -o publish "-p:Version=${{ steps.version.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $extra = Get-ChildItem publish -File | Where-Object Name -ne 'SysStateTracer.exe'
+          if ($extra) { Write-Error "Unexpected files beside the exe: $($extra.Name -join ', ')"; exit 1 }
+
+      - name: Check the version the exe reports
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'help.txt'
+          $p = Start-Process publish/SysStateTracer.exe -ArgumentList '/?' -Wait -PassThru -NoNewWindow -RedirectStandardOutput $out
+          $first = (Get-Content $out -TotalCount 1)
+          if ($p.ExitCode -ne 0 -or $first -notmatch [regex]::Escape('SysStateTracer ${{ steps.version.outputs.version }}')) { Write-Error "Unexpected /? output: $first"; exit 1 }
+          Write-Host "::notice title=Version::$first"
+
+      - name: Release notes and SHA-256
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $hash = (Get-FileHash publish/SysStateTracer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  SysStateTracer.exe" | Set-Content publish/SysStateTracer.exe.sha256 -Encoding ascii -NoNewline
+
+          # The CHANGELOG section for this version (without a pre-release label), up to the next "## ".
+          $base = $version.Split('-')[0]
+          $lines = Get-Content CHANGELOG.md
+          $start = [array]::FindIndex($lines, [Predicate[string]] { param($l) $l -match "^## \[?$([regex]::Escape($base))\]?" })
+          $section = if ($start -ge 0) {
+            $end = [array]::FindIndex($lines, $start + 1, [Predicate[string]] { param($l) $l -match '^## ' })
+            if ($end -lt 0) { $end = $lines.Count }
+            ($lines[($start + 1)..($end - 1)] -join "`n").Trim()
+          } else { 'See CHANGELOG.md.' }
+
+          $size = [math]::Round((Get-Item publish/SysStateTracer.exe).Length / 1MB, 1)
+          @"
+          $section
+
+          ## Download
+
+          **SysStateTracer.exe** ($size MB): one file for Windows 10 and 11 x64, nothing to install. It asks for administrator rights when it starts.
+
+          SHA-256: ``$hash``
+
+          Check it in PowerShell: ``(Get-FileHash .\SysStateTracer.exe).Hash``
+
+          The exe is not code-signed, so on first start Windows SmartScreen may say "Windows protected your PC": choose **More info → Run anyway**, or tick **Unblock** in the file's Properties.
+          "@ -replace '(?m)^          ', '' | Set-Content notes.md -Encoding utf8
+
+      - name: Create the GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $flags = @('--title', "SysStateTracer ${{ steps.version.outputs.version }}", '--notes-file', 'notes.md', '--verify-tag')
+          if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' } else { $flags += '--latest' }
+          gh release create '${{ github.ref_name }}' publish/SysStateTracer.exe publish/SysStateTracer.exe.sha256 @flags
+          if ($LASTEXITCODE -ne 0) { exit 1 }

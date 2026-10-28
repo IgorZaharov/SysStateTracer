@@ -182,6 +182,28 @@ public class CliTests
     }
 
     [Fact]
+    public void DamagedOrNewerSnapshots_Exit4WithAClearMessage()
+    {
+        using var env = new TestEnvironment();
+        env.AddSnapshot("good", day: 1);
+        env.AddSnapshot("from the future", day: 2);
+        var future = env.PathOf("from the future");
+        var bytes = File.ReadAllBytes(future);
+        bytes[8] = 2; // format major version 2
+        File.WriteAllBytes(future, bytes);
+        File.WriteAllBytes(env.PathOf("cut off"), File.ReadAllBytes(env.PathOf("good"))[..100]);
+
+        Assert.Equal(4, env.Run("/compare-snap", "good", "from the future"));
+        Assert.Contains("newer SysStateTracer", env.Text, StringComparison.Ordinal);
+        Assert.Equal(4, env.Run("/export", "good", "cut off"));
+        Assert.Contains("Error:", env.Text, StringComparison.Ordinal);
+
+        // A damaged file can still be deleted by name.
+        Assert.Equal(0, env.Run("/delete-snap", "cut off"));
+        Assert.Contains("could not be read", env.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NewSnapAndExport_NeedAdministratorRights()
     {
         using var env = new TestEnvironment { Elevated = false };

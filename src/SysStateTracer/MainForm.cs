@@ -19,7 +19,17 @@ internal sealed class MainForm : Form
 
     private readonly AppPaths _paths;
     private readonly AppSettings _settings;
-    private readonly ThemedListView _list = new() { Dock = DockStyle.Fill, MultiSelect = true, AllowDrop = true };
+    private readonly ThemedListView _list = new() { Dock = DockStyle.Fill, MultiSelect = true, AllowDrop = true, ShowItemToolTips = true };
+    private readonly Label _warning = new()
+    {
+        Dock = DockStyle.Top,
+        AutoSize = false,
+        Height = 30,
+        Padding = new Padding(16, 0, 16, 0),
+        TextAlign = ContentAlignment.MiddleLeft,
+        Visible = false,
+        Text = "Not running as administrator: snapshots will miss the folders and registry keys that need administrator rights, and whole drives are read more slowly. Start SysStateTracer with \"Run as administrator\".",
+    };
     private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 190, Anchor = AnchorStyles.Top | AnchorStyles.Right };
     private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
     private readonly Label _empty = new() { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Visible = false };
@@ -41,7 +51,7 @@ internal sealed class MainForm : Form
     private int _dragSource = -1;
     private string? _selectAfterReload;
 
-    public MainForm(AppPaths paths, AppSettings settings)
+    public MainForm(AppPaths paths, AppSettings settings, bool? elevated = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(settings);
@@ -61,14 +71,41 @@ internal sealed class MainForm : Form
 
         BuildLayout();
         BuildMenu();
+        _warning.Visible = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
         ResumeLayout(performLayout: true);
 
         ThemeManager.Attach(this);
+        ColorWarning();
+        ThemeManager.Changed += OnThemeChanged;
         _reloadTimer.Tick += (_, _) =>
         {
             _reloadTimer.Stop();
             Reload();
         };
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        if (IsDisposed || !IsHandleCreated)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(ColorWarning);
+        }
+        else
+        {
+            ColorWarning();
+        }
+    }
+
+    private void ColorWarning()
+    {
+        var p = ThemeManager.Current;
+        _warning.ForeColor = p.Modified;
+        _warning.BackColor = Palette.Blend(p.Modified, p.Background, p.IsDark ? 0.85 : 0.9);
     }
 
     /// <summary>Folder the list shows (Preferences, or the program folder).</summary>
@@ -88,6 +125,7 @@ internal sealed class MainForm : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        ThemeManager.Changed -= OnThemeChanged;
         _watcher?.Dispose();
         base.OnFormClosed(e);
     }
@@ -172,6 +210,18 @@ internal sealed class MainForm : Form
             _list.Items.Add(item);
         }
 
+        // Damaged or newer-format files stay visible, so they can be deleted (plan Step 53).
+        foreach (var bad in _unreadable)
+        {
+            var item = new ListViewItem(Path.GetFileNameWithoutExtension(bad.Path)) { Tag = bad, ToolTipText = bad.Reason };
+            item.SubItems.Add("Cannot be read");
+            item.SubItems.Add(string.Empty);
+            item.SubItems.Add(string.Empty);
+            item.SubItems.Add(FileSize(bad.Path));
+            item.Selected = selected.Contains(bad.Path);
+            _list.Items.Add(item);
+        }
+
         _list.EndUpdate();
         if (_list.SelectedItems.Count > 0)
         {
@@ -179,7 +229,7 @@ internal sealed class MainForm : Form
             _list.FocusedItem = _list.SelectedItems[0];
         }
 
-        _empty.Visible = _snapshots.Count == 0;
+        _empty.Visible = _snapshots.Count == 0 && _unreadable.Count == 0;
         _empty.Text = $"No snapshots yet in{Environment.NewLine}{SnapshotFolder}{Environment.NewLine}{Environment.NewLine}Click + to take the first one.";
         UpdateStatus();
         UpdateCommands();
@@ -257,6 +307,9 @@ internal sealed class MainForm : Form
         _list.Columns.Add("Computer", 140);
         _list.Columns.Add("Duration", 90, HorizontalAlignment.Right);
         _list.Columns.Add("Size", 90, HorizontalAlignment.Right);
+        _list.ItemColor = (item, column) => item.Tag is UnreadableSnapshot
+            ? (column == 0 ? ThemeManager.Current.Deleted : ThemeManager.Current.SecondaryText)
+            : null;
         _list.SelectedIndexChanged += (_, _) =>
         {
             UpdateCommands();
@@ -283,6 +336,7 @@ internal sealed class MainForm : Form
 
         Controls.Add(listHolder);
         Controls.Add(footer);
+        Controls.Add(_warning);
         Controls.Add(header);
         Controls.Add(sidebar);
     }
@@ -328,7 +382,28 @@ internal sealed class MainForm : Form
     }
 
     private List<SnapshotInfo> SelectedSnapshots() =>
-        [.. _list.SelectedItems.Cast<ListViewItem>().Select(i => (SnapshotInfo)i.Tag!)];
+        [.. _list.SelectedItems.Cast<ListViewItem>().Select(i => i.Tag).OfType<SnapshotInfo>()];
+
+    /// <summary>Selected rows, readable or not, as (name, path).</summary>
+    private List<(string Name, string Path)> SelectedFiles() =>
+        [.. _list.SelectedItems.Cast<ListViewItem>().Select(i => i.Tag switch
+        {
+            SnapshotInfo info => (info.Name, info.Path),
+            UnreadableSnapshot bad => (System.IO.Path.GetFileNameWithoutExtension(bad.Path), bad.Path),
+            _ => (string.Empty, string.Empty),
+        }).Where(f => f.Path.Length > 0)];
+
+    private static string FileSize(string path)
+    {
+        try
+        {
+            return ItemFormat.Size(new FileInfo(path).Length);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return string.Empty;
+        }
+    }
 
     private void UpdateCommands()
     {
@@ -365,7 +440,7 @@ internal sealed class MainForm : Form
 
     private void DeleteSelected()
     {
-        var selected = SelectedSnapshots();
+        var selected = SelectedFiles();
         if (selected.Count == 0)
         {
             return;
@@ -390,7 +465,7 @@ internal sealed class MainForm : Form
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 Log.Warning($"Could not delete {snapshot.Path}", ex);
-                failed.Add($"{snapshot.Name}: {ex.Message}");
+                failed.Add($"{snapshot.Name}: {FriendlyErrors.Describe(ex)}");
             }
         }
 
@@ -441,6 +516,12 @@ internal sealed class MainForm : Form
 
     private void ShowProperties()
     {
+        if (_list.SelectedItems.Count == 1 && _list.SelectedItems[0].Tag is UnreadableSnapshot bad)
+        {
+            MessageDialog.Inform(this, "Snapshot Properties", $"This file cannot be read:{Environment.NewLine}{bad.Path}{Environment.NewLine}{Environment.NewLine}{bad.Reason}{Environment.NewLine}{Environment.NewLine}You can delete it from the list.");
+            return;
+        }
+
         var selected = SelectedSnapshots();
         if (selected.Count != 1)
         {
@@ -523,9 +604,14 @@ internal sealed class MainForm : Form
             return;
         }
 
+        if (item.Tag is not SnapshotInfo dragged)
+        {
+            return;
+        }
+
         _dragSource = item.Index;
         var data = new DataObject();
-        data.SetData(DragFormat, ((SnapshotInfo)item.Tag!).Path);
+        data.SetData(DragFormat, dragged.Path);
         _list.DoDragDrop(data, DragDropEffects.Link);
         _dragSource = -1;
         _list.DropTargetIndex = -1;
@@ -534,7 +620,7 @@ internal sealed class MainForm : Form
     private void OnDragOver(object? sender, DragEventArgs e)
     {
         var target = TargetIndex(e);
-        var valid = e.Data?.GetDataPresent(DragFormat) == true && target >= 0 && target != _dragSource;
+        var valid = e.Data?.GetDataPresent(DragFormat) == true && target >= 0 && target != _dragSource && _list.Items[target].Tag is SnapshotInfo;
         e.Effect = valid ? DragDropEffects.Link : DragDropEffects.None;
         _list.DropTargetIndex = valid ? target : -1;
     }
@@ -549,7 +635,11 @@ internal sealed class MainForm : Form
         }
 
         var source = _snapshots.FirstOrDefault(s => string.Equals(s.Path, sourcePath, StringComparison.OrdinalIgnoreCase));
-        var other = (SnapshotInfo)_list.Items[target].Tag!;
+        if (_list.Items[target].Tag is not SnapshotInfo other)
+        {
+            return;
+        }
+
         if (source is not null && !string.Equals(source.Path, other.Path, StringComparison.OrdinalIgnoreCase))
         {
             Compare(source, other);

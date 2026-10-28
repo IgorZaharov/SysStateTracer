@@ -22,6 +22,13 @@ internal sealed class NewSnapshotForm : ThemedDialog
     private readonly AppSettings _settings;
     private readonly TextBox _name = new() { BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill };
     private readonly Label _nameProblem = new() { AutoSize = true, Text = " " };
+    private readonly Label _notElevated = new()
+    {
+        AutoSize = true,
+        Visible = false,
+        MaximumSize = new Size(700, 0),
+        Text = "Not running as administrator: folders and registry keys that need administrator rights are skipped, and whole drives are read more slowly.",
+    };
     private readonly Label _folder = new() { AutoSize = true, AutoEllipsis = true };
     private readonly ScopeTree _tree = new() { Dock = DockStyle.Fill };
     private readonly Label _ignoreStatus = new() { AutoSize = true, Text = "Reading the Global Ignore list…" };
@@ -41,7 +48,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
     private bool _running;
     private bool _closeWhenStopped;
 
-    public NewSnapshotForm(AppPaths paths, AppSettings settings)
+    public NewSnapshotForm(AppPaths paths, AppSettings settings, bool? elevated = null)
         : base("New Snapshot")
     {
         ArgumentNullException.ThrowIfNull(paths);
@@ -53,6 +60,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
         MinimumSize = new Size(620, 560);
 
         BuildLayout();
+        _notElevated.Visible = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
         _close = AddButton("Close", DialogResult.Cancel);
         _stop = AddButton("Stop", DialogResult.None);
         _start = AddButton("Start", DialogResult.None, primary: true);
@@ -96,6 +104,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        _notElevated.ForeColor = ThemeManager.Current.Modified;
         ValidateName();
         _ignoreLoad = LoadIgnoreListAsync();
     }
@@ -154,6 +163,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
         ThemeManager.SetRole(_folder, ThemeRole.Secondary);
         info.Controls.Add(_folder);
         info.Controls.Add(_nameProblem);
+        info.Controls.Add(_notElevated);
         layout.Controls.Add(info);
 
         var scopeTitle = new Label { Text = "What to include", AutoSize = true, Margin = new Padding(0, 8, 0, 6) };
@@ -323,7 +333,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            summary = "The snapshot could not be taken: " + ex.Message;
+            summary = "The snapshot could not be taken: " + FriendlyErrors.Describe(ex);
             failed = true;
             Log.Error("Snapshot failed", ex);
         }

@@ -60,6 +60,39 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    public void Main_ShowsDamagedFilesAndTheAdministratorWarning()
+    {
+        Ui.Run(() =>
+        {
+            using var app = new TestApp();
+            var good = app.AddSnapshot("Good", hoursAgo: 1);
+            File.WriteAllBytes(Path.Combine(app.SnapshotFolder, "Cut off.stsnap"), File.ReadAllBytes(good)[..^10]);
+
+            using (var form = Ui.Show(new MainForm(app.Paths, app.Settings, elevated: false)))
+            {
+                Assert.Equal(2, form.List.Items.Count);
+                var damaged = form.List.Items.Cast<ListViewItem>().Single(i => i.Text == "Cut off");
+                Assert.Equal("Cannot be read", damaged.SubItems[1].Text);
+                Assert.False(string.IsNullOrEmpty(damaged.ToolTipText));
+                Assert.Contains(Controls(form), c => c is Label { Visible: true } label && label.Text.StartsWith("Not running as administrator", StringComparison.Ordinal));
+                form.Close();
+            }
+
+            using (var form = Ui.Show(new MainForm(app.Paths, app.Settings, elevated: true)))
+            {
+                Assert.DoesNotContain(Controls(form), c => c is Label { Visible: true } label && label.Text.StartsWith("Not running as administrator", StringComparison.Ordinal));
+                form.Close();
+            }
+
+            using (var properties = Ui.Show(new PropertiesForm(Path.Combine(app.SnapshotFolder, "Cut off.stsnap"))))
+            {
+                Assert.Contains(Controls(properties), c => c.Text.Contains("incomplete", StringComparison.OrdinalIgnoreCase));
+                properties.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ScopeTree_RoundTripsTheSavedScope()
     {
         Ui.Run(() =>

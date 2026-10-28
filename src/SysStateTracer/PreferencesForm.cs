@@ -444,10 +444,32 @@ internal sealed class PreferencesForm : ThemedDialog
 
     private void Save()
     {
-        var folder = _folder.Text.Trim();
-        _settings.SnapshotFolder = string.IsNullOrEmpty(folder) || string.Equals(Path.GetFullPath(folder).TrimEnd('\\'), _paths.DataDirectory.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)
-            ? null
-            : folder;
+        // Check the folder first, so nothing changes when it cannot be used.
+        string? folder = _folder.Text.Trim();
+        try
+        {
+            folder = folder.Length == 0 || string.Equals(Path.GetFullPath(folder).TrimEnd('\\'), _paths.DataDirectory.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)
+                ? null
+                : Path.GetFullPath(folder);
+            if (folder is not null)
+            {
+                Directory.CreateDirectory(folder);
+                if (!AppPaths.IsDirectoryWritable(folder))
+                {
+                    MessageDialog.Inform(this, "Preferences", $"SysStateTracer cannot write to {folder}. Choose another snapshot folder.");
+                    DialogResult = DialogResult.None;
+                    return;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            MessageDialog.Error(this, "The snapshot folder cannot be used.", ex);
+            DialogResult = DialogResult.None;
+            return;
+        }
+
+        _settings.SnapshotFolder = folder;
         _settings.Theme = SelectedTheme();
         _settings.IgnoreListSource = _remote.Checked ? IgnoreListSource.Remote : IgnoreListSource.Local;
         var location = _remoteLocation.Text.Trim();
@@ -455,20 +477,14 @@ internal sealed class PreferencesForm : ThemedDialog
 
         try
         {
-            if (_settings.SnapshotFolder is not null)
-            {
-                Directory.CreateDirectory(_settings.SnapshotFolder);
-            }
-
             SettingsStore.Save(_paths.ConfigFile, _settings);
             _localFile.Save(string.Join(Environment.NewLine, _localLines));
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             MessageDialog.Error(this, "Preferences could not be saved.", ex);
             DialogResult = DialogResult.None;
         }
-
     }
 }
 

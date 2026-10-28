@@ -99,12 +99,12 @@ public static class CliRunner
             }
             catch (SnapshotFormatException ex)
             {
-                Error(ex.Message);
+                Error(FriendlyErrors.Describe(ex));
                 return CliExitCode.ReadWriteError;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Error(ex.Message);
+                Error(FriendlyErrors.Describe(ex));
                 return CliExitCode.ReadWriteError;
             }
         }
@@ -431,7 +431,7 @@ public static class CliRunner
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SnapshotFormatException)
             {
-                return $"\"{Path.GetFileNameWithoutExtension(path)}\" (could not be read: {ex.Message})";
+                return $"\"{Path.GetFileNameWithoutExtension(path)}\" (could not be read: {FriendlyErrors.Describe(ex)})";
             }
         }
 

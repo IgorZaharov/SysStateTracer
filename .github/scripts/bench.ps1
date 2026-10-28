@@ -2,12 +2,17 @@
 # GitHub shows at most 10 notices per step, so each snapshot runs in its own step.
 param(
     [Parameter(Mandatory)] [string] $Label,
+    [string] $Command = 'snapshot',
     [string] $Parallel = '0',
     [string[]] $Extra = @()
 )
 
 $out = Join-Path $env:RUNNER_TEMP 'bench'
-$lines = & dotnet run --project tests/SysStateTracer.Benchmarks -c Release --no-build -- snapshot $out --label "p$Parallel-$Label" --parallel $Parallel @Extra 2>&1
+$lines = if ($Command -eq 'compare') {
+    & dotnet run --project tests/SysStateTracer.Benchmarks -c Release --no-build -- compare $out --label "p$Parallel-$Label" 2>&1
+} else {
+    & dotnet run --project tests/SysStateTracer.Benchmarks -c Release --no-build -- snapshot $out --label "p$Parallel-$Label" --parallel $Parallel @Extra 2>&1
+}
 $code = $LASTEXITCODE
 $lines | ForEach-Object { Write-Host $_ }
 foreach ($line in $lines) {

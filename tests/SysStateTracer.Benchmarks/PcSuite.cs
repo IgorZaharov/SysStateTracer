@@ -19,6 +19,9 @@ internal static class PcSuite
         ("full-auto", ["--roots", @"C:\", "--cache", CacheToken]),
         ("consecutive-1", ["--roots", @"C:\", "--cache", CacheToken]),
         ("consecutive-2", ["--roots", @"C:\", "--cache", CacheToken]),
+
+        // Loads and compares the two newest snapshots (the consecutive ones), as the comparison window does.
+        ("compare", []),
     ];
 
     // Replaced by a cache file in the temporary snapshot folder.
@@ -51,7 +54,7 @@ internal static class PcSuite
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                 };
-                start.ArgumentList.Add("snapshot");
+                start.ArgumentList.Add(label == "compare" ? "compare" : "snapshot");
                 start.ArgumentList.Add(output);
                 start.ArgumentList.Add("--label");
                 start.ArgumentList.Add(label);

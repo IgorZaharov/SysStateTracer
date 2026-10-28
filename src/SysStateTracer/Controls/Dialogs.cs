@@ -126,7 +126,7 @@ internal sealed class MessageDialog : ThemedDialog
     public static void Error(IWin32Window? owner, string message, Exception? exception = null)
     {
         Core.Config.Log.Error(message, exception);
-        var text = exception is null ? message : $"{message}{Environment.NewLine}{Environment.NewLine}{exception.Message}";
+        var text = exception is null ? message : $"{message}{Environment.NewLine}{Environment.NewLine}{Core.Config.FriendlyErrors.Describe(exception)}";
         Inform(owner, AppInfo.Name, text);
     }
 }

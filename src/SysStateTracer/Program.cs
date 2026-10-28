@@ -67,7 +67,7 @@ internal static class Program
         catch (Exception ex)
         {
             Log.Error("Command line failed", ex);
-            Console.Error.WriteLine($"Error: {ex.Message} (details in {AppPaths.LogFileName})");
+            Console.Error.WriteLine($"Error: {FriendlyErrors.Describe(ex)} (details in {AppPaths.LogFileName})");
             return (int)CliExitCode.ReadWriteError;
         }
         finally

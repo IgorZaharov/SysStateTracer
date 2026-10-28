@@ -45,6 +45,11 @@ jobs:
         timeout-minutes: 15
         run: .github/scripts/bench.ps1 -Label consecutive -Parallel ${{ matrix.parallel }} -Extra '--cache','cache\SysStateTracer.cache'
 
+      - name: Compare the cold and the consecutive snapshot (load, compare, exports, report)
+        shell: pwsh
+        timeout-minutes: 10
+        run: .github/scripts/bench.ps1 -Label compare -Command compare
+
       - name: Consecutive snapshot again
         shell: pwsh
         timeout-minutes: 15

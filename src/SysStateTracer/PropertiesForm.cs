@@ -42,7 +42,7 @@ internal sealed class PropertiesForm : ThemedDialog
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SnapshotFormatException)
         {
-            Row("Error", ex.Message);
+            Row("Error", Core.Config.FriendlyErrors.Describe(ex));
         }
     }
 

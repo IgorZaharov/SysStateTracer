@@ -203,3 +203,27 @@ jobs:
           name: test-results
           path: TestResults/
           if-no-files-found: ignore
+
+  # Plan Step 55: the published exe on clean runners of two Windows generations
+  clean-os:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+
+      - name: Download SysStateTracer.exe
+        uses: actions/download-artifact@v4
+        with:
+          name: SysStateTracer-${{ github.sha }}
+          path: exe
+
+      - name: Snapshot, change, snapshot, compare, export
+        shell: pwsh
+        run: .github/scripts/smoke.ps1 -Exe exe/SysStateTracer.exe
