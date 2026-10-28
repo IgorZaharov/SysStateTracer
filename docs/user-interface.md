@@ -53,8 +53,9 @@ The tree list paints only the rows on screen: with a million rows, scrolling and
 
 ## Preferences (W5)
 
-- **General:** snapshot folder (Browse…, or the program folder) and theme (Follow Windows, Light, Dark; applies
-  live, Cancel restores it).
+- **General:** snapshot folder (Browse…, or the program folder; it must be writable) and theme, each choice with a
+  small picture of the window in that theme (F5; click the picture or the button). The theme applies live; Cancel
+  restores it.
 - **Global Ignore list:** which list is used — Remote (URL or network file, with Check now) or Local
   (`SysStateTracer.ignore.txt` beside the program). The local list's rules can be added (folder, registry key,
   service), removed, imported and exported. Comments in the file are kept.

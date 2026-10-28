@@ -223,6 +223,44 @@ public class ExportAndRevertTests
         Assert.True(File.Exists(Path.Combine(output.Path, "Files", relative, @"keep\new.txt")));
         Assert.True(File.Exists(Path.Combine(output.Path, "Files", relative, @"fresh\deep\x.bin")));
         Assert.False(File.Exists(Path.Combine(output.Path, "Files", relative, @"keep\same.txt")));
+
+        // The restore script (F7) puts the copies back where they came from.
+        var newFile = Path.Combine(data.Path, @"keep\new.txt");
+        var deep = Path.Combine(data.Path, @"fresh\deep\x.bin");
+        var original = File.ReadAllBytes(newFile);
+        File.Delete(newFile);
+        Directory.Delete(Path.Combine(data.Path, "fresh"), recursive: true);
+        var script = RestoreScript.Write(Path.Combine(output.Path, "Files"));
+
+        var preview = RunPowerShell(script, "-WhatIf");
+        Assert.Equal(0, preview.Code);
+        Assert.False(File.Exists(newFile));
+
+        var run = RunPowerShell(script);
+        Assert.True(run.Code == 0, run.Output);
+        Assert.Contains("2 files copied back", run.Output, StringComparison.Ordinal);
+        Assert.Equal(original, File.ReadAllBytes(newFile));
+        Assert.True(File.Exists(deep));
+    }
+
+    private static (int Code, string Output) RunPowerShell(string script, params string[] arguments)
+    {
+        var start = new ProcessStartInfo("powershell.exe")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script }.Concat(arguments))
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return (process.ExitCode, output);
     }
 
     private static Snapshot Take(string registryRoot, TestFolder output) =>

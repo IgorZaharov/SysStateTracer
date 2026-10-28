@@ -132,8 +132,21 @@ internal sealed class PreferencesForm : ThemedDialog
         var themeTitle = new Label { Text = "Theme", AutoSize = true, Margin = new Padding(0, 24, 0, 6) };
         ThemeManager.SetRole(themeTitle, ThemeRole.Heading);
         layout.Controls.Add(themeTitle);
+        // A picture above each choice (F5); clicking the picture chooses it too.
         var themes = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0), WrapContents = false };
-        themes.Controls.AddRange([_themeSystem, _themeLight, _themeDark]);
+        var previews = new List<ThemePreview>();
+        foreach (var (radio, theme) in new[] { (_themeSystem, ThemePreference.System), (_themeLight, ThemePreference.Light), (_themeDark, ThemePreference.Dark) })
+        {
+            var preview = new ThemePreview(theme) { Margin = new Padding(0, 0, 0, 6) };
+            var column = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 20, 0) };
+            column.Controls.Add(preview);
+            column.Controls.Add(radio);
+            radio.Margin = new Padding(2, 0, 0, 0);
+            preview.Click += (_, _) => radio.Checked = true;
+            previews.Add(preview);
+            themes.Controls.Add(column);
+        }
+
         layout.Controls.Add(themes);
         (ThemeManager.Preference switch
         {
@@ -141,13 +154,23 @@ internal sealed class PreferencesForm : ThemedDialog
             ThemePreference.Dark => _themeDark,
             _ => _themeSystem,
         }).Checked = true;
+        void MarkSelected()
+        {
+            var selected = SelectedTheme();
+            foreach (var preview in previews)
+            {
+                preview.Selected = preview.Theme == selected;
+            }
+        }
+
+        MarkSelected();
         foreach (var radio in new[] { _themeSystem, _themeLight, _themeDark })
         {
-            radio.Margin = new Padding(0, 0, 24, 0);
             radio.CheckedChanged += (_, _) =>
             {
                 if (radio.Checked)
                 {
+                    MarkSelected();
                     ThemeManager.SetPreference(SelectedTheme());
                 }
             };

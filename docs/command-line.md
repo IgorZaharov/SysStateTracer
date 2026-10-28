@@ -30,9 +30,11 @@ Switches:
                                       A relative report path is placed in the program folder.
   /export ["name1" "name2"]           Exports what is new or modified in the newer snapshot:
                                       registry keys and values to Export_<name1>_vs_<name2>.reg, and files to the Files folder
-                                      (keeping their folders). Without names: the newest two.
+                                      (keeping their folders), with Restore-Files.ps1 there to copy them back to their places.
+                                      Without names: the newest two.
 
-Names are snapshot file names without .stsnap. Put names with spaces in quotes.
+A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of
+a .stsnap file anywhere. Put names and paths with spaces in quotes.
 Comparisons and exports leave out everything matched by the Global Ignore list chosen in Preferences.
 
 Folders:
@@ -52,6 +54,9 @@ Examples:
   Export the new registry values and files the installation added:
     SysStateTracer.exe /export "Before Office 2024 install" "After Office 2024 install"
     (gives Export_Before Office 2024 install_vs_After Office 2024 install.reg and Files\Program Files\...)
+  Snapshot files in another folder, given by path:
+    SysStateTracer.exe /new-snap "D:\Snapshots\Print server before patch.stsnap"
+    SysStateTracer.exe /compare-snap "D:\Snapshots\Print server before patch.stsnap" "After Office 2024 install.stsnap"
   Compare the newest two snapshots into results.html:
     SysStateTracer.exe /compare-snap
   Keep a snapshot as a baseline under a clearer name, and delete one that is no longer needed:
@@ -71,7 +76,9 @@ The folders shown are the real ones on the PC where it runs.
 
 ## Details
 
-- **Snapshot names** are file names without `.stsnap`; `name.stsnap` or a full path to a `.stsnap` file also work.
+- **Snapshot names** are file names, with or without `.stsnap`, in the snapshot folder. A path to a `.stsnap` file
+  works everywhere too (F6): `/new-snap "D:\Snapshots\Before.stsnap"` saves the snapshot there, and
+  `/rename-snap "Before" "D:\Archive\Before.stsnap"` moves it. Relative paths start from the current folder.
 - **"Newest"** is the creation time stored in the snapshot, not the file date, which changes when a file is copied.
 - **/new-snap** uses the scope saved in the New Snapshot window (by default all fixed drives, HKLM, HKU and services)
   and the snapshot cache, so a snapshot after the first is incremental. It prints a progress line every few seconds.
@@ -81,7 +88,8 @@ The folders shown are the real ones on the PC where it runs.
   falls back to Local when it cannot be read), and print which one was used. The rules also apply inside new
   folders and keys: for example, with `FS:C:\Program Files\App\logs` in the list, a new `App` folder is exported
   without its `logs` folder.
-- **/export** writes the .reg file and copies files as described in [exports.md](exports.md). Locked files are
+- **/export** writes the .reg file and copies files as described in [exports.md](exports.md), and writes
+  `Files\Restore-Files.ps1`, which copies everything in `Files` back to its original place (F7). Locked files are
   skipped and listed; the export still succeeds. Ctrl+C stops the copy and keeps the files already copied (exit code 5).
 
 | Exit code | Meaning |

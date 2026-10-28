@@ -84,6 +84,7 @@ try {
     }
     Check (Test-Path (Join-Path $app "Files\$relative\App\app.exe")) 'new file not copied to Files'
     Check (Test-Path (Join-Path $app "Files\$relative\readme.txt")) 'modified file not copied to Files'
+    Check (Test-Path (Join-Path $app 'Files\Restore-Files.ps1')) 'Restore-Files.ps1 not written'
 
     $rename = Invoke-Cli '/rename-snap "After app install" "App installed"'
     Check ($rename.Code -eq 0) "/rename-snap exit $($rename.Code)"

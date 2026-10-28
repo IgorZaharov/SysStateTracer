@@ -15,6 +15,7 @@ everything below them.
 |---|---|
 | Registry → .reg | Regedit 5.00 format, UTF-16 LE with BOM. A new key is written with all its subkeys and values. Strings that would not import back unchanged (embedded zero, line breaks, no terminator) are written as `hex(1)`/`hex(2)`. Values over 1 MB are not in the snapshot and are listed as not exported. Tested by importing with `reg import` and scanning again. |
 | Files → .\Files | New and modified files copied from the live disk, folder structure kept: `C:\ProgramData\Test\x` → `Files\ProgramData\Test\x` on the system drive, `D:\Data\x` → `Files\_D\Data\x` on other drives (D4). Last-write time and attributes are kept. Files that are locked, gone or not readable are skipped and listed with the reason. Cancel keeps the files already copied and removes the partly copied one. |
+| Restore script | `Files\Restore-Files.ps1` (F7), written with every copy: copies everything in `Files` back to where it came from — `Files\ProgramData\App\x` to `C:\ProgramData\App\x`, `Files\_D\Data\x` to `D:\Data\x` — creating missing folders and overwriting what is there. `-WhatIf` lists what it would copy. It reads the folder, so files from earlier exports into the same folder are included. Tested by deleting the originals and running it. |
 | HTML report | One self-contained file: summary counts, then a collapsible tree in the window's colours (light and dark). Rows are created only when a node is opened, so large reports open quickly. |
 
 ## Revert Value

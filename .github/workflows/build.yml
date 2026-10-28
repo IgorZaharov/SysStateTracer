@@ -166,6 +166,7 @@ jobs:
               $failed = $true
             }
           }
+          $help.Text | Set-Content (Join-Path $env:RUNNER_TEMP 'help.txt') -Encoding utf8
           $lines = ($help.Text -split "`r?`n").Count
           Write-Host "::notice title=Command line::/? printed $lines lines; exit codes for wrong arguments and missing snapshots as expected"
           "### SysStateTracer.exe /?" >> $env:GITHUB_STEP_SUMMARY
@@ -173,6 +174,30 @@ jobs:
           $help.Text >> $env:GITHUB_STEP_SUMMARY
           '```' >> $env:GITHUB_STEP_SUMMARY
           if ($failed) { exit 1 }
+
+      # F8: Manual.pdf from this build's screenshots and /? text
+      - name: Build Manual.pdf
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install --quiet --disable-pip-version-check reportlab pillow
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $version = ((Get-Content (Join-Path $env:RUNNER_TEMP 'help.txt') -TotalCount 1) -split ' ')[1]
+          python tools/manual/make_manual.py --screens screenshots --help-text (Join-Path $env:RUNNER_TEMP 'help.txt') --version $version --out Manual.pdf
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if ('${{ github.event_name }}' -eq 'push') {
+            gh release upload ui-preview Manual.pdf --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          Write-Host "::notice title=Manual::Manual.pdf built ($([math]::Round((Get-Item Manual.pdf).Length / 1MB, 1)) MB) and put on the ui-preview pre-release"
+
+      - name: Upload Manual.pdf
+        uses: actions/upload-artifact@v4
+        with:
+          name: Manual-${{ github.sha }}
+          path: Manual.pdf
+          if-no-files-found: error
 
       # SysStateTracer.Bench.exe for measuring on real PCs (docs/benchmarks.md), kept on the "bench" pre-release
       - name: Publish benchmark tool

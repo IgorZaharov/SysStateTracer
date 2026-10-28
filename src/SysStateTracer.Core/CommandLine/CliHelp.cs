@@ -32,9 +32,11 @@ public static class CliHelp
         Item(text, "/export [\"name1\" \"name2\"]",
             "Exports what is new or modified in the newer snapshot:",
             "registry keys and values to Export_<name1>_vs_<name2>.reg, and files to the Files folder",
-            "(keeping their folders). Without names: the newest two.");
+            "(keeping their folders), with Restore-Files.ps1 there to copy them back to their places.",
+            "Without names: the newest two.");
         text.Append(nl);
-        text.Append("Names are snapshot file names without .stsnap. Put names with spaces in quotes.").Append(nl);
+        text.Append("A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of").Append(nl);
+        text.Append("a .stsnap file anywhere. Put names and paths with spaces in quotes.").Append(nl);
         text.Append("Comparisons and exports leave out everything matched by the Global Ignore list chosen in Preferences.").Append(nl);
         text.Append(nl);
         text.Append("Folders:").Append(nl);
@@ -54,6 +56,9 @@ public static class CliHelp
         Example(text, "Export the new registry values and files the installation added:");
         Example(text, "  SysStateTracer.exe /export \"Before Office 2024 install\" \"After Office 2024 install\"");
         Example(text, "  (gives Export_Before Office 2024 install_vs_After Office 2024 install.reg and Files\\Program Files\\...)");
+        Example(text, "Snapshot files in another folder, given by path:");
+        Example(text, "  SysStateTracer.exe /new-snap \"D:\\Snapshots\\Print server before patch.stsnap\"");
+        Example(text, "  SysStateTracer.exe /compare-snap \"D:\\Snapshots\\Print server before patch.stsnap\" \"After Office 2024 install.stsnap\"");
         Example(text, "Compare the newest two snapshots into results.html:");
         Example(text, "  SysStateTracer.exe /compare-snap");
         Example(text, "Keep a snapshot as a baseline under a clearer name, and delete one that is no longer needed:");

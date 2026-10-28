@@ -131,29 +131,21 @@ public static class CliRunner
             Log.Error("CLI: " + line);
         }
 
-        private CliExitCode NewSnap(string? name)
+        private CliExitCode NewSnap(string? argument)
         {
-            name ??= SnapshotNaming.DefaultName();
-            if (name.EndsWith(SnapshotNaming.FileExtension, StringComparison.OrdinalIgnoreCase))
+            if (!TryTarget(argument ?? SnapshotNaming.DefaultName(), out var folder, out var name))
             {
-                name = name[..^SnapshotNaming.FileExtension.Length];
-            }
-
-            if (!SnapshotNaming.IsValidName(name))
-            {
-                Error($"\"{name}\" cannot be used as a snapshot name (it must be a valid file name).");
                 return CliExitCode.BadArguments;
             }
 
-            var catalog = Catalog;
-            if (File.Exists(catalog.PathFor(name)))
+            if (File.Exists(Path.Combine(folder, name + SnapshotNaming.FileExtension)))
             {
-                Error($"A snapshot named \"{name}\" already exists in {catalog.Folder}.");
+                Error($"A snapshot named \"{name}\" already exists in {folder}.");
                 return CliExitCode.BadArguments;
             }
 
             var ignore = LoadIgnoreList();
-            var request = SnapshotRequest.ForScope(name, catalog.Folder, Settings.Scope, ignore.List, Paths.CacheFile);
+            var request = SnapshotRequest.ForScope(name, folder, Settings.Scope, ignore.List, Paths.CacheFile);
             Say($"Taking snapshot \"{name}\"");
             Say("  Folders:  " + (request.FileSystemRoots.Count == 0 ? "(none)" : string.Join(", ", request.FileSystemRoots)));
             Say("  Registry: " + (request.RegistryRoots.Count == 0 ? "(none)" : string.Join(", ", request.RegistryRoots)));
@@ -199,7 +191,7 @@ public static class CliRunner
                 var found = catalog.Find(name);
                 if (found is null)
                 {
-                    Error($"No snapshot named \"{name}\" in {catalog.Folder}.");
+                    Error(NotFound(name, catalog));
                     return CliExitCode.SnapshotNotFound;
                 }
 
@@ -218,30 +210,37 @@ public static class CliRunner
             var path = catalog.Find(oldName);
             if (path is null)
             {
-                Error($"No snapshot named \"{oldName}\" in {catalog.Folder}.");
+                Error(NotFound(oldName, catalog));
                 return CliExitCode.SnapshotNotFound;
             }
 
-            if (newName.EndsWith(SnapshotNaming.FileExtension, StringComparison.OrdinalIgnoreCase))
+            // A new name stays in the same folder; a path moves the snapshot there (F6).
+            var isPath = IsPath(newName);
+            if (!TryTarget(newName, out var folder, out var name, defaultFolder: Path.GetDirectoryName(path)!))
             {
-                newName = newName[..^SnapshotNaming.FileExtension.Length];
-            }
-
-            if (!SnapshotNaming.IsValidName(newName))
-            {
-                Error($"\"{newName}\" cannot be used as a snapshot name (it must be a valid file name).");
                 return CliExitCode.BadArguments;
             }
 
-            var target = Path.Combine(Path.GetDirectoryName(path)!, newName + SnapshotNaming.FileExtension);
+            var target = Path.Combine(folder, name + SnapshotNaming.FileExtension);
             if (File.Exists(target) && !string.Equals(Path.GetFullPath(target), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
             {
-                Error($"A snapshot named \"{newName}\" already exists.");
+                Error($"A snapshot named \"{name}\" already exists in {folder}.");
                 return CliExitCode.BadArguments;
             }
 
-            var renamed = SnapshotCatalog.Rename(path, newName);
-            Say($"Renamed snapshot \"{Path.GetFileNameWithoutExtension(path)}\" to \"{newName}\": {renamed}");
+            string renamed;
+            if (isPath && !string.Equals(Path.GetFullPath(folder).TrimEnd('\\'), Path.GetFullPath(Path.GetDirectoryName(path)!).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+            {
+                Directory.CreateDirectory(folder);
+                File.Move(path, target);
+                renamed = target;
+            }
+            else
+            {
+                renamed = SnapshotCatalog.Rename(path, name);
+            }
+
+            Say($"Renamed snapshot \"{Path.GetFileNameWithoutExtension(path)}\" to \"{name}\": {renamed}");
             return CliExitCode.Success;
         }
 
@@ -297,6 +296,12 @@ public static class CliRunner
             Say(string.Create(CultureInfo.InvariantCulture, $"Files: copying {files.Count:N0} files ({ItemFormat.Size(totalBytes)}) to {Paths.FilesDirectory}"));
             var report = FileCopier.Copy(files, Paths.FilesDirectory, new CopyPrinter(this, env.ProgressInterval), cancellationToken);
             Say(string.Create(CultureInfo.InvariantCulture, $"Files: {report.Copied:N0} copied ({ItemFormat.Size(report.BytesCopied)}), {report.Skipped.Count:N0} skipped."));
+            if (report.Copied > 0)
+            {
+                var script = RestoreScript.Write(Paths.FilesDirectory);
+                Say($"Restore script: {script} copies the files back to their places (try it with -WhatIf first).");
+            }
+
             const int ShownSkips = 20;
             foreach (var skip in report.Skipped.Take(ShownSkips))
             {
@@ -319,6 +324,52 @@ public static class CliRunner
             }
 
             return CliExitCode.Success;
+        }
+
+        /// <summary>True when the argument is a path ("C:\\Test\\a.stsnap", "Test\\a", "a/b") rather than a name.</summary>
+        private static bool IsPath(string argument) =>
+            argument.Contains('\\', StringComparison.Ordinal) || argument.Contains('/', StringComparison.Ordinal) || argument.Contains(':', StringComparison.Ordinal);
+
+        private static string NotFound(string argument, SnapshotCatalog catalog) => IsPath(argument)
+            ? $"No snapshot file {Path.GetFullPath(argument)}."
+            : $"No snapshot named \"{argument}\" in {catalog.Folder}.";
+
+        /// <summary>
+        /// Folder and name for a snapshot to create or rename to (F6): a name ("Before install", "Before install.stsnap")
+        /// goes to <paramref name="defaultFolder"/> (the snapshot folder); a path ("C:\\Snapshots\\Before install.stsnap")
+        /// goes where it says. Writes the error and returns false when the name is not usable.
+        /// </summary>
+        private bool TryTarget(string argument, out string folder, out string name, string? defaultFolder = null)
+        {
+            folder = defaultFolder ?? Catalog.Folder;
+            name = argument.Trim();
+            if (IsPath(name))
+            {
+                try
+                {
+                    var full = Path.GetFullPath(name);
+                    folder = Path.GetDirectoryName(full) ?? folder;
+                    name = Path.GetFileName(full);
+                }
+                catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+                {
+                    Error($"\"{argument}\" is not a valid path: {ex.Message}");
+                    return false;
+                }
+            }
+
+            if (name.EndsWith(SnapshotNaming.FileExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                name = name[..^SnapshotNaming.FileExtension.Length];
+            }
+
+            if (!SnapshotNaming.IsValidName(name))
+            {
+                Error($"\"{name}\" cannot be used as a snapshot name (it must be a valid file name).");
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -348,7 +399,7 @@ public static class CliRunner
                 {
                     if (path is null)
                     {
-                        Error($"No snapshot named \"{name}\" in {catalog.Folder}.");
+                        Error(NotFound(name, catalog));
                         return (CliExitCode.SnapshotNotFound, null);
                     }
                 }

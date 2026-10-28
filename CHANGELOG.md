@@ -22,6 +22,11 @@ The first release.
 
 ### Command line
 - `/?`, `/new-snap`, `/delete-snap`, `/rename-snap`, `/compare-snap` (self-contained HTML report), `/export`. Exit codes for scripts. See [docs/command-line.md](docs/command-line.md).
+- Snapshots can be given by name, with or without `.stsnap`, or by path.
+- Copied files come with `Restore-Files.ps1`, which puts them back where they came from.
 
 ### Windows
 - Main window, New Snapshot, Comparison, Snapshot Properties, Preferences and Help/About, in Light, Dark or the Windows theme.
+
+### Documentation
+- `Manual.pdf`, the user manual with screenshots, comes with every release.

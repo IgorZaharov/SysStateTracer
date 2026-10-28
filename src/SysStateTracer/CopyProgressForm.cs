@@ -126,6 +126,20 @@ internal sealed class CopyProgressForm : ThemedDialog
             Height += 200;
         }
 
+        if (report.Copied > 0)
+        {
+            try
+            {
+                _ = RestoreScript.Write(_target);
+                _current.Text = (report.Skipped.Count > 0 ? "Skipped files below. " : string.Empty) +
+                    $"{RestoreScript.FileName} in the folder copies the files back to their places.";
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Warning("The restore script could not be written", ex);
+            }
+        }
+
         _cancel.Text = "Close";
         _cancel.Enabled = true;
         _open.Visible = report.Copied > 0;

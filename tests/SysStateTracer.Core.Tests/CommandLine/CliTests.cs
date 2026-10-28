@@ -137,6 +137,31 @@ public class CliTests
     }
 
     [Fact]
+    public void NamesWithExtensionAndPaths()
+    {
+        using var env = new TestEnvironment();
+        env.AddSnapshot("first", day: 1);
+        env.AddSnapshot("second", day: 2);
+        var elsewhere = Path.Combine(env.DataFolder, "elsewhere");
+        var moved = Path.Combine(elsewhere, "moved.stsnap");
+
+        // Renaming to a path moves the snapshot there.
+        Assert.Equal(0, env.Run("/rename-snap", "first.stsnap", moved));
+        Assert.True(File.Exists(moved));
+        Assert.False(File.Exists(env.PathOf("first")));
+
+        // One snapshot by path, the other by name with the extension.
+        Assert.Equal(0, env.Run("/compare-snap", moved, "second.stsnap", "by path.html"));
+        Assert.Contains("moved vs second", File.ReadAllText(Path.Combine(env.DataFolder, "by path.html")), StringComparison.Ordinal);
+
+        Assert.Equal(2, env.Run("/delete-snap", Path.Combine(elsewhere, "nothing.stsnap")));
+        Assert.Contains("No snapshot file", env.Text, StringComparison.Ordinal);
+        Assert.Equal(0, env.Run("/delete-snap", moved));
+        Assert.False(File.Exists(moved));
+        Assert.Equal(1, env.Run("/rename-snap", "second", Path.Combine(elsewhere, "bad|name.stsnap")));
+    }
+
+    [Fact]
     public void CompareSnap_WritesReport_NewestTwoByDefault()
     {
         using var env = new TestEnvironment();

@@ -59,6 +59,9 @@ files like a registry backup and don't share them publicly.
 
 ## Documentation
 
+The user manual, **Manual.pdf**, comes with every [release](https://github.com/IgorZaharov/SysStateTracer/releases);
+the latest build of it is on the [`ui-preview`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/ui-preview) pre-release.
+
 | Document | Contents |
 | --- | --- |
 | [docs/user-interface.md](docs/user-interface.md) | The windows, keyboard shortcuts, and the manual test script |

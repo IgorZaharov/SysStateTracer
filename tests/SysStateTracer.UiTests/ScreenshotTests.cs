@@ -93,6 +93,78 @@ public class ScreenshotTests
                     about.Close();
                 }
 
+                // A snapshot being taken (a large folder, stopped after the screenshot).
+                var savedScope = app.Settings.Scope;
+                app.Settings.Scope = new SnapshotScope { FileSystemRoots = [Path.GetDirectoryName(Environment.SystemDirectory)!], RegistryRoots = ["HKLM"], IncludeServices = true };
+                using (var running = Ui.Show(new NewSnapshotForm(app.Paths, app.Settings)))
+                {
+                    var buttons = WindowTests.Controls(running).OfType<ThemedButton>().ToList();
+                    var start = buttons.Single(b => b.Text == "Start");
+                    Ui.PumpUntil(() => start.Enabled, 10_000);
+                    start.PerformClick();
+                    Ui.Pump(3500);
+                    Ui.Screenshot(running, "w3-new-snapshot-running");
+                    buttons.Single(b => b.Text == "Stop").PerformClick();
+                    Ui.PumpUntil(() => !running.IsRunning, 60_000);
+                    running.Close();
+                }
+
+                app.Settings.Scope = savedScope;
+
+                // Dialogs shown in the manual.
+                using (var question = Ui.Show(MessageDialog.Question(
+                    "Revert Value",
+                    "Do you want to revert to value from Snapshot Before Office 2024 install? A backup of the current values is saved in C:\\Tools\\SysStateTracer\\Backups first.",
+                    "Revert",
+                    "Cancel",
+                    [@"HKLM\SOFTWARE\Contoso\Version:  REG_SZ 2.4  →  REG_SZ 1.0", @"HKLM\SOFTWARE\Contoso\Flags:  REG_DWORD 0x00000007 (7)  →  REG_DWORD 0x00000003 (3)", @"HKLM\SOFTWARE\Contoso\LegacyMode:  (does not exist)  →  REG_DWORD 0x00000001 (1)"])))
+                {
+                    Ui.Screenshot(question, "dialog-revert");
+                    question.Close();
+                }
+
+                using (var question = Ui.Show(MessageDialog.Question(
+                    "Add to Global Ignore list",
+                    "Add these 2 rules to the local Global Ignore list? They are left out of new snapshots and comparisons from now on, and hidden here now.",
+                    "Add",
+                    "Cancel",
+                    [@"FS:C:\Temp", @"REG:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs"])))
+                {
+                    Ui.Screenshot(question, "dialog-add-to-ignore");
+                    question.Close();
+                }
+
+                using (var input = Ui.Show(InputDialog.Create("Add registry key", "Key path, e.g. HKLM\\SOFTWARE\\Vendor\\App\\Cache or HKCU\\Software\\App\\MRU:", @"HKCU\Software\Contoso\RecentFiles", "Add", _ => null)))
+                {
+                    Ui.Screenshot(input, "dialog-add-registry-key");
+                    input.Close();
+                }
+
+                using (var picker = Ui.Show(new ServicePickerDialog([("BITS", "Background Intelligent Transfer Service"), ("edgeupdate", "Microsoft Edge Update Service (edgeupdate)"), ("ClickToRunSvc", "Microsoft Office Click-to-Run Service"), ("Spooler", "Print Spooler"), ("wuauserv", "Windows Update")])))
+                {
+                    Ui.Screenshot(picker, "dialog-add-service");
+                    picker.Close();
+                }
+
+                // Copy to .\Files, finished.
+                var sources = Directory.CreateDirectory(Path.Combine(app.Root, "copy-source")).FullName;
+                var toCopy = new List<Core.Export.FileToCopy>();
+                for (var i = 0; i < 6; i++)
+                {
+                    var file = Path.Combine(sources, $"office{i:D2}.dll");
+                    File.WriteAllBytes(file, new byte[200_000 + (i * 1000)]);
+                    toCopy.Add(new Core.Export.FileToCopy(file, $@"Program Files\Microsoft Office\root\office{i:D2}.dll", 200_000 + (i * 1000)));
+                }
+
+                toCopy.Add(new Core.Export.FileToCopy(Path.Combine(sources, "in-use.log"), @"Temp\in-use.log", 10));
+                using (var copy = Ui.Show(new CopyProgressForm(toCopy, Path.Combine(app.DataFolder, "Files"))))
+                {
+                    Ui.PumpUntil(() => copy.Report is not null, 30_000);
+                    Ui.Pump(300);
+                    Ui.Screenshot(copy, "dialog-copy-to-files");
+                    copy.Close();
+                }
+
                 using (var sidebar = Ui.Show(new SidebarSample()))
                 {
                     Ui.Screenshot(sidebar, "controls");

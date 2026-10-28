@@ -33,8 +33,15 @@ public class CommandLineTests
         Assert.True(File.Exists(Path.Combine(app.SnapshotFolder, "Before printer driver update.stsnap")));
 
         Assert.Equal(1, app.Run("/new-snap", "Before printer driver update"));
+
+        // A path puts the snapshot in that folder (F6).
+        var byPath = Path.Combine(app.DataFolder, "other folder", "Taken by path.stsnap");
+        Assert.Equal(0, app.Run("/new-snap", byPath));
+        Assert.True(File.Exists(byPath));
+
         Assert.Equal(1, app.Run("/new-snap", "bad|name"));
         Assert.Equal(2, new SnapshotCatalog(app.SnapshotFolder).List().Count);
+        Assert.Single(new SnapshotCatalog(Path.Combine(app.DataFolder, "other folder")).List());
     }
 
     /// <summary>/new-snap reads the Global Ignore list chosen in Preferences: with Remote, the remote rules apply.</summary>

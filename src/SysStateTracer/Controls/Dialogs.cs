@@ -108,10 +108,17 @@ internal sealed class MessageDialog : ThemedDialog
     /// <summary>Yes/No question; true for yes.</summary>
     public static bool Ask(IWin32Window? owner, string title, string message, string yes = "Yes", string no = "No", IReadOnlyList<string>? details = null)
     {
-        using var dialog = new MessageDialog(title, message, details);
+        using var dialog = Question(title, message, yes, no, details);
+        return dialog.ShowDialog(owner) == DialogResult.Yes;
+    }
+
+    /// <summary>The question box, not shown yet (screenshots for the manual).</summary>
+    internal static MessageDialog Question(string title, string message, string yes = "Yes", string no = "No", IReadOnlyList<string>? details = null)
+    {
+        var dialog = new MessageDialog(title, message, details);
         dialog.AddButton(no, DialogResult.No);
         dialog.AddButton(yes, DialogResult.Yes, primary: true);
-        return dialog.ShowDialog(owner) == DialogResult.Yes;
+        return dialog;
     }
 
     public static void Inform(IWin32Window? owner, string title, string message, IReadOnlyList<string>? details = null)
@@ -173,6 +180,10 @@ internal sealed class InputDialog : ThemedDialog
         using var dialog = new InputDialog(title, prompt, initial, okText, validate);
         return dialog.ShowDialog(owner) == DialogResult.OK ? dialog.Value : null;
     }
+
+    /// <summary>The input box, not shown yet (screenshots for the manual).</summary>
+    internal static InputDialog Create(string title, string prompt, string initial, string okText, Func<string, string?> validate) =>
+        new(title, prompt, initial, okText, validate);
 
     private void Check()
     {
