@@ -12,3 +12,4 @@ Requested Features:
 12. Bugfix UI: Preferences > General - when clicking on Theme Icon - it selects radiobutton, but does not deselect other ones. It is possible to click all three themes and it will select all three radiobuttons. Only 1 radiobutton may be selected at any given time.
 13. UI: main window initial size should be 850*450px, all other windows - no more than 580px by vertical.
 14. Bugfix UI: Main window - when mouse cursor is few pixels between rows other columns showing blank values.
+15. UI: Main window - remove "Sort by" drop-down selection and add possibility to sort by pressing on Column headers.
