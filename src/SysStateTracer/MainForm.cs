@@ -84,22 +84,7 @@ internal sealed class MainForm : Form
         };
     }
 
-    private void OnThemeChanged(object? sender, EventArgs e)
-    {
-        if (IsDisposed || !IsHandleCreated)
-        {
-            return;
-        }
-
-        if (InvokeRequired)
-        {
-            BeginInvoke(ColorWarning);
-        }
-        else
-        {
-            ColorWarning();
-        }
-    }
+    private void OnThemeChanged(object? sender, EventArgs e) => ThemeManager.Post(this, ColorWarning);
 
     private void ColorWarning()
     {

@@ -81,27 +81,48 @@ internal static class ThemeManager
     public static void Attach(Form form)
     {
         ArgumentNullException.ThrowIfNull(form);
-        void OnChanged(object? sender, EventArgs e)
-        {
-            if (form.IsDisposed)
-            {
-                return;
-            }
-
-            if (form.InvokeRequired)
-            {
-                form.BeginInvoke(() => Apply(form));
-            }
-            else
-            {
-                Apply(form);
-            }
-        }
+        void OnChanged(object? sender, EventArgs e) => Post(form, () => Apply(form));
 
         Changed += OnChanged;
         form.FormClosed += (_, _) => Changed -= OnChanged;
         form.HandleCreated += (_, _) => NativeUi.SetDarkTitleBar(form.Handle, Current.IsDark);
         Apply(form);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> on the control's thread. Theme changes can come from the Windows settings
+    /// thread while a window is closing, so a window that is gone is skipped instead of failing.
+    /// </summary>
+    public static void Post(Control control, Action action)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        ArgumentNullException.ThrowIfNull(action);
+        try
+        {
+            if (control.IsDisposed || control.Disposing || !control.IsHandleCreated)
+            {
+                return;
+            }
+
+            if (control.InvokeRequired)
+            {
+                control.BeginInvoke(() =>
+                {
+                    if (!control.IsDisposed)
+                    {
+                        action();
+                    }
+                });
+            }
+            else
+            {
+                action();
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            // The window closed in the meantime.
+        }
     }
 
     /// <summary>Applies the current palette to a window and everything in it.</summary>

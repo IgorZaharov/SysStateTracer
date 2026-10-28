@@ -22,6 +22,20 @@ internal static class Ui
         // test-runner (MTA) thread, makes it start its own thread; otherwise it would sit on the first STA
         // test thread, and every later window would hang when that thread has ended.
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += (_, _) => { };
+
+        // A crash of the test process loses its call stack in CI; keep it in a file that CI reports.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            try
+            {
+                var folder = Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ?? Path.GetTempPath();
+                File.AppendAllText(Path.Combine(folder, "ui-crash.txt"), $"{DateTime.Now:O} {e.ExceptionObject}{Environment.NewLine}");
+            }
+            catch (IOException)
+            {
+                // Nothing more can be done while the process ends.
+            }
+        };
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
     }

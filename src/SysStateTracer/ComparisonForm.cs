@@ -122,10 +122,7 @@ internal sealed class ComparisonForm : Form
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        if (!IsDisposed && IsHandleCreated)
-        {
-            BeginInvoke(_grid.Invalidate);
-        }
+        ThemeManager.Post(this, _grid.Invalidate);
     }
 
     private void BuildLayout()

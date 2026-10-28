@@ -100,6 +100,11 @@ jobs:
               }
             }
             Write-Host ('::notice title=Tests::{0} of {1} passed in {2} result files; {3} printed measurements' -f $passed, $total, $trx.Count, $withOutput)
+            if (Test-Path ui-crash.txt) {
+              $crash = ((Get-Content ui-crash.txt -Raw) -split "`r?`n" | Where-Object { $_.Trim() }) -join ' | '
+              if ($crash.Length -gt 3000) { $crash = $crash.Substring(0, 3000) }
+              Write-Host "::error title=UI test process crashed::$crash"
+            }
           }
           catch {
             Write-Host ('::warning title=Report step::{0} (line {1})' -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber)

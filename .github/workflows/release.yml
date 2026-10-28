@@ -52,7 +52,10 @@ jobs:
           .github/scripts/run.ps1 dotnet build SysStateTracer.slnx -c Release "-p:Version=${{ steps.version.outputs.version }}"
           if ($LASTEXITCODE -ne 0) { exit 1 }
           .github/scripts/run.ps1 dotnet test SysStateTracer.slnx -c Release --no-build --blame-hang-timeout 10m
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if ($LASTEXITCODE -ne 0) {
+            if (Test-Path ui-crash.txt) { Write-Host "::error title=UI test process crashed::$(((Get-Content ui-crash.txt -Raw) -split "`r?`n" | Where-Object { $_.Trim() }) -join ' | ')" }
+            exit 1
+          }
 
       - name: Publish SysStateTracer.exe
         shell: pwsh

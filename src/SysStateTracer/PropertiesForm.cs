@@ -175,7 +175,7 @@ internal sealed class PropertiesForm : ThemedDialog
         FormClosed += (_, _) => ThemeManager.Changed -= OnThemeChanged;
     }
 
-    private void OnThemeChanged(object? sender, EventArgs e) => BeginInvoke(RecolorValues);
+    private void OnThemeChanged(object? sender, EventArgs e) => ThemeManager.Post(this, RecolorValues);
 
     private void RecolorValues()
     {
