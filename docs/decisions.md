@@ -57,5 +57,5 @@ GitHub + CI (plan §4.3 mode B): code is pushed to this repository and GitHub Ac
 | F25 | Edit rules in Preferences | Add rule… (typed, with wildcards) and Edit… (also double-click, F2, Enter) on the local list, with the same checked rules box. | J, done |
 | F26 | Wildcard rules inside new folders | A new or deleted folder or key is one comparison item; its item count, the category totals and the expanded contents now leave out what the rules match inside it (e.g. `FS:C:\temp\*`, `FS:C:\Users\*\AppData\Local\Temp`). Exports already did. | J, done |
 | F27 | Change colours in every column | Green, yellow and red apply to the snapshot columns (dates, sizes, values) too. | J, done |
-| F28 | Unblock instructions | README and manual explain Properties → Unblock, with a screenshot of the real Windows Properties window taken in CI. | J, done |
+| F28 | Unblock instructions | README and manual explain Properties → Unblock, with a screenshot of the real Windows Properties window (docs/images/unblock.png). | J, done |
 | F29 | Change sign first | The +, ~ or − column is the first one, left of the tree (the grid draws the tree in any column). | J, done |

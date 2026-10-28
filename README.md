@@ -8,9 +8,9 @@ snapshots to show what was created, modified or deleted in between — for examp
 [![Latest version](https://img.shields.io/github/v/release/IgorZaharov/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/IgorZaharov/SysStateTracer/releases/latest)
 
 **Before the first start:** the exe is not code-signed, so Windows blocks a downloaded copy. Right-click
-`SysStateTracer.exe` → **Properties**, tick **Unblock** at the bottom of the General tab, and click **OK**.
+`SysStateTracer.exe` → **Properties**, (1) tick **Unblock** at the bottom of the General tab, and (2) click **OK**.
 
-<img src="docs/images/unblock.png" alt="SysStateTracer.exe Properties with Unblock ticked" width="380">
+<img src="docs/images/unblock.png" alt="SysStateTracer.exe Properties with Unblock ticked" width="360">
 
 ![Comparison window](docs/images/comparison.png)
 

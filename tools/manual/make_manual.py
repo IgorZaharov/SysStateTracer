@@ -32,6 +32,7 @@ GITHUB = "https://github.com/IgorZaharov/SysStateTracer"
 RELEASES = GITHUB + "/releases"
 LATEST = RELEASES + "/latest/download"
 ISSUES = GITHUB + "/issues"
+REPO = Path(__file__).resolve().parents[2]
 ACCENT = colors.HexColor("#005FB8")
 TEXT = colors.HexColor("#1B1B1B")
 SECONDARY = colors.HexColor("#616161")
@@ -192,8 +193,10 @@ class Screens:
         self.folder = folder
         self.missing: list[str] = []
 
-    def figure(self, name: str, caption: str, width: float = CONTENT_W, max_height: float = 120 * mm, keep: bool = True) -> list:
-        path = self.folder / f"{name}.png"
+    def figure(self, name: str, caption: str, width: float = CONTENT_W, max_height: float = 120 * mm, keep: bool = True,
+               path: Path | None = None) -> list:
+        """A screenshot from the CI folder, or <paramref>path</paramref> for a picture kept in the repository."""
+        path = path or self.folder / f"{name}.png"
         if not path.exists():
             self.missing.append(name)
             return [p(f"<i>(Screenshot {name} is not available in this build.)</i>", "small")]
@@ -298,7 +301,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "tick <b>Unblock</b> at the bottom of the General tab and click <b>OK</b> (shown below). Each release lists the "
         "file's SHA-256 checksum, so you can check that the file is the published one.",
     ])
-    story += screens.figure("unblock-properties-light", "The downloaded file's Properties: tick Unblock, then OK.", width=78 * mm, max_height=100 * mm)
+    story += screens.figure("unblock", "The downloaded file's Properties: (1) tick Unblock, (2) click OK.", width=70 * mm,
+                            max_height=105 * mm, path=REPO / "docs" / "images" / "unblock.png")
     story += bullets([
         "SysStateTracer keeps its files beside the exe: settings, the Global Ignore list, a cache that makes the "
         "next snapshot faster, a log, and the Files and Backups folders.",
