@@ -71,7 +71,8 @@ SysStateTracer.exe /export "Before Office 2024 install" "After Office 2024 insta
   with the same size and date is not seen as changed.
 - **Folder links:** a profile folder redirected with a junction or symbolic link — e.g. `C:\Users\Alex\Desktop` pointing
   to a network share — is read through the link and recorded under its local path. Links to folders that are scanned
-  anyway are not followed, so nothing is read twice.
+  anyway are not followed, so nothing is read twice. A profile on a mounted virtual disk (FSLogix Profile Containers)
+  is read the same way.
 - **Registry:** HKLM and every user under HKU, with values up to 1 MB (larger values are recorded by size and hash).
   `HKLM\SAM` and `HKLM\SECURITY` are left out by default.
 - **Services:** state and startup type; kernel drivers optionally.

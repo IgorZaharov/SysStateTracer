@@ -127,3 +127,67 @@ internal static class Junction
         }
     }
 }
+
+/// <summary>
+/// A small NTFS virtual disk mounted in a folder, like an FSLogix profile disk mounted at C:\Users\name
+/// (diskpart; needs administrator rights). Dispose removes the mount point and detaches the disk.
+/// </summary>
+internal sealed class VirtualDisk : IDisposable
+{
+    private readonly string _file;
+
+    private VirtualDisk(string file) => _file = file;
+
+    public static VirtualDisk Mount(string file, string folder)
+    {
+        RunDiskpart(
+            $"create vdisk file=\"{file}\" maximum=16 type=expandable",
+            $"select vdisk file=\"{file}\"",
+            "attach vdisk",
+            "create partition primary",
+            "format fs=ntfs quick label=Profile",
+            $"assign mount=\"{folder}\"");
+        return new VirtualDisk(file);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            RunDiskpart($"select vdisk file=\"{_file}\"", "select partition 1", "remove all dismount noerr", "detach vdisk");
+        }
+        catch (InvalidOperationException)
+        {
+            // Left attached: the runner is thrown away after the job.
+        }
+    }
+
+    private static void RunDiskpart(params string[] commands)
+    {
+        var script = Path.Combine(Path.GetTempPath(), $"diskpart-{Guid.NewGuid():N}.txt");
+        File.WriteAllLines(script, commands);
+        try
+        {
+            var start = new ProcessStartInfo("diskpart.exe")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            start.ArgumentList.Add("/s");
+            start.ArgumentList.Add(script);
+            using var process = Process.Start(start)!;
+            var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"diskpart failed ({process.ExitCode}): {output}");
+            }
+        }
+        finally
+        {
+            File.Delete(script);
+        }
+    }
+}

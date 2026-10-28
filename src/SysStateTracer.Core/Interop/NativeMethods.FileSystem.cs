@@ -73,6 +73,33 @@ internal static partial class NativeMethods
     internal static unsafe partial SafeFileHandle OpenFileById(
         SafeFileHandle volumeHint, byte* fileIdDescriptor, uint desiredAccess, FileShare shareMode, nint securityAttributes, uint flagsAndAttributes);
 
+    [LibraryImport(Kernel32, EntryPoint = "GetVolumeNameForVolumeMountPointW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool GetVolumeNameForVolumeMountPoint(string mountPoint, char* volumeName, int bufferLength);
+
+    /// <summary>
+    /// "\\?\Volume{GUID}\" of the volume mounted at <paramref name="folder"/> ("C:\Users\Alex", "D:"), or null when
+    /// no volume is mounted there (an ordinary folder or a junction to another folder).
+    /// </summary>
+    internal static unsafe string? GetMountedVolume(string folder)
+    {
+        var mountPoint = folder.EndsWith('\\') ? folder : folder + "\\";
+        var buffer = new char[64]; // "\\?\Volume{GUID}\" is 49 characters
+        bool ok;
+        fixed (char* p = buffer)
+        {
+            ok = GetVolumeNameForVolumeMountPoint(mountPoint, p, buffer.Length);
+        }
+
+        if (!ok)
+        {
+            return null;
+        }
+
+        var length = Array.IndexOf(buffer, '\0');
+        return length > 0 ? new string(buffer, 0, length) : null;
+    }
+
     [LibraryImport(Kernel32, EntryPoint = "GetLongPathNameW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     internal static unsafe partial int GetLongPathName(string shortPath, char* longPath, int bufferLength);
 

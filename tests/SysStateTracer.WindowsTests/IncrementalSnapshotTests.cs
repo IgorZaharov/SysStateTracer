@@ -218,6 +218,41 @@ public class IncrementalSnapshotTests
         Assert.Contains("different volume", TakeSnapshot(data, output, "serial", cache, Listing).Meta.ModeReason, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// FSLogix Profile Containers: the profile is a virtual disk mounted at C:\Users\name, so the profile folder
+    /// is a mount point and asking where it leads gives the folder itself. Its contents must still be read and
+    /// recorded under the profile path, in the first snapshot and in consecutive ones.
+    /// </summary>
+    [Fact]
+    public void FileSystem_ReadsAVolumeMountedInAFolder()
+    {
+        if (!ProcessPrivileges.IsElevated)
+        {
+            return;
+        }
+
+        using var data = new TestFolder();
+        using var output = new TestFolder();
+        var cache = output.Combine("SysStateTracer.cache");
+        var profile = data.CreateFolder(@"Users\Alex");
+        using var disk = VirtualDisk.Mount(output.Combine("profile.vhdx"), profile);
+        data.CreateFile(@"Users\Alex\Desktop\before.txt", 3);
+
+        var first = TakeSnapshot(data, output, "first", cache, Listing);
+        Assert.Contains(first.Meta.FileSystemMethods, m => m.Contains("mounted volume", StringComparison.Ordinal));
+        Assert.Equal(3, Entries(first, data.Path)[@"Users\Alex\Desktop\before.txt"].Size);
+
+        data.CreateFile(@"Users\Alex\Desktop\after.txt", 5);
+        var second = TakeSnapshot(data, output, "second", cache, Listing);
+        Assert.Equal(SnapshotMode.Incremental, second.Meta.Mode);
+        Assert.Equal(5, Entries(second, data.Path)[@"Users\Alex\Desktop\after.txt"].Size);
+
+        var diff = SnapshotComparer.Compare(first, second);
+        var tree = diff.FileSystem;
+        var added = Enumerable.Range(0, tree.Count).Where(n => tree.Change(n) == ChangeKind.New).Select(n => diff.FullPath(tree, n));
+        Assert.Contains(data.Combine(@"Users\Alex\Desktop\after.txt"), added, StringComparer.OrdinalIgnoreCase);
+    }
+
     private static Snapshot TakeSnapshot(
         TestFolder data, TestFolder output, string name, string? cachePath, FileSystemScanMethod method = FileSystemScanMethod.MasterFileTable, bool fullRescan = false)
     {

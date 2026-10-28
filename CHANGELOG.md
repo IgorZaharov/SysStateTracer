@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Profiles on a mounted virtual disk (FSLogix Profile Containers, or any volume mounted in a folder) were left out of snapshots: everything under `C:\Users\<name>` was skipped. The mounted volume is now read and recorded under the profile path, in full and consecutive snapshots.
+
 ### Preferences
 - **Show grid lines** and **Use zebra striping** (Preferences → General → Lists) for the snapshot list and the comparison window. Both are off by default and apply at once.
 

@@ -9,9 +9,12 @@ namespace SysStateTracer.Core.Scanning.Fs;
 /// the local path (C:\Users\Alex\Desktop\…), so changes there show up like any other. A link is followed only
 /// when its target is outside every scanned folder and does not overlap a target already followed, which
 /// keeps the classic profile junctions ("Application Data", "Documents and Settings") from being read twice
-/// and makes loops impossible. Reparse folders that are not links (e.g. cloud-file placeholders available
-/// on this PC) are read in place. Everything read through a link is listed again on every snapshot, also an
-/// incremental one, because the change journal of this drive does not see changes on the other side.
+/// and makes loops impossible. A folder with a volume mounted on it (e.g. a profile disk mounted at
+/// C:\Users\Alex by FSLogix Profile Containers) is read through that volume: asking where such a folder leads
+/// gives the folder itself, which would look like "inside the scanned folders" and be skipped. Reparse folders
+/// that are not links (e.g. cloud-file placeholders available on this PC) are read in place. Everything read
+/// through a link is listed again on every snapshot, also an incremental one, because the change journal of
+/// this drive does not see changes on the other side.
 /// </summary>
 public sealed partial class FileSystemScanner
 {
@@ -68,6 +71,17 @@ public sealed partial class FileSystemScanner
     {
         var roots = NormalizeRoots(options.Roots);
         var followed = new List<string>();
+
+        // Volumes already scanned as a whole drive (C:\ etc.): mounted again in a folder, they are not read twice.
+        var rootVolumes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in roots.Where(r => r.Length <= 3))
+        {
+            if (NativeMethods.GetMountedVolume(root[..2]) is { } volume)
+            {
+                rootVolumes.Add(NormalizeTarget(volume));
+            }
+        }
+
         while (!_links.IsEmpty)
         {
             var jobs = new List<DirectoryJob>();
@@ -76,6 +90,21 @@ public sealed partial class FileSystemScanner
                 cancellationToken.ThrowIfCancellationRequested();
                 if (options.Ignore.IsIgnored(IgnoreTarget.FileSystem, link.Path))
                 {
+                    continue;
+                }
+
+                // A mounted volume (FSLogix profile disk, a VHD or a second disk mounted in a folder).
+                if (NativeMethods.GetMountedVolume(link.Path) is { } mounted)
+                {
+                    var volume = NormalizeTarget(mounted);
+                    if (rootVolumes.Contains(volume) || followed.Contains(volume, StringComparer.OrdinalIgnoreCase))
+                    {
+                        continue; // read already, as a drive or at another mount point
+                    }
+
+                    followed.Add(volume);
+                    _methods.Enqueue($"{link.Path}: mounted volume {volume}, read there");
+                    jobs.Add(new DirectoryJob(link.Index, link.Path, volume));
                     continue;
                 }
 
