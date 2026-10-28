@@ -56,9 +56,11 @@ internal sealed class NewSnapshotForm : ThemedDialog
         ArgumentNullException.ThrowIfNull(settings);
         _paths = paths;
         _settings = settings;
-        ClientSize = new Size(760, 660);
         FormBorderStyle = FormBorderStyle.Sizable;
-        MinimumSize = new Size(620, 560);
+        // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
+        Size = new Size(760, 580);
+        MinimumSize = new Size(620, 480);
+        WindowLayout.Remember(this, "NewSnapshot", paths, settings, keepPosition: false);
 
         BuildLayout();
         var standardUser = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);

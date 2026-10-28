@@ -13,6 +13,7 @@ The first release.
 - `HKLM\SAM` and `HKLM\SECURITY` are left out by default.
 
 ### Comparison
+- Expanding a new or deleted folder or registry key lists the files, folders, subkeys and values it holds.
 - Only what changed is shown, with the folders and keys leading to it: new in green (+), modified in yellow (~), deleted in red (−). Swap the two snapshots instantly.
 - A million changed items scroll and expand without delay.
 - Right-click actions: jump to Explorer, Regedit or the Services console; mark as non-important; add to the Global Ignore list; export registry changes to a `.reg` file; copy new and modified files to `.\Files` keeping their folders; revert registry values to the older snapshot (with a backup first). Exports also work on a whole drive, hive or category.
@@ -28,6 +29,7 @@ The first release.
 
 ### Windows
 - Main window, New Snapshot, Comparison, Snapshot Properties, Preferences and Help/About, in Light, Dark or the Windows theme.
+- Every window comes back at the size and place it was closed. The snapshot list sorts by clicking a column header.
 
 ### Documentation
-- `Manual.pdf`, the user manual with screenshots, comes with every release.
+- `Manual.pdf`, the user manual with screenshots, comes with every release; the README links straight to the latest exe and manual.

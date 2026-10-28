@@ -3,13 +3,22 @@
 Portable Windows utility that takes snapshots of the file system, registry and services, and compares two
 snapshots to show what was created, modified or deleted in between — for example, what an installer really did.
 
+[![Download SysStateTracer.exe](https://img.shields.io/badge/Download-SysStateTracer.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe)
+[![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)
+[![Latest version](https://img.shields.io/github/v/release/IgorZaharov/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/IgorZaharov/SysStateTracer/releases/latest)
+
 ![Comparison window](docs/images/comparison.png)
 
 ## Download
 
-Get **SysStateTracer.exe** from [Releases](https://github.com/IgorZaharov/SysStateTracer/releases). It is one
-file for Windows 10 and 11 x64; nothing needs to be installed. Each release lists the exe's SHA-256, which you
-can check in PowerShell with `(Get-FileHash .\SysStateTracer.exe).Hash`.
+Direct links to the latest version — click to download, no GitHub account needed:
+
+- **[SysStateTracer.exe](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe)** — the program: one file for Windows 10 and 11 x64, nothing to install.
+- **[Manual.pdf](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)** — the user manual, with screenshots.
+- [SysStateTracer.exe.sha256](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe.sha256) — the exe's SHA-256; check it in PowerShell with
+  `(Get-FileHash .\SysStateTracer.exe).Hash`.
+
+Older versions and release candidates are on the [Releases](https://github.com/IgorZaharov/SysStateTracer/releases) page.
 
 On first start:
 

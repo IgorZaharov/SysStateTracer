@@ -10,14 +10,19 @@ public enum ThemePreference
     Dark,
 }
 
-/// <summary>Order of the snapshot list in W1.</summary>
+/// <summary>Column the snapshot list in W1 is sorted by; chosen by clicking a column header (F16).</summary>
 public enum SnapshotSortOrder
 {
-    /// <summary>Newest first (default).</summary>
+    /// <summary>Creation time (default, newest first).</summary>
     Date,
 
-    /// <summary>A to Z.</summary>
     Name,
+
+    Computer,
+
+    Duration,
+
+    Size,
 }
 
 /// <summary>
@@ -37,6 +42,12 @@ public sealed class AppSettings
 
     public SnapshotSortOrder SortOrder { get; set; } = SnapshotSortOrder.Date;
 
+    /// <summary>Largest, newest or Z first; with <see cref="SortOrder"/> Date, newest on top (the default).</summary>
+    public bool SortDescending { get; set; } = true;
+
+    /// <summary>Size, position and maximized state of each window, by window name (F12).</summary>
+    public Dictionary<string, WindowPlacement> Windows { get; set; } = [];
+
     /// <summary>Which Global Ignore list is used (F1): the remote one, or the local file beside the exe.</summary>
     public IgnoreListSource IgnoreListSource { get; set; } = IgnoreListSource.Remote;
 
@@ -47,6 +58,20 @@ public sealed class AppSettings
     public SnapshotScope Scope { get; set; } = new();
 
     public static AppSettings CreateDefault() => new();
+}
+
+/// <summary>Where a window was when it was last closed (F12), in screen pixels.</summary>
+public sealed class WindowPlacement
+{
+    public int X { get; set; }
+
+    public int Y { get; set; }
+
+    public int Width { get; set; }
+
+    public int Height { get; set; }
+
+    public bool Maximized { get; set; }
 }
 
 /// <summary>

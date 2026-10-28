@@ -4,6 +4,10 @@ All windows follow the Light, Dark or Windows theme chosen in Preferences, and s
 changes. Screenshots of every window in both themes are saved by the UI tests on each push and kept on the
 [`ui-preview`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/ui-preview) pre-release.
 
+Every window opens where and as large as it was when it was last closed, maximized too (F12); a place on a monitor
+that is no longer connected is not used. The first time, the main window is 850 × 450 and no other window is
+taller than 580 pixels (F14, at 100 % display scaling).
+
 ## Main window (W1)
 
 - **Standard user (F9):** the program starts without a UAC prompt, with the rights of the user who starts it.
@@ -11,7 +15,9 @@ changes. Screenshots of every window in both themes are saved by the UI tests on
 
 - **Sidebar:** + New Snapshot, Delete Snapshot, Preferences, Help/About; Exit at the bottom. Hover shows the name.
 - **List:** Name, Created, Computer, Duration, Size, read from the snapshot headers only (100 snapshots list in
-  well under half a second). Sort by date (newest first) or name; the choice is remembered. The list follows the
+  well under half a second). Click a column header to sort by it, again to reverse; an arrow shows which (F16).
+  Dates, durations and sizes start with the newest, longest or largest. The default is newest first, and the choice
+  is remembered. The list follows the
   folder: snapshots added, deleted or renamed outside the program appear at once.
 - **Right-click:** Compare with ▸, Rename, Delete, Properties.
 - **Compare:** drag one snapshot onto another (the target row is highlighted), or use Compare with. The older
@@ -42,6 +48,10 @@ reasons.
 - **Tree:** File system, Registry and Services, each with its counts; only changed items and the folders or keys
   leading to them. New is green (+), modified yellow (~), deleted red (−). A parent shows how many changes it
   holds; a new or deleted folder shows how many items it held. Hover for full paths, exact sizes and full values.
+- **Inside a new or deleted folder or key (F10, F11):** expanding it lists what it holds — folders and files with
+  dates and sizes, or subkeys and values with their data — from the snapshot that has them (Global Ignore rules
+  still apply). They are shown for information: Jump to opens Explorer or Regedit there; the other actions work on
+  the folder's or key's own row.
 - **Selection:** Ctrl+click, Shift+click, arrow keys, Ctrl+A. Right-click or the menu key for actions.
 
 | Action | Available for | What it does |

@@ -24,7 +24,8 @@ internal sealed class PropertiesForm : ThemedDialog
         : base("Snapshot Properties")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ClientSize = new Size(640, 600);
+        // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
+        Size = new Size(640, 580);
         _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
         _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 

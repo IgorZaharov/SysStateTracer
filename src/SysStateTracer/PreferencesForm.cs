@@ -44,9 +44,11 @@ internal sealed class PreferencesForm : ThemedDialog
         _localFile = new LocalIgnoreFile(paths.LocalIgnoreFile);
         _localLines = ReadLocalLines();
 
-        ClientSize = new Size(720, 560);
         FormBorderStyle = FormBorderStyle.Sizable;
-        MinimumSize = new Size(640, 480);
+        // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
+        Size = new Size(720, 580);
+        MinimumSize = new Size(640, 460);
+        WindowLayout.Remember(this, "Preferences", paths, settings, keepPosition: false);
 
         var tabs = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 12), WrapContents = false };
         _generalTab.Margin = new Padding(0, 0, 8, 0);
@@ -164,12 +166,20 @@ internal sealed class PreferencesForm : ThemedDialog
         }
 
         MarkSelected();
-        foreach (var radio in new[] { _themeSystem, _themeLight, _themeDark })
+        RadioButton[] themeRadios = [_themeSystem, _themeLight, _themeDark];
+        foreach (var radio in themeRadios)
         {
             radio.CheckedChanged += (_, _) =>
             {
                 if (radio.Checked)
                 {
+                    // Each choice sits in its own column under its picture, so Windows does not group the
+                    // three: clear the other two here (F13).
+                    foreach (var other in themeRadios.Where(r => r != radio))
+                    {
+                        other.Checked = false;
+                    }
+
                     MarkSelected();
                     ThemeManager.SetPreference(SelectedTheme());
                 }

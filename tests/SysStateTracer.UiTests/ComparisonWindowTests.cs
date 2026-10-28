@@ -122,6 +122,60 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal(rows, form.Grid.RowCount);
             form.Swap();
 
+            // A whole new key lists its subkeys and values when expanded (F10).
+            model = (ComparisonModel)form.Grid.Model!;
+            var microsoft = Enumerable.Range(0, registry.Count).Single(n => diff.FullPath(registry, n) == @"HKLM\SOFTWARE\Microsoft");
+            var microsoftId = ComparisonModel.NodeId(DiffArea.Registry, microsoft);
+            Assert.True(model.HasChildren(microsoftId));
+            form.Grid.Expand(microsoftId);
+            var office = Assert.Single(model.Children(microsoftId));
+            Assert.True(ComparisonModel.IsInside(office));
+            Assert.StartsWith("Office", model.Text(office, ComparisonModel.NameColumn), StringComparison.Ordinal);
+            form.Grid.Expand(office);
+            var sixteen = Assert.Single(model.Children(office));
+            form.Grid.Expand(sixteen);
+            var installPath = Assert.Single(model.Children(sixteen));
+            Assert.Equal("InstallPath", model.Text(installPath, ComparisonModel.NameColumn));
+            Assert.Equal("+", model.Text(installPath, ComparisonModel.StatusColumn));
+            Assert.Contains(@"Microsoft Office\root", model.Text(installPath, ComparisonModel.RightColumn), StringComparison.Ordinal);
+            Assert.Equal(string.Empty, model.Text(installPath, ComparisonModel.LeftColumn));
+            Assert.Equal(ThemeManager.Current.New, model.Style(installPath).TextColor);
+            Assert.Equal(@"HKLM\SOFTWARE\Microsoft\Office\16.0", model.InsidePath(installPath));
+            Assert.False(model.HasChildren(installPath));
+
+            // A whole new folder lists its folders and files when expanded (F11).
+            form.Grid.Expand(ComparisonModel.CategoryId(DiffArea.FileSystem));
+            var fsTree = diff.FileSystem;
+            var officeFolder = Enumerable.Range(0, fsTree.Count).Single(n => diff.FullPath(fsTree, n) == @"C:\Program Files\Microsoft Office");
+            foreach (var n in Ancestors(fsTree, officeFolder))
+            {
+                form.Grid.Expand(ComparisonModel.NodeId(DiffArea.FileSystem, n));
+            }
+
+            var officeId = ComparisonModel.NodeId(DiffArea.FileSystem, officeFolder);
+            Assert.True(model.HasChildren(officeId));
+            form.Grid.Expand(officeId);
+            var rootFolder = Assert.Single(model.Children(officeId));
+            Assert.Equal(DiffArea.FileSystem, ComparisonModel.InsideArea(rootFolder));
+            Assert.Equal("root  (12 items)", model.Text(rootFolder, ComparisonModel.NameColumn));
+            form.Grid.Expand(rootFolder);
+            var dlls = model.Children(rootFolder);
+            Assert.Equal(12, dlls.Count);
+            Assert.Equal("office00.dll", model.Text(dlls[0], ComparisonModel.NameColumn));
+            Assert.Contains("MB", model.Text(dlls[0], ComparisonModel.RightColumn), StringComparison.Ordinal);
+            Assert.Equal(@"C:\Program Files\Microsoft Office\root\office00.dll", model.InsidePath(dlls[0]));
+            Assert.Equal(ThemeManager.Current.New, model.Style(dlls[0]).TextColor);
+
+            // After a swap the same rows are there, now on the left and deleted.
+            rows = form.Grid.RowCount;
+            form.Swap();
+            model = (ComparisonModel)form.Grid.Model!;
+            Assert.Equal(rows, form.Grid.RowCount);
+            Assert.Equal("−", model.Text(installPath, ComparisonModel.StatusColumn));
+            Assert.Contains(@"Microsoft Office\root", model.Text(installPath, ComparisonModel.LeftColumn), StringComparison.Ordinal);
+            form.Swap();
+            model = (ComparisonModel)form.Grid.Model!;
+
             // Menu rules (§10.6).
             var fsCategory = DiffActions.Category(DiffArea.FileSystem);
             var value = new DiffItem(DiffArea.Registry, version);
@@ -137,6 +191,18 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.True(((ComparisonModel)form.Grid.Model!).Style(versionId).Strikeout);
             form.Close();
         });
+    }
+
+    /// <summary>The nodes from the top down to the parent of <paramref name="node"/>.</summary>
+    private static List<int> Ancestors(DiffTree tree, int node)
+    {
+        var list = new List<int>();
+        for (var n = tree.Parent(node); n >= 0; n = tree.Parent(n))
+        {
+            list.Insert(0, n);
+        }
+
+        return list;
     }
 
     /// <summary>One root with <c>count</c> children; text made on demand like the comparison model.</summary>

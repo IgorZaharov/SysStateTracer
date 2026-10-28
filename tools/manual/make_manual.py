@@ -30,6 +30,7 @@ from reportlab.platypus.tableofcontents import TableOfContents
 
 GITHUB = "https://github.com/IgorZaharov/SysStateTracer"
 RELEASES = GITHUB + "/releases"
+LATEST = RELEASES + "/latest/download"
 ACCENT = colors.HexColor("#005FB8")
 TEXT = colors.HexColor("#1B1B1B")
 SECONDARY = colors.HexColor("#616161")
@@ -284,8 +285,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "(password hashes and system secrets) are left out by default.", "note"))
     story.append(p("Getting SysStateTracer", "h2"))
     story += bullets([
-        f'Download <b>SysStateTracer.exe</b> from <a href="{RELEASES}" color="#005FB8">{RELEASES}</a>. It is a single file for '
-        "Windows 10 and 11 x64; nothing needs to be installed. Put it in any folder you can write to.",
+        f'Download the latest <b>SysStateTracer.exe</b> directly from <a href="{LATEST}/SysStateTracer.exe" color="#005FB8">'
+        f'{LATEST}/SysStateTracer.exe</a> (older versions: <a href="{RELEASES}" color="#005FB8">{RELEASES}</a>). It is a single '
+        "file for Windows 10 and 11 x64; nothing needs to be installed. Put it in any folder you can write to.",
         "It starts without a UAC prompt, with your own rights, and also works for a standard user. Without "
         "administrator rights, snapshots miss the folders and registry keys only an administrator can read (New Snapshot "
         "shows them greyed out) and whole drives are read more slowly. For complete snapshots, click <b>Restart as "
@@ -300,7 +302,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(table([
         ["", ""],
         ["Project, source code and documentation", f'<a href="{GITHUB}" color="#005FB8">{GITHUB}</a>'],
-        ["Downloads", f'<a href="{RELEASES}" color="#005FB8">{RELEASES}</a>'],
+        ["Latest SysStateTracer.exe", f'<a href="{LATEST}/SysStateTracer.exe" color="#005FB8">{LATEST}/SysStateTracer.exe</a>'],
+        ["Latest manual", f'<a href="{LATEST}/Manual.pdf" color="#005FB8">{LATEST}/Manual.pdf</a>'],
+        ["All versions", f'<a href="{RELEASES}" color="#005FB8">{RELEASES}</a>'],
         ["Questions and problem reports", f'<a href="{GITHUB}/issues" color="#005FB8">{GITHUB}/issues</a>'],
     ], [60 * mm, CONTENT_W - 60 * mm], header=False))
     story.append(PageBreak())
@@ -315,7 +319,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story += bullets([
         "The sidebar: <b>+</b> New Snapshot, <b>Delete</b>, <b>Preferences</b>, <b>Help</b>; Exit at the bottom. Hover over an icon to see its name.",
         "The list shows each snapshot's name, when it was taken, on which computer, how long it took and its file size. "
-        "Sort it by date or by name. Snapshots copied into the folder appear at once.",
+        "Click a column header to sort by it, and again to reverse the order; newest first is the default. "
+        "Snapshots copied into the folder appear at once. Every window opens at the size and place it was last closed.",
         "Right-click a snapshot for <b>Compare with</b>, <b>Rename</b>, <b>Delete</b> and <b>Properties</b>. "
         "Keys: Ctrl+N new snapshot, Del delete, F2 rename, Enter properties, F5 refresh, Ctrl+A select all, F1 help.",
         "A file that cannot be read (damaged, cut off while copying, or made by a newer version) is listed as "
@@ -356,6 +361,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story += bullets([
         "The three parts — File system, Registry, Services — show how much changed in each. A folder or key shows "
         "how many changes are inside it; a new or deleted folder shows how many items it held.",
+        "Expand a new or deleted folder or registry key to see the files and folders, or subkeys and values, it holds. "
+        "These rows are for reading and Jump to; the other actions work on the folder or key itself.",
         "The two columns on the right show each item in each snapshot: date and size for files, type and data for "
         "registry values, state and startup type for services. Hover for full paths, exact sizes and long values.",
         "<b>Swap</b> exchanges the two sides: new and deleted trade places. <b>Refresh</b> compares again, for "

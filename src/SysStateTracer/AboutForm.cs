@@ -15,9 +15,11 @@ internal sealed class AboutForm : ThemedDialog
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(settings);
-        ClientSize = new Size(760, 600);
         FormBorderStyle = FormBorderStyle.Sizable;
+        // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
+        Size = new Size(760, 560);
         MinimumSize = new Size(560, 420);
+        WindowLayout.Remember(this, "About", paths, settings, keepPosition: false);
 
         var header = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 0, 0, 12) };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));

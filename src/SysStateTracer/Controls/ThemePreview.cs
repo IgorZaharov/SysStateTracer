@@ -41,6 +41,9 @@ internal sealed class ThemePreview : Control, IThemed
         }
     }
 
+    /// <summary>Clicks the picture (for tests).</summary>
+    internal void PerformClick() => OnClick(EventArgs.Empty);
+
     public void ApplyTheme(Palette palette)
     {
         _palette = palette;

@@ -64,8 +64,10 @@ internal sealed class ComparisonForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = UiFonts.Normal;
         Icon = AppIcon.Value;
-        ClientSize = new Size(1180, 720);
+        // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
+        Size = new Size(1180, 580);
         MinimumSize = new Size(760, 420);
+        WindowLayout.Remember(this, "Comparison", paths, settings);
         StartPosition = FormStartPosition.CenterParent;
         Text = $"Comparison: {Path.GetFileNameWithoutExtension(olderPath)} ⇄ {Path.GetFileNameWithoutExtension(newerPath)}";
         KeyPreview = true;
@@ -164,7 +166,17 @@ internal sealed class ComparisonForm : Form
         _grid.Columns.Add(new GridColumn("Snapshot 1", 320));
         _grid.Columns.Add(new GridColumn("Snapshot 2", 320));
         _grid.SelectionChanged += (_, _) => UpdateStatus();
-        _grid.RowActivated += (_, id) => JumpTo([ComparisonModel.Item(id)]);
+        _grid.RowActivated += (_, id) =>
+        {
+            if (ComparisonModel.IsInside(id))
+            {
+                JumpInside(id);
+            }
+            else
+            {
+                JumpTo([ComparisonModel.Item(id)]);
+            }
+        };
         _grid.MouseUp += (_, e) =>
         {
             if (e.Button == MouseButtons.Right && _grid.SelectedIds.Count > 0 && e.Y > _grid.HeaderHeight)
@@ -189,7 +201,17 @@ internal sealed class ComparisonForm : Form
 
     private void BuildMenu()
     {
-        _jump.Click += (_, _) => JumpTo(Selection());
+        _jump.Click += (_, _) =>
+        {
+            if (InsideSelected() is { } inside)
+            {
+                JumpInside(inside);
+            }
+            else
+            {
+                JumpTo(Selection());
+            }
+        };
         _mark.Click += (_, _) => ToggleMarks();
         _ignore.Click += async (_, _) => await AddToIgnoreListAsync();
         _exportReg.Click += (_, _) => ExportRegistry();
@@ -199,7 +221,23 @@ internal sealed class ComparisonForm : Form
         _menu.Opening += (_, e) =>
         {
             var selection = Selection();
-            e.Cancel = _diff is null || selection.Count == 0;
+            e.Cancel = _diff is null || _grid.SelectedIds.Count == 0;
+            if (_grid.SelectedIds.Any(ComparisonModel.IsInside))
+            {
+                // What a whole new or deleted folder or key holds is shown for information (F10, F11);
+                // the actions work on that folder's or key's own row.
+                foreach (var item in new[] { _mark, _ignore, _exportReg, _copy, _revert })
+                {
+                    item.Enabled = false;
+                }
+
+                _mark.Checked = false;
+                _jump.Enabled = InsideSelected() is not null;
+                _jump.Text = InsideSelected() is { } one && ComparisonModel.InsideArea(one) == DiffArea.FileSystem ? "Jump to (Explorer)" : "Jump to (Regedit)";
+                ThemeManager.ApplyMenu(_menu, ThemeManager.Current);
+                return;
+            }
+
             _jump.Enabled = DiffActions.IsEnabled(DiffAction.JumpTo, selection);
             _jump.Text = selection.Count == 1 ? selection[0].Area switch
             {
@@ -217,7 +255,35 @@ internal sealed class ComparisonForm : Form
         };
     }
 
-    private List<DiffItem> Selection() => ComparisonModel.Items(_grid.SelectedIds);
+    private List<DiffItem> Selection() => ComparisonModel.Items(_grid.SelectedIds.Where(id => !ComparisonModel.IsInside(id)));
+
+    /// <summary>The selected row when it is the only one and lies inside a whole new or deleted folder or key.</summary>
+    private long? InsideSelected() =>
+        _grid.SelectedIds.Count == 1 && _grid.SelectedIds.First() is var id && ComparisonModel.IsInside(id) ? id : null;
+
+    private void JumpInside(long id)
+    {
+        if (_grid.Model is not ComparisonModel model)
+        {
+            return;
+        }
+
+        try
+        {
+            if (ComparisonModel.InsideArea(id) == DiffArea.FileSystem)
+            {
+                ShellLauncher.OpenInExplorer(model.InsidePath(id));
+            }
+            else
+            {
+                ShellLauncher.OpenInRegedit(model.InsidePath(id));
+            }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            MessageDialog.Error(this, "The item could not be opened.", ex);
+        }
+    }
 
     private void ShowMenuAtFocus()
     {

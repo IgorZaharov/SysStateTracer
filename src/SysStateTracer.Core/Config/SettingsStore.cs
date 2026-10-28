@@ -73,6 +73,18 @@ public static class SettingsStore
         settings.Scope ??= new SnapshotScope();
         settings.Scope.RegistryRoots ??= new SnapshotScope().RegistryRoots;
         settings.Scope.Excluded ??= [];
+        settings.Windows ??= [];
+        foreach (var name in settings.Windows.Where(w => w.Value is null).Select(w => w.Key).ToList())
+        {
+            settings.Windows.Remove(name);
+        }
+
+        if (!Enum.IsDefined(settings.SortOrder))
+        {
+            settings.SortOrder = SnapshotSortOrder.Date;
+            settings.SortDescending = true;
+        }
+
         return settings;
     }
 

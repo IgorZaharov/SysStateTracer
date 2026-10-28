@@ -5,6 +5,8 @@ namespace SysStateTracer.Controls;
 /// <summary>
 /// A details list drawn in the palette: header in secondary text, selection in the accent tint, an optional
 /// drop-target row (W1 drag-and-drop compare). The last column fills the width so the header has no bare strip.
+/// A whole row, every column, is drawn in <see cref="OnDrawItem"/>: the list sometimes repaints a row without
+/// asking for its other columns (with the mouse over it or between rows), which left them blank (F15).
 /// </summary>
 internal sealed class ThemedListView : ListView, IThemed
 {
@@ -22,6 +24,12 @@ internal sealed class ThemedListView : ListView, IThemed
         HeaderStyle = ColumnHeaderStyle.Nonclickable;
         Font = UiFonts.Normal;
     }
+
+    /// <summary>Column with the sort arrow in its header, or -1.</summary>
+    public int SortColumn { get; set; } = -1;
+
+    /// <summary>Arrow down (descending) or up.</summary>
+    public bool SortDescending { get; set; }
 
     /// <summary>Text colour for an item; null = normal text.</summary>
     public Func<ListViewItem, int, Color?>? ItemColor { get; set; }
@@ -145,8 +153,37 @@ internal sealed class ThemedListView : ListView, IThemed
         }
 
         var text = Rectangle.Inflate(e.Bounds, -6, 0);
-        var align = e.Header?.TextAlign == HorizontalAlignment.Right ? TextFormatFlags.Right : TextFormatFlags.Left;
-        TextRenderer.DrawText(e.Graphics, e.Header?.Text, Font, text, p.SecondaryText, align | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+        var right = e.Header?.TextAlign == HorizontalAlignment.Right;
+        var align = right ? TextFormatFlags.Right : TextFormatFlags.Left;
+        var sorted = e.ColumnIndex == SortColumn;
+        if (sorted)
+        {
+            // The arrow goes on the side away from the text: right of left-aligned headers, left of right-aligned ones.
+            const int arrow = 14;
+            var arrowBox = right
+                ? new Rectangle(text.Left, e.Bounds.Top, arrow, e.Bounds.Height)
+                : new Rectangle(text.Right - arrow, e.Bounds.Top, arrow, e.Bounds.Height);
+            text = right
+                ? Rectangle.FromLTRB(text.Left + arrow, text.Top, text.Right, text.Bottom)
+                : Rectangle.FromLTRB(text.Left, text.Top, text.Right - arrow, text.Bottom);
+            DrawSortArrow(e.Graphics, arrowBox, SortDescending, p.SecondaryText);
+        }
+
+        TextRenderer.DrawText(e.Graphics, e.Header?.Text, sorted ? UiFonts.Bold : Font, text, sorted ? p.Text : p.SecondaryText, align | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+    }
+
+    private static void DrawSortArrow(Graphics g, Rectangle box, bool descending, Color color)
+    {
+        var cx = box.Left + (box.Width / 2f);
+        var cy = box.Top + (box.Height / 2f);
+        PointF[] points = descending
+            ? [new(cx - 4, cy - 2), new(cx + 4, cy - 2), new(cx, cy + 2.5f)]
+            : [new(cx - 4, cy + 2), new(cx + 4, cy + 2), new(cx, cy - 2.5f)];
+        var mode = g.SmoothingMode;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using var brush = new SolidBrush(color);
+        g.FillPolygon(brush, points);
+        g.SmoothingMode = mode;
     }
 
     protected override void OnDrawItem(DrawListViewItemEventArgs e)
@@ -155,21 +192,30 @@ internal sealed class ThemedListView : ListView, IThemed
         var back = e.ItemIndex == _dropTarget ? p.DropTarget
             : e.Item.Selected ? (Focused ? p.Selection : p.SelectionInactive)
             : p.Background;
-        using var brush = new SolidBrush(back);
-        e.Graphics.FillRectangle(brush, e.Bounds);
-    }
-
-    protected override void OnDrawSubItem(DrawListViewSubItemEventArgs e)
-    {
-        if (e.Item is null || e.SubItem is null)
+        using (var brush = new SolidBrush(back))
         {
-            return;
+            e.Graphics.FillRectangle(brush, e.Bounds);
         }
 
-        var color = ItemColor?.Invoke(e.Item, e.ColumnIndex) ?? _palette.Text;
-        var bounds = Rectangle.Inflate(e.Bounds, -6, 0);
-        var align = Columns[e.ColumnIndex].TextAlign == HorizontalAlignment.Right ? TextFormatFlags.Right : TextFormatFlags.Left;
-        TextRenderer.DrawText(e.Graphics, e.SubItem.Text, Font, bounds, color, align | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+        var x = e.Bounds.Left;
+        for (var column = 0; column < Columns.Count; column++)
+        {
+            var width = Columns[column].Width;
+            if (column < e.Item.SubItems.Count)
+            {
+                var color = ItemColor?.Invoke(e.Item, column) ?? _palette.Text;
+                var bounds = Rectangle.Inflate(new Rectangle(x, e.Bounds.Top, width, e.Bounds.Height), -6, 0);
+                var align = Columns[column].TextAlign == HorizontalAlignment.Right ? TextFormatFlags.Right : TextFormatFlags.Left;
+                TextRenderer.DrawText(e.Graphics, e.Item.SubItems[column].Text, Font, bounds, color, align | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+            }
+
+            x += width;
+        }
+    }
+
+    /// <summary>Everything is drawn with the row in <see cref="OnDrawItem"/>.</summary>
+    protected override void OnDrawSubItem(DrawListViewSubItemEventArgs e)
+    {
     }
 
     protected override void OnGotFocus(EventArgs e)

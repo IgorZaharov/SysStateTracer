@@ -29,7 +29,6 @@ internal sealed class MainForm : Form
         Text = "Not running as administrator: snapshots miss the folders and registry keys that need administrator rights, and whole drives are read more slowly.",
     };
     private readonly ThemedButton _elevate = new() { Text = "Restart as administrator", Glyph = Glyphs.Shield, Dock = DockStyle.Right, Width = 200 };
-    private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 190, Anchor = AnchorStyles.Top | AnchorStyles.Right };
     private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
     private readonly Label _empty = new() { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Visible = false };
     private readonly SideBarButton _new = new(Glyphs.Add, "New Snapshot (Ctrl+N)");
@@ -61,9 +60,10 @@ internal sealed class MainForm : Form
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = UiFonts.Normal;
-        ClientSize = new Size(980, 600);
+        Size = new Size(850, 450); // F14
         MinimumSize = new Size(640, 400);
         StartPosition = FormStartPosition.CenterScreen;
+        WindowLayout.Remember(this, "Main", paths, settings);
         Text = AppInfo.Name;
         Icon = AppIcon.Value;
         KeyPreview = true;
@@ -184,10 +184,7 @@ internal sealed class MainForm : Form
         }
 
         _unreadable = unreadable;
-        if (_settings.SortOrder == SnapshotSortOrder.Name)
-        {
-            _snapshots.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
-        }
+        SortSnapshots();
 
         _list.BeginUpdate();
         _list.Items.Clear();
@@ -226,6 +223,53 @@ internal sealed class MainForm : Form
         _empty.Text = $"No snapshots yet in{Environment.NewLine}{SnapshotFolder}{Environment.NewLine}{Environment.NewLine}Click + to take the first one.";
         UpdateStatus();
         UpdateCommands();
+    }
+
+    /// <summary>Column order in the list, and the sort each header click chooses (F16).</summary>
+    private static readonly SnapshotSortOrder[] ColumnSort =
+        [SnapshotSortOrder.Name, SnapshotSortOrder.Date, SnapshotSortOrder.Computer, SnapshotSortOrder.Duration, SnapshotSortOrder.Size];
+
+    /// <summary>
+    /// Clicking a header sorts by that column; clicking it again reverses the order. Dates, durations and sizes
+    /// start with the newest, longest or largest; text starts with A.
+    /// </summary>
+    internal void SortBy(int column)
+    {
+        var order = ColumnSort[column];
+        if (order == _settings.SortOrder)
+        {
+            _settings.SortDescending = !_settings.SortDescending;
+        }
+        else
+        {
+            _settings.SortOrder = order;
+            _settings.SortDescending = order is SnapshotSortOrder.Date or SnapshotSortOrder.Duration or SnapshotSortOrder.Size;
+        }
+
+        SaveSettings();
+        Reload();
+    }
+
+    private void SortSnapshots()
+    {
+        Comparison<SnapshotInfo> compare = _settings.SortOrder switch
+        {
+            SnapshotSortOrder.Name => (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase),
+            SnapshotSortOrder.Computer => (a, b) => string.Compare(a.Meta.ComputerName, b.Meta.ComputerName, StringComparison.CurrentCultureIgnoreCase),
+            SnapshotSortOrder.Duration => (a, b) => a.Meta.Timings.TotalMs.CompareTo(b.Meta.Timings.TotalMs),
+            SnapshotSortOrder.Size => (a, b) => a.FileLength.CompareTo(b.FileLength),
+            _ => (a, b) => a.Meta.StartedAt.CompareTo(b.Meta.StartedAt),
+        };
+        var sign = _settings.SortDescending ? -1 : 1;
+
+        // Equal values keep the newest first.
+        _snapshots.Sort((a, b) =>
+        {
+            var c = sign * compare(a, b);
+            return c != 0 ? c : b.Meta.StartedAt.CompareTo(a.Meta.StartedAt);
+        });
+        _list.SortColumn = Array.IndexOf(ColumnSort, _settings.SortOrder);
+        _list.SortDescending = _settings.SortDescending;
     }
 
     /// <summary>Opens W4 for two snapshots; the older one goes on the left (plan §10.1).</summary>
@@ -271,28 +315,11 @@ internal sealed class MainForm : Form
         _help.Click += (_, _) => ShowAbout();
         _exit.Click += (_, _) => Close();
 
-        // Header: title and sort order.
+        // Header: title. The list is sorted by clicking its column headers (F16).
         var header = new Panel { Dock = DockStyle.Top, Height = 52, Padding = new Padding(16, 12, 16, 8) };
         var title = new Label { Text = "Snapshots", AutoSize = true, Location = new Point(16, 14) };
         ThemeManager.SetRole(title, ThemeRole.Heading);
-        var sortLabel = new Label { Text = "Sort by", AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-        ThemeManager.SetRole(sortLabel, ThemeRole.Secondary);
-        _sort.Items.AddRange(["Date (newest first)", "Name (A–Z)"]);
-        _sort.SelectedIndex = _settings.SortOrder == SnapshotSortOrder.Name ? 1 : 0;
-        _sort.SelectedIndexChanged += (_, _) =>
-        {
-            _settings.SortOrder = _sort.SelectedIndex == 1 ? SnapshotSortOrder.Name : SnapshotSortOrder.Date;
-            SaveSettings();
-            Reload();
-        };
         header.Controls.Add(title);
-        header.Controls.Add(_sort);
-        header.Controls.Add(sortLabel);
-        header.Resize += (_, _) =>
-        {
-            _sort.Location = new Point(header.Width - header.Padding.Right - _sort.Width, 14);
-            sortLabel.Location = new Point(_sort.Left - sortLabel.Width - 8, 17);
-        };
 
         // List.
         _list.Columns.Add("Name", 300);
@@ -300,6 +327,8 @@ internal sealed class MainForm : Form
         _list.Columns.Add("Computer", 140);
         _list.Columns.Add("Duration", 90, HorizontalAlignment.Right);
         _list.Columns.Add("Size", 90, HorizontalAlignment.Right);
+        _list.HeaderStyle = ColumnHeaderStyle.Clickable;
+        _list.ColumnClick += (_, e) => SortBy(e.Column);
         _list.ItemColor = (item, column) => item.Tag is UnreadableSnapshot
             ? (column == 0 ? ThemeManager.Current.Deleted : ThemeManager.Current.SecondaryText)
             : null;
