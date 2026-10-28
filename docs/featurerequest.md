@@ -26,3 +26,4 @@ Requested Features:
 26. Bugfix: Global Ignore List - wildcards not working in File system paths.
 27. UX: Snapshot Comparison window: green/red/yellow fonts on added/deleted/modified entries must be in all columns (e.g.: date, size, values. etc.).
 28. GitHub: README.MD - after bar with download links and before first screenshot - add instruction to right-click downloaded .exe, press Properties, Unblock and press OK. Add screenshot of .exe file details with "Unblock" checkbox ticked.
+29. UX: On Snapshot Comparison window - first column on the left should be glyph whether item deleted/added/changed.
