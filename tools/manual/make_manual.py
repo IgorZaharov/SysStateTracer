@@ -31,7 +31,7 @@ from reportlab.platypus.tableofcontents import TableOfContents
 GITHUB = "https://github.com/IgorZaharov/SysStateTracer"
 RELEASES = GITHUB + "/releases"
 LATEST = RELEASES + "/latest/download"
-FEATURE_REQUESTS = GITHUB + "/blob/main/docs/featurerequest.md"
+ISSUES = GITHUB + "/issues"
 ACCENT = colors.HexColor("#005FB8")
 TEXT = colors.HexColor("#1B1B1B")
 SECONDARY = colors.HexColor("#616161")
@@ -310,8 +310,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["Latest SysStateTracer.exe", f'<a href="{LATEST}/SysStateTracer.exe" color="#005FB8">{LATEST}/SysStateTracer.exe</a>'],
         ["Latest manual", f'<a href="{LATEST}/Manual.pdf" color="#005FB8">{LATEST}/Manual.pdf</a>'],
         ["All versions", f'<a href="{RELEASES}" color="#005FB8">{RELEASES}</a>'],
-        ["Questions and problem reports", f'<a href="{GITHUB}/issues" color="#005FB8">{GITHUB}/issues</a>'],
-        ["Feature requests and their status", f'<a href="{FEATURE_REQUESTS}" color="#005FB8">{FEATURE_REQUESTS}</a>'],
+        ["Problem reports, questions and feature requests", f'<a href="{ISSUES}" color="#005FB8">{ISSUES}</a>'],
     ], [60 * mm, CONTENT_W - 60 * mm], header=False))
     story.append(PageBreak())
 
@@ -541,14 +540,13 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     # ---- 6 Feedback
     story.append(p("6&nbsp;&nbsp;Feedback, issues and feature requests", "h1"))
     story.append(p(
-        "SysStateTracer is developed in the open on GitHub. Ideas, problems and requests are welcome, and every one "
-        "is tracked in one list in the repository:"))
-    story.append(p(f'<a href="{FEATURE_REQUESTS}" color="#005FB8"><b>{FEATURE_REQUESTS}</b></a>'))
+        "SysStateTracer is developed in the open on GitHub. Problems, questions, ideas and feature requests are "
+        "welcome: report them in the <b>Issues</b> tab of the repository."))
+    story.append(p(f'<a href="{ISSUES}" color="#005FB8"><b>{ISSUES}</b></a>'))
     story += bullets([
-        "Each line is a feature request or a bug, numbered in the order it came in. Finished ones are marked with the "
-        "version that brought them, e.g. <b>[DONE in v1.0.0-rc.2]</b>, so the list also shows what is still open.",
-        "To ask for something new or report a problem, add it to the list (edit the file on GitHub and propose the "
-        f'change), or open an issue at <a href="{GITHUB}/issues" color="#005FB8">{GITHUB}/issues</a>.',
+        "Click <b>New issue</b>, give it a short title, and describe the problem or the feature you would like. "
+        "A free GitHub account is needed to post.",
+        "Search the open and closed issues first: the problem may already be known, or fixed in a newer version.",
     ])
     story.append(p("What helps in a problem report", "h2"))
     story += bullets([
