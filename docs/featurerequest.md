@@ -5,3 +5,4 @@ Requested Features:
 5. UI: Preferences > General window - add icons for themes above Follow Windows/Light/Dark.
 6. Command-line switches: Snapshot names could have .stsnap extension ("test 1.stsnap") or path ("C\Test\snapshot1.stsnap").
 7. Command-line switches: /export should also create .ps1 script under .\Files to copy all folders/subfolders/files back to their place (e.g.: .\Files\C\Test\test1.txt > to C:\Test\test1.txt).
+8. Generate professional looking Manual.pdf with screenshots: Title page - utility name and description, table of contents: Introduction (description and links to GitHub), Common usage using UI, Command-line usage, Editing Global Ignore List, Preferences.
