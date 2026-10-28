@@ -66,7 +66,6 @@ FS:C:\Users\*\AppData\LocalLow\Microsoft\CryptnetUrlCache
 FS:C:\Users\*\Downloads\SysStateTracer.cache
 FS:C:\Users\*\INetCache\IE
 FS:C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.log
-FS:C:\temp\*
 FS:C:\Windows\System32\wbem\Repository
 FS:C:\Windows\debug\netlogon.log
 FS:C:\Windows\ServiceState\EventLog
