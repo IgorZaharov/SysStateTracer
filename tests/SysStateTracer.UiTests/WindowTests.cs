@@ -110,7 +110,7 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             using (var form = Ui.Show(new MainForm(app.Paths, saved)))
             {
                 Assert.Equal(new Size(900, 520), form.Size);
-                Assert.True(Screen.AllScreens.Any(s => s.WorkingArea.IntersectsWith(form.Bounds)));
+                Assert.Contains(Screen.AllScreens, s => s.WorkingArea.IntersectsWith(form.Bounds));
                 form.Close();
             }
 
