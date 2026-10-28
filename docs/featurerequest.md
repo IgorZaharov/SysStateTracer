@@ -13,3 +13,4 @@ Requested Features:
 13. UI: main window initial size should be 850*450px, all other windows - no more than 580px by vertical.
 14. Bugfix UI: Main window - when mouse cursor is few pixels between rows other columns showing blank values.
 15. UI: Main window - remove "Sort by" drop-down selection and add possibility to sort by pressing on Column headers. Default remains as is - by date, newest on top.
+16. GitHub: README.MD should have easily visible and accessible direct link on latest version download for .exe and manual for people without GitHub UI knowledge.
