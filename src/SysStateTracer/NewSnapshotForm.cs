@@ -310,10 +310,11 @@ internal sealed class NewSnapshotForm : ThemedDialog
             var meta = result.Meta;
             var c = meta.Counts;
             var items = c.Folders + c.Files + c.RegistryKeys + c.RegistryValues + c.Services;
-            summary = string.Create(
-                CultureInfo.CurrentCulture,
-                $"Done: {items:N0} items in {FormatElapsed(_watch.Elapsed)}, {(meta.Mode == SnapshotMode.Full ? "full scan" : "incremental")}" +
-                (c.Skipped > 0 ? $", {c.Skipped:N0} not readable (see Properties)." : "."));
+            var skippedNote = c.Skipped > 0
+                ? string.Create(CultureInfo.CurrentCulture, $", {c.Skipped:N0} not readable (see Properties).")
+                : ".";
+            var mode = meta.Mode == SnapshotMode.Full ? "full scan" : "incremental";
+            summary = string.Create(CultureInfo.CurrentCulture, $"Done: {items:N0} items in {FormatElapsed(_watch.Elapsed)}, {mode}{skippedNote}");
             Log.Info($"Snapshot taken: {result.Path}");
         }
         catch (OperationCanceledException)

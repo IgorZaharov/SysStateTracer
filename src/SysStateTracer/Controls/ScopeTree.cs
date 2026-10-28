@@ -238,9 +238,9 @@ internal sealed class ScopeTree : TreeView, IThemed
     protected override void OnNodeMouseClick(TreeNodeMouseClickEventArgs e)
     {
         base.OnNodeMouseClick(e);
-        if (Enabled && e.Button == MouseButtons.Left && HitTest(e.Location).Location == TreeViewHitTestLocations.StateImage)
+        if (Enabled && e.Node is { } node && e.Button == MouseButtons.Left && HitTest(e.Location).Location == TreeViewHitTestLocations.StateImage)
         {
-            Toggle(e.Node);
+            Toggle(node);
         }
     }
 
