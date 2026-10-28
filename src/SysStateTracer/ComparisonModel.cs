@@ -80,6 +80,32 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
         return snapshot.Registry.GetFullPath(key, snapshot.Names);
     }
 
+    /// <summary>
+    /// A name for a row that stays the same when the snapshots are compared again (after a Global Ignore rule
+    /// is added, or Refresh): the area and the full path, with a mark for registry values.
+    /// </summary>
+    public string RowKey(long id)
+    {
+        if (id < 0)
+        {
+            return "#" + (-id).ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (IsInside(id))
+        {
+            var area = InsideArea(id);
+            return area == DiffArea.Registry && IsValue(id)
+                ? $"{(int)area}|{InsidePath(id)}|{SideOf(id).Names.GetString(SideOf(id).Registry.ValueName[Index(id)])}"
+                : $"{(int)area}|{InsidePath(id)}";
+        }
+
+        var item = Item(id);
+        var tree = Diff.Tree(item.Area);
+        return tree.Kind(item.Node) == DiffItemKind.Value
+            ? $"{(int)item.Area}|{Diff.FullPath(tree, tree.Parent(item.Node))}|{Diff.Name(tree, item.Node)}"
+            : $"{(int)item.Area}|{Diff.FullPath(tree, item.Node)}";
+    }
+
     /// <summary>The comparison node (a whole new or deleted folder or key) an inside row belongs to.</summary>
     public DiffItem? OwnerOf(long id) => _owner.TryGetValue(id, out var node) ? new DiffItem(InsideArea(id), node) : null;
 
@@ -281,8 +307,13 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
     {
         if (IsInside(id))
         {
+            var icon = InsideArea(id) == DiffArea.FileSystem
+                ? (SideOf(id).FileSystem.IsDirectory(Index(id)) ? Glyphs.Folder : Glyphs.File)
+                : (IsValue(id) ? Glyphs.Value : Glyphs.Folder);
             var owner = OwnerOf(id);
-            return owner is { } o ? Style(NodeId(o.Area, o.Node)) : new GridRowStyle(null, Strikeout: false, Dim: false, Bold: false);
+            return owner is { } o
+                ? Style(NodeId(o.Area, o.Node)) with { Icon = icon }
+                : new GridRowStyle(null, Strikeout: false, Dim: false, Bold: false, icon);
         }
 
         var item = Item(id);
@@ -300,7 +331,16 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
             _ => (Color?)null,
         };
         var marked = marks.IsMarkedOrInside(Diff, item);
-        return new GridRowStyle(color, Strikeout: marked, Dim: marked, Bold: false);
+        var tree = Diff.Tree(item.Area);
+        var icon = tree.Kind(item.Node) switch
+        {
+            DiffItemKind.Folder => tree.Parent(item.Node) < 0 ? Glyphs.Drive : Glyphs.Folder,
+            DiffItemKind.File => Glyphs.File,
+            DiffItemKind.Key => Glyphs.Folder,
+            DiffItemKind.Value => Glyphs.Value,
+            _ => null,
+        };
+        return new GridRowStyle(color, Strikeout: marked, Dim: marked, Bold: false, icon);
     }
 
     private string InsideText(long id, int column)

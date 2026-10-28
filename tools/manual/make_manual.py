@@ -292,9 +292,13 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "administrator rights, snapshots miss the folders and registry keys only an administrator can read (New Snapshot "
         "shows them greyed out) and whole drives are read more slowly. For complete snapshots, click <b>Restart as "
         "administrator</b> in the main window.",
-        "The program is not code-signed, so on first start Windows SmartScreen may say “Windows protected your "
-        "PC”: choose <b>More info → Run anyway</b>, or tick <b>Unblock</b> in the file's Properties. Each release lists "
-        "the file's SHA-256 checksum, so you can check that the file is the published one.",
+        "The program is not code-signed, so Windows may block it or SmartScreen may say “Windows protected your "
+        "PC”. Before the first start, right-click the downloaded <b>SysStateTracer.exe</b>, choose <b>Properties</b>, "
+        "tick <b>Unblock</b> at the bottom of the General tab and click <b>OK</b> (shown below). Each release lists the "
+        "file's SHA-256 checksum, so you can check that the file is the published one.",
+    ])
+    story += screens.figure("unblock-properties-light", "The downloaded file's Properties: tick Unblock, then OK.", width=78 * mm, max_height=100 * mm)
+    story += bullets([
         "SysStateTracer keeps its files beside the exe: settings, the Global Ignore list, a cache that makes the "
         "next snapshot faster, a log, and the Files and Backups folders.",
     ])
@@ -436,7 +440,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "A snapshot is named by its file name, with or without .stsnap, in the snapshot folder — or by the path of a "
         ".stsnap file anywhere, such as <font face=\"Mono\">\"D:\\Snapshots\\Before patch.stsnap\"</font>. Put names "
         "and paths with spaces in quotes.",
-        "Comparisons and exports leave out everything the Global Ignore list chosen in Preferences matches.",
+        "Comparisons and exports leave out everything the Global Ignore lists set in Preferences match.",
         "A window program does not hold up an interactive command prompt, so the prompt may come back before the "
         "output. In batch files use <font face=\"Mono\">start \"\" /wait SysStateTracer.exe …</font>; in PowerShell "
         "<font face=\"Mono\">Start-Process … -Wait</font>.",
@@ -466,19 +470,20 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "counters in the registry. The <b>Global Ignore list</b> leaves them out, so comparisons show what matters. "
         "Rules are applied when a snapshot is taken (the items are not read at all) and again when snapshots are "
         "compared and exported. SysStateTracer comes with rules for the usual noise; every rule can be removed."))
-    story.append(p("4.1&nbsp;&nbsp;Which list is used: Remote or Local", "h2"))
+    story.append(p("4.1&nbsp;&nbsp;Which lists are used: local, and remote", "h2"))
     story += screens.figure("w5-preferences-ignore-list-light", "Preferences → Global Ignore list.", max_height=105 * mm)
     story += bullets([
-        "<b>Remote</b> (the default): a list read from a web address or a file, also on a network share such as "
-        "\\\\server\\share\\SysStateTracer.ignore.txt, so several PCs can share one list. The default is the shared list "
-        "in the project on GitHub. <b>Check now</b> reads it and shows how many rules it has. If the remote list "
-        "cannot be read, the local list is used.",
-        "<b>Local</b>: SysStateTracer.ignore.txt beside the program. It is a plain text file; edit it here or in any text editor.",
-        "Only one list is in effect at a time. Rules added from the comparison window always go to the local list.",
+        "The <b>local list</b>, SysStateTracer.ignore.txt beside the program, is always used. Edit it here (or in any "
+        "text editor); rules added from the comparison window go to it.",
+        "<b>Also use the shared remote list</b> (ticked by default) adds the rules of a list read from a web address or "
+        "a file, also on a network share such as \\\\server\\share\\SysStateTracer.ignore.txt, so several PCs can share "
+        "one list. The default is the shared list in the project on GitHub. <b>Check now</b> reads it and shows how many "
+        "rules it has. If it cannot be read, the local list is used alone.",
     ])
     story.append(p("4.2&nbsp;&nbsp;Adding and removing rules", "h2"))
     story.append(p(
-        "Below the choice is the local list. <b>Add folder</b> picks a folder; <b>Add registry key</b> asks for a key "
+        "Below is the local list. <b>Add rule</b> lets you type rules, with wildcards too; <b>Edit</b> (or a double-click, "
+        "F2) changes the selected rule. <b>Add folder</b> picks a folder; <b>Add registry key</b> asks for a key "
         "path; <b>Add service</b> lists the installed services. <b>Remove</b> deletes the selected rules (also with Del). "
         "<b>Import</b> adds the rules from a text file; <b>Export</b> saves the list. Click <b>OK</b> to save."))
     figures = screens.figure("dialog-add-registry-key-light", "Add registry key.", width=82 * mm, max_height=45 * mm, keep=False)
@@ -489,7 +494,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(p("4.3&nbsp;&nbsp;Adding rules from a comparison", "h2"))
     story.append(p(
         "In the comparison window, select items that are only noise, right-click and choose <b>Add to Global Ignore "
-        "list</b>. SysStateTracer shows the rules it will add, saves them to the local list and hides the items."))
+        "list</b>. SysStateTracer shows the rules it will add, and you can change them first — for example replace a "
+        "user name with * so the rule applies to every user. It then saves them to the local list and hides the items, "
+        "keeping the tree open as it was."))
     story += screens.figure("dialog-add-to-ignore-light", "Add to Global Ignore list, from the comparison window.", width=120 * mm)
     story.append(CondPageBreak(80 * mm))
     story.append(p("4.4&nbsp;&nbsp;Rule syntax", "h2"))
@@ -526,7 +533,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "changes at once."))
     story += screens.figure("w1-main-dark", "The main window in the dark theme.", width=135 * mm)
     story.append(p("Global Ignore list", "h2"))
-    story.append(p("The second tab chooses between the remote and the local list and edits the local one; see chapter 4."))
+    story.append(p("The second tab turns the shared remote list on or off and edits the local list; see chapter 4."))
     story.append(Spacer(1, 10))
     story.append(p(f'More documentation, the source code and new versions: <a href="{GITHUB}" color="#005FB8">{GITHUB}</a>', "small"))
     return story

@@ -59,6 +59,41 @@ internal class ThemedDialog : Form
         ThemeManager.Attach(this);
         base.OnLoad(e);
     }
+
+    /// <summary>
+    /// The keyboard works as soon as the dialog opens (F23, F24): it takes the focus, and the main button has it,
+    /// so Enter presses it and Left/Right move between the buttons. A dialog that wants the focus elsewhere
+    /// (a text box) sets it in its own Shown handler, which runs after this.
+    /// </summary>
+    protected override void OnShown(EventArgs e)
+    {
+        Activate();
+        if (AcceptButton is ThemedButton { Enabled: true, Visible: true } main)
+        {
+            main.Focus();
+        }
+
+        base.OnShown(e);
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData is Keys.Left or Keys.Right && ActiveControl is ThemedButton current && current.Parent == Buttons)
+        {
+            // Buttons in screen order (the row is filled right to left).
+            var buttons = Buttons.Controls.OfType<ThemedButton>().Where(b => b.Visible && b.Enabled).OrderBy(b => b.Left).ToList();
+            var index = buttons.IndexOf(current);
+            var next = index + (keyData == Keys.Left ? -1 : 1);
+            if (index >= 0 && next >= 0 && next < buttons.Count)
+            {
+                buttons[next].Focus();
+            }
+
+            return true;
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
 }
 
 /// <summary>Question, warning and information boxes in the app's look (MessageBox cannot be themed).</summary>
@@ -94,6 +129,7 @@ internal sealed class MessageDialog : ThemedDialog
                 Size = new Size(520, Math.Min(220, 22 + (details.Sum(d => 1 + (d.Length / 80)) * 16))),
                 Margin = new Padding(0, 12, 0, 0),
                 BorderStyle = BorderStyle.FixedSingle,
+                TabStop = false, // the buttons keep the keyboard
             };
             layout.Controls.Add(box);
         }

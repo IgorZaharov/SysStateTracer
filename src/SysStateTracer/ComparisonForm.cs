@@ -166,6 +166,7 @@ internal sealed class ComparisonForm : Form
         _grid.Columns.Add(new GridColumn("Snapshot 1", 320));
         _grid.Columns.Add(new GridColumn("Snapshot 2", 320));
         _grid.SelectionChanged += (_, _) => UpdateStatus();
+        _grid.ShowToolTips = false; // F19: the status bar shows the selected item's full path instead
         _grid.RowActivated += (_, id) =>
         {
             if (ComparisonModel.IsInside(id))
@@ -334,9 +335,14 @@ internal sealed class ComparisonForm : Form
             var diff = await Task.Run(() => SnapshotComparer.Compare(older, newer, matcher));
 
             _status.Text = "Building the view…";
+            var view = CaptureView();
             _diff = _swapped ? diff.Swap() : diff;
-            _marks.Clear();
             ShowDiff(keepState: false);
+            if (view is not null)
+            {
+                RestoreView(view);
+            }
+
             Log.Info($"Compared {older.Meta.Name} and {newer.Meta.Name} in {watch.ElapsedMilliseconds} ms");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SnapshotFormatException)
@@ -406,6 +412,84 @@ internal sealed class ComparisonForm : Form
         Text = $"Comparison: {_diff.Left.Meta.Name} ⇄ {_diff.Right.Meta.Name}";
     }
 
+    /// <summary>Expanded and selected rows, the first row on screen, and the marks, by path (F18).</summary>
+    private sealed record ViewState(HashSet<string> Expanded, HashSet<string> Selected, string? Top, int TopRow, HashSet<string> Marked);
+
+    private ViewState? CaptureView()
+    {
+        if (_grid.Model is not ComparisonModel model)
+        {
+            return null;
+        }
+
+        var rows = _grid.VisibleIds;
+        var expanded = rows.Where(_grid.IsExpanded).Select(model.RowKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var selected = _grid.SelectedIds.Select(model.RowKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var top = _grid.TopRow < rows.Count ? model.RowKey(rows[_grid.TopRow]) : null;
+        var marked = _marks.Items.Select(i => model.RowKey(ComparisonModel.NodeId(i.Area, i.Node))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return new ViewState(expanded, selected, top, _grid.TopRow, marked);
+    }
+
+    /// <summary>
+    /// After comparing again, opens the same folders and keys, selects the same rows and scrolls back, so adding
+    /// a Global Ignore rule or Refresh does not collapse the tree (F18). Rows that are now ignored are simply gone.
+    /// </summary>
+    private void RestoreView(ViewState view)
+    {
+        if (_grid.Model is not ComparisonModel model)
+        {
+            return;
+        }
+
+        var marks = new List<DiffItem>();
+        if (view.Marked.Count > 0 && _diff is not null)
+        {
+            foreach (var area in ComparisonModel.AllAreas)
+            {
+                var tree = _diff.Tree(area);
+                for (var n = 0; n < tree.Count; n++)
+                {
+                    if (view.Marked.Contains(model.RowKey(ComparisonModel.NodeId(area, n))))
+                    {
+                        marks.Add(new DiffItem(area, n));
+                    }
+                }
+            }
+        }
+
+        _marks.Clear();
+        _marks.Toggle(marks);
+
+        // Rows are visited top to bottom; expanding one inserts its children right below it, so they are visited next.
+        var rows = _grid.VisibleIds;
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var id = rows[i];
+            if (view.Expanded.Count > 0 && model.HasChildren(id) && view.Expanded.Contains(model.RowKey(id)))
+            {
+                _grid.Expand(id);
+            }
+        }
+
+        if (view.Selected.Count > 0)
+        {
+            _grid.SetSelection(rows.Where(id => view.Selected.Contains(model.RowKey(id))).ToList());
+        }
+        var top = -1;
+        if (view.Top is not null)
+        {
+            for (var i = 0; i < rows.Count && top < 0; i++)
+            {
+                if (string.Equals(model.RowKey(rows[i]), view.Top, StringComparison.OrdinalIgnoreCase))
+                {
+                    top = i;
+                }
+            }
+        }
+
+        _grid.ScrollTo(top >= 0 ? top : view.TopRow);
+    }
+
     private IEnumerable<long> AllExpanded()
     {
         if (_grid.Model is null)
@@ -473,6 +557,12 @@ internal sealed class ComparisonForm : Form
         {
             parts.Add(string.Create(CultureInfo.CurrentCulture, $"{_grid.SelectedIds.Count:N0} selected"));
         }
+        else if (_grid.SelectedIds.Count == 1 && _grid.Model is ComparisonModel model
+            && model.ToolTip(_grid.SelectedIds.First(), ComparisonModel.NameColumn) is { } path)
+        {
+            // The full path of the one selected item, in place of the hover tool tips (F19).
+            parts.Add(path.Replace(Environment.NewLine, " · ", StringComparison.Ordinal));
+        }
 
         if (_marks.Count > 0)
         {
@@ -483,9 +573,9 @@ internal sealed class ComparisonForm : Form
         {
             var origin = state.Origin switch
             {
-                IgnoreListOrigin.Remote => "remote",
-                IgnoreListOrigin.LocalFallback => "local (remote not reachable)",
-                _ => "local",
+                IgnoreListOrigin.Remote => "local + remote",
+                IgnoreListOrigin.LocalFallback => "local only (remote not reachable)",
+                _ => "local only",
             };
             parts.Add(string.Create(CultureInfo.CurrentCulture, $"Global Ignore list: {origin}, {state.List.Rules.Count + _sessionRules.Count:N0} rules"));
         }
@@ -572,13 +662,20 @@ internal sealed class ComparisonForm : Form
             return;
         }
 
-        var note = _ignoreState?.Origin == IgnoreListOrigin.Remote
-            ? " The remote list is in effect, so they take effect in snapshots and other comparisons once the local list is used (or the remote list cannot be read). They are hidden here now."
-            : " They are left out of new snapshots and comparisons from now on, and hidden here now.";
-        if (!MessageDialog.Ask(this, "Add to Global Ignore list", $"Add {(rules.Count == 1 ? "this rule" : $"these {rules.Count} rules")} to the local Global Ignore list?{note}", "Add", "Cancel", rules))
+        // The rules can be changed before they are added, e.g. a folder made into C:\Users\*\… (F20).
+        var edited = IgnoreRulesDialog.Edit(
+            this,
+            "Add to Global Ignore list",
+            $"Add {(rules.Count == 1 ? "this rule" : $"these {rules.Count} rules")} to the local Global Ignore list? Change them first if needed. "
+                + "They are left out of new snapshots and comparisons from now on, and hidden here now.",
+            rules,
+            "Add");
+        if (edited is null)
         {
             return;
         }
+
+        rules = [.. edited.Distinct(StringComparer.OrdinalIgnoreCase)];
 
         try
         {

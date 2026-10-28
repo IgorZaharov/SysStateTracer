@@ -24,6 +24,9 @@ public sealed class ImportanceMarks
 
     public int Count => _marked.Count;
 
+    /// <summary>The marked items themselves (not what lies below them).</summary>
+    public IReadOnlyCollection<DiffItem> Items => _marked;
+
     public void Clear() => _marked.Clear();
 
     public bool IsMarked(DiffItem item) => _marked.Contains(item);

@@ -41,6 +41,14 @@ public sealed class GlobalIgnoreList
         return new GlobalIgnoreList(rules, errors);
     }
 
+    /// <summary>The rules of both lists (F22: the local and the remote list apply together).</summary>
+    public static GlobalIgnoreList Combine(GlobalIgnoreList first, GlobalIgnoreList second)
+    {
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+        return new GlobalIgnoreList([.. first.Rules, .. second.Rules], [.. first.Errors, .. second.Errors]);
+    }
+
     /// <summary>Rules from the text of a list file.</summary>
     public static GlobalIgnoreList FromText(string text, IgnoreRuleSource source)
     {

@@ -380,7 +380,13 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 all.OfType<TextBox>().First(t => t.Text == app.SnapshotFolder).Text = other;
                 all.OfType<RadioButton>().Single(r => r.Text == "Dark").Checked = true;
                 Assert.True(ThemeManager.Current.IsDark);
-                all.OfType<RadioButton>().Single(r => r.Text.StartsWith("Remote", StringComparison.Ordinal)).Checked = true;
+                all.OfType<CheckBox>().Single(r => r.Text.StartsWith("Also use the shared remote list", StringComparison.Ordinal)).Checked = true;
+
+                // A rule is edited in place, e.g. to add a wildcard (F25).
+                var rules = all.OfType<ThemedListView>().Single();
+                var sam = rules.Items.Cast<ListViewItem>().Single(i => i.SubItems[1].Text == @"REG:HKLM\SAM");
+                form.ReplaceRule(int.Parse(sam.Name, System.Globalization.CultureInfo.InvariantCulture), [@"REG:HKLM\SAM*"]);
+                Assert.Contains(rules.Items.Cast<ListViewItem>(), i => i.SubItems[1].Text == @"REG:HKLM\SAM*");
                 all.OfType<ThemedButton>().Single(b => b.Text == "OK").PerformClick();
                 form.Close();
                 Ui.Pump();
@@ -390,7 +396,19 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal(other, saved.SnapshotFolder);
             Assert.Equal(ThemePreference.Dark, saved.Theme);
             Assert.Equal(IgnoreListSource.Remote, saved.IgnoreListSource);
-            Assert.Contains(@"REG:HKLM\SAM", File.ReadAllText(app.Paths.LocalIgnoreFile), StringComparison.Ordinal);
+            Assert.Contains(@"REG:HKLM\SAM*", File.ReadAllText(app.Paths.LocalIgnoreFile), StringComparison.Ordinal);
+
+            // The rules dialog accepts only valid rules (F20).
+            using (var dialog = Ui.Show(IgnoreRulesDialog.Create("Add to Global Ignore list", "Add?", [@"FS:C:\Temp"], "Add")))
+            {
+                Assert.True(dialog.CanSave);
+                dialog.Box.Text = "FS:C:\\Users\\*\\AppData\r\nnot a rule";
+                Assert.False(dialog.CanSave);
+                dialog.Box.Text = "FS:C:\\Users\\*\\AppData\r\nREG:HKCU\\Software\\X";
+                Assert.True(dialog.CanSave);
+                Assert.Equal(2, dialog.Rules.Count);
+                dialog.Close();
+            }
 
             // Cancel puts the theme back.
             using (var form = Ui.Show(new PreferencesForm(app.Paths, app.Settings)))

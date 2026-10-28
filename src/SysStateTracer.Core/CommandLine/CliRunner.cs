@@ -468,9 +468,9 @@ public static class CliRunner
 
             var origin = state.Origin switch
             {
-                IgnoreListOrigin.Remote => "remote",
-                IgnoreListOrigin.LocalFallback => "local (remote not reachable)",
-                _ => "local",
+                IgnoreListOrigin.Remote => "local + remote",
+                IgnoreListOrigin.LocalFallback => "local only (remote not reachable)",
+                _ => "local only",
             };
             Say(string.Create(CultureInfo.InvariantCulture, $"Global Ignore list: {origin}, {state.List.Rules.Count:N0} rules. {state.Message}"));
             return state;

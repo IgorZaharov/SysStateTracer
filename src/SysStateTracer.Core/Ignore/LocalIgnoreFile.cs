@@ -2,13 +2,13 @@ using System.Text;
 
 namespace SysStateTracer.Core.Ignore;
 
-/// <summary>Which Global Ignore list is in effect (decision F1).</summary>
+/// <summary>Which Global Ignore lists are in effect (decision F1, changed by F22). The names are kept for old settings files.</summary>
 public enum IgnoreListSource
 {
-    /// <summary>SysStateTracer.ignore.txt beside the exe.</summary>
+    /// <summary>Only SysStateTracer.ignore.txt beside the exe.</summary>
     Local,
 
-    /// <summary>A URL or network file; the local list is used when it cannot be read.</summary>
+    /// <summary>The local list and the remote one (a URL or network file) together; the default. Local alone when the remote list cannot be read.</summary>
     Remote,
 }
 

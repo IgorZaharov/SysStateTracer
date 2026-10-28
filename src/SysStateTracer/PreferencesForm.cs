@@ -22,8 +22,7 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly RadioButton _themeSystem = new() { Text = "Follow Windows", AutoSize = true };
     private readonly RadioButton _themeLight = new() { Text = "Light", AutoSize = true };
     private readonly RadioButton _themeDark = new() { Text = "Dark", AutoSize = true };
-    private readonly RadioButton _remote = new() { Text = "Remote: a URL or network file, shared by several PCs", AutoSize = true };
-    private readonly RadioButton _local = new() { Text = "Local: SysStateTracer.ignore.txt beside the program", AutoSize = true };
+    private readonly CheckBox _remote = new() { Text = "Also use the shared remote list (a URL or network file, shared by several PCs)", AutoSize = true };
     private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 470 };
     private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(600, 0), Text = " " };
     private readonly ThemedListView _rules = new() { Dock = DockStyle.Fill, MultiSelect = true };
@@ -194,11 +193,13 @@ internal sealed class PreferencesForm : ThemedDialog
 
     private void BuildIgnorePage()
     {
-        // Which list is used (F1).
+        // The local list always applies; the remote one too unless unticked (F22).
         var top = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
-        var title = new Label { Text = "Which list to use", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
+        var title = new Label { Text = "Lists in use", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
         ThemeManager.SetRole(title, ThemeRole.Heading);
         top.Controls.Add(title);
+        var always = new Label { Text = "The local list below (SysStateTracer.ignore.txt beside the program) is always used.", AutoSize = true, MaximumSize = new Size(660, 0), Margin = new Padding(0, 0, 0, 6) };
+        top.Controls.Add(always);
         top.Controls.Add(_remote);
         var remoteRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 4, 0, 0) };
         _remoteLocation.Text = _settings.IgnoreListRemoteLocation;
@@ -212,17 +213,16 @@ internal sealed class PreferencesForm : ThemedDialog
         _remoteResult.Margin = new Padding(20, 4, 0, 8);
         ThemeManager.SetRole(_remoteResult, ThemeRole.Secondary);
         top.Controls.Add(_remoteResult);
-        top.Controls.Add(_local);
         var fallback = new Label
         {
-            Text = "When the remote list cannot be read, the local list is used. \"Add to Global Ignore list\" in the comparison window always adds to the local list.",
+            Text = "Rules from both lists apply. When the remote list cannot be read, the local list is used alone. \"Add to Global Ignore list\" in the comparison window adds to the local list.",
             AutoSize = true,
             MaximumSize = new Size(660, 0),
             Margin = new Padding(0, 6, 0, 16),
         };
         ThemeManager.SetRole(fallback, ThemeRole.Secondary);
         top.Controls.Add(fallback);
-        (_settings.IgnoreListSource == IgnoreListSource.Remote ? _remote : _local).Checked = true;
+        _remote.Checked = _settings.IgnoreListSource == IgnoreListSource.Remote;
         _remote.CheckedChanged += (_, _) => _remoteLocation.Enabled = _remote.Checked;
         _remoteLocation.Enabled = _remote.Checked;
 
@@ -235,18 +235,23 @@ internal sealed class PreferencesForm : ThemedDialog
         _rules.Columns.Add("Rule", 400);
         _rules.ItemColor = (item, _) => item.Tag is string ? ThemeManager.Current.Deleted : null;
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(0, 8, 0, 0), WrapContents = true };
+        var addRule = new ThemedButton { Text = "Add rule…", Width = 100 };
+        var editRule = new ThemedButton { Text = "Edit…", Width = 80 };
         var addFolder = new ThemedButton { Text = "Add folder…", Width = 110 };
         var addKey = new ThemedButton { Text = "Add registry key…", Width = 140 };
         var addService = new ThemedButton { Text = "Add service…", Width = 110 };
         var remove = new ThemedButton { Text = "Remove", Width = 90 };
         var import = new ThemedButton { Text = "Import…", Width = 90 };
         var export = new ThemedButton { Text = "Export…", Width = 90 };
-        foreach (var b in new[] { addFolder, addKey, addService, remove, import, export })
+        foreach (var b in new[] { addRule, editRule, addFolder, addKey, addService, remove, import, export })
         {
             b.Margin = new Padding(0, 0, 8, 0);
             buttons.Controls.Add(b);
         }
 
+        addRule.Click += (_, _) => AddTypedRules();
+        editRule.Click += (_, _) => EditSelected();
+        _rules.DoubleClick += (_, _) => EditSelected();
         addFolder.Click += (_, _) => AddFolder();
         addKey.Click += (_, _) => AddRegistryKey();
         addService.Click += (_, _) => AddService();
@@ -258,6 +263,11 @@ internal sealed class PreferencesForm : ThemedDialog
             if (e.KeyCode == Keys.Delete)
             {
                 RemoveSelected();
+            }
+            else if (e.KeyCode is Keys.F2 or Keys.Enter)
+            {
+                EditSelected();
+                e.Handled = true;
             }
         };
 
@@ -338,6 +348,52 @@ internal sealed class PreferencesForm : ThemedDialog
         {
             added.Selected = true;
             added.EnsureVisible();
+        }
+    }
+
+    /// <summary>Rules typed in, e.g. with wildcards (F25).</summary>
+    private void AddTypedRules()
+    {
+        var rules = IgnoreRulesDialog.Edit(this, "Add rules", "Rules to add to the local list:", ["FS:"], "Add");
+        foreach (var rule in rules ?? [])
+        {
+            AddRule(rule);
+        }
+    }
+
+    /// <summary>Changes the selected rule in place (F25); a rule can become several lines.</summary>
+    internal void EditSelected()
+    {
+        if (_rules.SelectedItems.Count != 1)
+        {
+            return;
+        }
+
+        var index = int.Parse(_rules.SelectedItems[0].Name, System.Globalization.CultureInfo.InvariantCulture);
+        var edited = IgnoreRulesDialog.Edit(this, "Edit rule", "Change the rule:", [_localLines[index].Trim()], "OK");
+        if (edited is not { Count: > 0 })
+        {
+            return;
+        }
+
+        ReplaceRule(index, edited);
+    }
+
+    /// <summary>Puts <paramref name="rules"/> in place of line <paramref name="index"/> of the local list.</summary>
+    internal void ReplaceRule(int index, IReadOnlyList<string> rules)
+    {
+        _localLines.RemoveAt(index);
+        var fresh = rules
+            .Where(r => !_localLines.Any(l => string.Equals(l.Trim(), r, StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _localLines.InsertRange(index, fresh);
+        FillRules();
+        var first = _rules.Items.Cast<ListViewItem>().FirstOrDefault(i => i.SubItems[1].Text == rules[0]);
+        if (first is not null)
+        {
+            first.Selected = true;
+            first.EnsureVisible();
         }
     }
 
@@ -462,7 +518,7 @@ internal sealed class PreferencesForm : ThemedDialog
             }
             else
             {
-                _remoteResult.Text = fetch.Message + " The local list would be used.";
+                _remoteResult.Text = fetch.Message + " Only the local list would be used.";
                 _remoteResult.ForeColor = ThemeManager.Current.Deleted;
             }
         }

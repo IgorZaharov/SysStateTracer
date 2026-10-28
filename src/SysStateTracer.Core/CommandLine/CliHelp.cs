@@ -37,7 +37,7 @@ public static class CliHelp
         text.Append(nl);
         text.Append("A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of").Append(nl);
         text.Append("a .stsnap file anywhere. Put names and paths with spaces in quotes.").Append(nl);
-        text.Append("Comparisons and exports leave out everything matched by the Global Ignore list chosen in Preferences.").Append(nl);
+        text.Append("Comparisons and exports leave out everything matched by the Global Ignore lists set in Preferences.").Append(nl);
         text.Append(nl);
         text.Append("Folders:").Append(nl);
         text.Append("  Snapshots:                       ").Append(snapshotFolder).Append(nl);

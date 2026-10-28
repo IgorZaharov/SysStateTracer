@@ -82,7 +82,6 @@ internal sealed class NewSnapshotForm : ThemedDialog
         _stop.Enabled = false;
         _start.Click += async (_, _) => await StartAsync();
         _stop.Click += (_, _) => Stop();
-        AcceptButton = null;
 
         _name.Text = SnapshotNaming.DefaultName();
         _name.TextChanged += (_, _) => ValidateName();
@@ -126,6 +125,12 @@ internal sealed class NewSnapshotForm : ThemedDialog
         _notElevated.ForeColor = ThemeManager.Current.Modified;
         ValidateName();
         _ignoreLoad = LoadIgnoreListAsync();
+
+        // Enter starts the snapshot, Left/Right move between the buttons (F24); Start is the accept button.
+        if (_start.Enabled)
+        {
+            _start.Focus();
+        }
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -256,9 +261,9 @@ internal sealed class NewSnapshotForm : ThemedDialog
             _tree.SetIgnore(state.List.Matcher);
             var origin = state.Origin switch
             {
-                IgnoreListOrigin.Remote => "remote list",
-                IgnoreListOrigin.LocalFallback => "local list (the remote list could not be read)",
-                _ => "local list",
+                IgnoreListOrigin.Remote => "local + remote",
+                IgnoreListOrigin.LocalFallback => "local only (the remote list could not be read)",
+                _ => "local only",
             };
             _ignoreStatus.Text = $"Global Ignore list: {origin}, {state.List.Rules.Count:N0} rules. Ignored items are always left out.";
         }

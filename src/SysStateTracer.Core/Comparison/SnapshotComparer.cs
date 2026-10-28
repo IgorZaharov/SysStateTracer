@@ -54,9 +54,10 @@ public sealed class DiffResult
     /// <summary>Right on the left and vice versa; New and Deleted trade places. Instant.</summary>
     public DiffResult Swap() => new(Right, Left, FileSystem.Swap(), Registry.Swap(), Services.Swap(), Ignore);
 
-    public DiffCounts FileSystemCounts => Count(FileSystem, n => n.Kind == DiffItemKind.Folder ? Size(Side(FileSystem, n.Node).FileSystem.Descendants, Index(FileSystem, n.Node)) : 0);
+    // A new or deleted folder or key counts with what it holds, less what Global Ignore rules leave out.
+    public DiffCounts FileSystemCounts => Count(FileSystem, n => n.Kind == DiffItemKind.Folder ? Math.Max(0, FileSystem.ChangedItems(n.Node) - 1) : 0);
 
-    public DiffCounts RegistryCounts => Count(Registry, n => n.Kind == DiffItemKind.Key ? Size(Side(Registry, n.Node).Registry.Descendants, Index(Registry, n.Node)) : 0);
+    public DiffCounts RegistryCounts => Count(Registry, n => n.Kind == DiffItemKind.Key ? Math.Max(0, Registry.ChangedItems(n.Node) - 1) : 0);
 
     public DiffCounts ServicesCounts => Count(Services, _ => 0);
 
@@ -95,8 +96,6 @@ public sealed class DiffResult
     private Snapshot Side(DiffTree tree, int node) => tree.Left(node) >= 0 ? Left : Right;
 
     private static int Index(DiffTree tree, int node) => tree.Left(node) >= 0 ? tree.Left(node) : tree.Right(node);
-
-    private static int Size(ReadOnlySpan<int> descendants, int index) => descendants[index];
 
     private static DiffCounts Count(DiffTree tree, Func<(int Node, DiffItemKind Kind), int> blockExtra)
     {
@@ -312,7 +311,8 @@ public static class SnapshotComparer
                 }
 
                 var kind = tree.IsDirectory(index) ? DiffItemKind.Folder : DiffItemKind.File;
-                _out.Add(parentNode, kind, isOlder ? ChangeKind.Deleted : ChangeKind.New, ChangedFields.None, x, y, 1 + tree.Descendants[index]);
+                var below = ignore.RuleCount > 0 ? KeptBelow(tree, isOlder ? _an : _bn, index) : tree.Descendants[index];
+                _out.Add(parentNode, kind, isOlder ? ChangeKind.Deleted : ChangeKind.New, ChangedFields.None, x, y, 1 + below);
             }
             finally
             {
@@ -389,6 +389,37 @@ public static class SnapshotComparer
             }
         }
 
+        /// <summary>
+        /// Entries below a new or deleted folder that no Global Ignore rule leaves out, so that a rule such as
+        /// <c>FS:C:\Temp\*</c> or <c>FS:C:\Users\*\AppData\Local\Temp</c> also applies inside it (F26).
+        /// </summary>
+        private int KeptBelow(FsTree tree, NameTable names, int index)
+        {
+            var kept = 0;
+            for (var c = index + 1; c <= index + tree.Descendants[index]; c += tree.Descendants[c] + 1)
+            {
+                if ((++_steps & 0xFFF) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                _path.Push(names[tree.Name[c]], "\\");
+                try
+                {
+                    if (!ignore.IsIgnoredEntry(IgnoreTarget.FileSystem, _path.Span))
+                    {
+                        kept += 1 + KeptBelow(tree, names, c);
+                    }
+                }
+                finally
+                {
+                    _path.Pop();
+                }
+            }
+
+            return kept;
+        }
+
         /// <summary>Drive roots are named "C:"; the matcher expects "C:\…" paths, which the buffer already gives below the root.</summary>
         private ReadOnlySpan<char> FsPath() => _path.Span;
     }
@@ -460,12 +491,36 @@ public static class SnapshotComparer
                     return;
                 }
 
-                _out.Add(parentNode, DiffItemKind.Key, isOlder ? ChangeKind.Deleted : ChangeKind.New, ChangedFields.None, x, y, 1 + tree.Descendants[index]);
+                var below = ignore.RuleCount > 0 ? KeptBelow(tree, isOlder ? _an : _bn, index) : tree.Descendants[index];
+                _out.Add(parentNode, DiffItemKind.Key, isOlder ? ChangeKind.Deleted : ChangeKind.New, ChangedFields.None, x, y, 1 + below);
             }
             finally
             {
                 _path.Pop();
             }
+        }
+
+        /// <summary>Subkeys below a new or deleted key that no Global Ignore rule leaves out.</summary>
+        private int KeptBelow(RegTree tree, NameTable names, int index)
+        {
+            var kept = 0;
+            for (var c = index + 1; c <= index + tree.Descendants[index]; c += tree.Descendants[c] + 1)
+            {
+                _path.Push(names[tree.Name[c]], "\\");
+                try
+                {
+                    if (!ignore.IsIgnoredEntry(IgnoreTarget.Registry, _path.Span))
+                    {
+                        kept += 1 + KeptBelow(tree, names, c);
+                    }
+                }
+                finally
+                {
+                    _path.Pop();
+                }
+            }
+
+            return kept;
         }
 
         private void Pair(int x, int y, int parentNode)

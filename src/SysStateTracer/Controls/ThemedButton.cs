@@ -21,6 +21,9 @@ internal sealed class ThemedButton : Button, IThemed
         Cursor = Cursors.Default;
     }
 
+    /// <summary>The focused button is always outlined, also before the keyboard was used, so Enter's target is visible.</summary>
+    protected override bool ShowFocusCues => true;
+
     /// <summary>Accent-coloured: the main action of the window.</summary>
     public bool Primary { get; set; }
 

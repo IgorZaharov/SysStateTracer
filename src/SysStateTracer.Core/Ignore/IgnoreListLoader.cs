@@ -1,22 +1,25 @@
 namespace SysStateTracer.Core.Ignore;
 
-/// <summary>Where the list in effect came from.</summary>
+/// <summary>Where the rules in effect came from.</summary>
 public enum IgnoreListOrigin
 {
-    /// <summary>Local was selected.</summary>
+    /// <summary>Local only was chosen.</summary>
     Local,
 
-    /// <summary>Remote was selected and could be read.</summary>
+    /// <summary>The local and the remote list, both read.</summary>
     Remote,
 
-    /// <summary>Remote was selected but could not be read, so the local list is in effect.</summary>
+    /// <summary>The remote list could not be read, so only the local list is in effect.</summary>
     LocalFallback,
 }
 
 /// <summary>The Global Ignore list in effect, with where it came from and a line for Preferences / the log.</summary>
 public sealed record IgnoreListState(GlobalIgnoreList List, IgnoreListOrigin Origin, string Message);
 
-/// <summary>Picks the Global Ignore list according to Preferences (decision F1).</summary>
+/// <summary>
+/// The Global Ignore rules according to Preferences: the local list, plus the remote list unless "local only"
+/// is chosen (F22). Rules added in the comparison window go to the local list, so they always apply.
+/// </summary>
 public static class IgnoreListLoader
 {
     public static async Task<IgnoreListState> LoadAsync(
@@ -35,7 +38,12 @@ public static class IgnoreListLoader
             var fetch = await RemoteIgnoreSource.FetchAsync(remoteLocation, http, timeout, cancellationToken).ConfigureAwait(false);
             if (fetch.Succeeded)
             {
-                return new IgnoreListState(GlobalIgnoreList.FromText(fetch.Text!, IgnoreRuleSource.Remote), IgnoreListOrigin.Remote, fetch.Message);
+                var own = LoadLocal(local);
+                var remote = GlobalIgnoreList.FromText(fetch.Text!, IgnoreRuleSource.Remote);
+                return new IgnoreListState(
+                    GlobalIgnoreList.Combine(own, remote),
+                    IgnoreListOrigin.Remote,
+                    $"{fetch.Message} Using it ({remote.Rules.Count} rules) together with the local list ({own.Rules.Count} rules).");
             }
 
             var fallback = LoadLocal(local);

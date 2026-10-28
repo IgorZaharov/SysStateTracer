@@ -163,17 +163,19 @@ public class IgnoreListSourceTests
     }
 
     [Fact]
-    public async Task Loader_Remote_UsesRemoteRules()
+    public async Task Loader_Remote_UsesRemoteAndLocalRulesTogether()
     {
         using var dir = new TempDirectory();
         var local = new LocalIgnoreFile(dir.File("SysStateTracer.ignore.txt"));
+        local.Save("FS:D:\\Mine\n");
         using var http = new HttpClient(new StubHandler((_, _) => Task.FromResult(Ok(RemoteText))));
 
         var state = await IgnoreListLoader.LoadAsync(IgnoreListSource.Remote, Url, local, http);
 
         Assert.Equal(IgnoreListOrigin.Remote, state.Origin);
-        Assert.Equal(2, state.List.Rules.Count);
-        Assert.All(state.List.Rules, r => Assert.Equal(IgnoreRuleSource.Remote, r.Source));
+        Assert.Equal(3, state.List.Rules.Count);
+        Assert.Equal(2, state.List.Rules.Count(r => r.Source == IgnoreRuleSource.Remote));
+        Assert.True(state.List.Matcher.IsIgnored(IgnoreTarget.FileSystem, @"D:\Mine\file.txt"));
     }
 
     [Fact]

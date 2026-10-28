@@ -4,7 +4,8 @@ using SysStateTracer.Theming;
 namespace SysStateTracer.Controls;
 
 /// <summary>How one row is drawn.</summary>
-internal readonly record struct GridRowStyle(Color? TextColor, bool Strikeout, bool Dim, bool Bold);
+/// <summary>How a row is drawn; <paramref name="Icon"/> is a glyph drawn before the name (F21).</summary>
+internal readonly record struct GridRowStyle(Color? TextColor, bool Strikeout, bool Dim, bool Bold, string? Icon = null);
 
 /// <summary>What <see cref="VirtualTreeGrid"/> shows: a tree of row ids with text per column, read on demand.</summary>
 internal interface ITreeGridModel
@@ -48,6 +49,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     private const int SbHorz = 0;
     private const int SbVert = 1;
     private const int Indent = 18;
+    private const int IconWidth = 16;
 
     private readonly List<long> _rows = [];
     private readonly List<int> _depth = [];
@@ -55,6 +57,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     private readonly HashSet<long> _selected = [];
     private readonly ThemedToolTip _toolTip = new() { ShowAlways = false };
     private readonly Font _glyphFont = UiFonts.Glyph(8F);
+    private readonly Font _iconFont = UiFonts.Glyph(10F);
     private Palette _palette = ThemeManager.Current;
     private ITreeGridModel? _model;
     private int _top;
@@ -84,12 +87,21 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
     public int RowHeight { get; set; }
 
+    /// <summary>Show the model's tool tips on hover; off in the comparison window, where they covered the next rows (F19).</summary>
+    public bool ShowToolTips { get; set; } = true;
+
     public int HeaderHeight => RowHeight + 4;
 
     /// <summary>Visible rows (expanded state applied).</summary>
     public int RowCount => _rows.Count;
 
     public IReadOnlyCollection<long> SelectedIds => _selected;
+
+    /// <summary>Ids of the visible rows, top to bottom.</summary>
+    public IReadOnlyList<long> VisibleIds => _rows;
+
+    /// <summary>Index of the first row on screen.</summary>
+    public int TopRow => _top;
 
     public long? FocusedId => _focus >= 0 && _focus < _rows.Count ? _rows[_focus] : null;
 
@@ -183,6 +195,18 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     public void SelectAll()
     {
         _selected.UnionWith(_rows);
+        Invalidate();
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Selects these rows (those that are visible) without scrolling; the first becomes the focused row.</summary>
+    public void SetSelection(IEnumerable<long> ids)
+    {
+        _selected.Clear();
+        _selected.UnionWith(ids);
+        _selected.IntersectWith(_rows);
+        _focus = _selected.Count > 0 ? _rows.FindIndex(_selected.Contains) : (_rows.Count > 0 ? 0 : -1);
+        _anchor = _focus;
         Invalidate();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -438,6 +462,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         {
             _toolTip.Dispose();
             _glyphFont.Dispose();
+            _iconFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -748,6 +773,11 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
     private void UpdateToolTip(Point location)
     {
+        if (!ShowToolTips)
+        {
+            return;
+        }
+
         var row = RowAt(location.Y);
         var column = -1;
         var x = -_left;
@@ -837,7 +867,15 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                         TextRenderer.DrawText(g, chevron, _glyphFont, new Rectangle(x + indent, y, Indent, RowHeight), p.SecondaryText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                     }
 
-                    cell = new Rectangle(x + indent + Indent + 2, y, column.Width - indent - Indent - 8, RowHeight);
+                    var textLeft = indent + Indent + 2;
+                    if (style.Icon is { } icon)
+                    {
+                        // One glyph per row on screen: no measurable cost (the frame-time test covers it).
+                        TextRenderer.DrawText(g, icon, _iconFont, new Rectangle(x + textLeft, y, IconWidth, RowHeight), style.Dim ? color : p.SecondaryText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                        textLeft += IconWidth + 4;
+                    }
+
+                    cell = new Rectangle(x + textLeft, y, column.Width - textLeft - 6, RowHeight);
                 }
 
                 if (cell.Right > 0 && cell.Left < ClientSize.Width && cell.Width > 0)
@@ -845,8 +883,8 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                     var text = _model.Text(id, c);
                     if (text.Length > 0)
                     {
-                        var cellColor = c == 0 || c == 1 ? color : style.Dim ? Palette.Blend(p.Text, p.Background, 0.5) : p.Text;
-                        TextRenderer.DrawText(g, text, font, cell, cellColor, column.Align == HorizontalAlignment.Right ? flagsRight : flagsLeft);
+                        // New, modified and deleted colours go through every column (F27).
+                        TextRenderer.DrawText(g, text, font, cell, color, column.Align == HorizontalAlignment.Right ? flagsRight : flagsLeft);
                     }
                 }
 

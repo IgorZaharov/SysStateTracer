@@ -37,25 +37,25 @@ Matching ignores upper/lower case. A trailing `\` and `/` separators are accepte
 
 Snapshots store only `HKLM` and `HKU`; the other root keys are views of those.
 
-## Which list is used (Local or Remote)
+## Which lists are used
 
-**Preferences → Global Ignore list** has two choices:
+**Preferences → Global Ignore list**:
 
-- **Remote** (default): a list read from an `http://` / `https://` address or from a file path,
-  including a network share such as `\\server\share\SysStateTracer.ignore.txt`. The default address is the
-  shared list in this repository:
+- The **local** list, `SysStateTracer.ignore.txt` beside SysStateTracer.exe, is **always** used. When it does not
+  exist it is created with the built-in default rules
+  ([`src/SysStateTracer.Core/Ignore/default-ignore.txt`](../src/SysStateTracer.Core/Ignore/default-ignore.txt)).
+  It is a plain text file: edit it in Preferences (Add rule…, Edit…, Remove, …) or in any text editor.
+  **Add to Global Ignore list** in the comparison window adds to it, after showing the rules so they can be changed.
+- **Also use the shared remote list** (on by default) adds the rules of a list read from an `http://` / `https://`
+  address or from a file path, including a network share such as `\\server\share\SysStateTracer.ignore.txt`. The
+  default address is the shared list in this repository:
   `https://raw.githubusercontent.com/IgorZaharov/SysStateTracer/main/ignore/SysStateTracer.ignore.txt`
   ([ignore/SysStateTracer.ignore.txt](../ignore/SysStateTracer.ignore.txt)).
-  It is read when a snapshot or comparison starts (at most 1 MB, 10 seconds). If it cannot be read —
-  offline, server or share unreachable, not a rule list — the **Local** list is used instead and
-  Preferences shows why. The remote list is never changed by SysStateTracer.
-- **Local**: `SysStateTracer.ignore.txt` beside SysStateTracer.exe. When it does not exist it is created with the
-  built-in default rules ([`src/SysStateTracer.Core/Ignore/default-ignore.txt`](../src/SysStateTracer.Core/Ignore/default-ignore.txt)).
-  It is a plain text file: edit it in Preferences or in any text editor.
+  It is read when a snapshot or comparison starts (at most 1 MB, 10 seconds). If it cannot be read — offline, server
+  or share unreachable, not a rule list — the local list is used alone and Preferences shows why. The remote list is
+  never changed by SysStateTracer.
 
-Only one list is in effect at a time. **Add to Global Ignore list** in the comparison window always
-adds the rule to the Local file; while Remote is selected and reachable, the new rule takes effect only
-after switching to Local (or when the remote list cannot be read).
+Rules from both lists apply together (F22). Untick the remote list to use the local list only.
 
 ## Default rules
 

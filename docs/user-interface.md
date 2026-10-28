@@ -70,9 +70,10 @@ The tree list paints only the rows on screen: with a million rows, scrolling and
 - **General:** snapshot folder (Browse…, or the program folder; it must be writable) and theme, each choice with a
   small picture of the window in that theme (F5; click the picture or the button). The theme applies live; Cancel
   restores it.
-- **Global Ignore list:** which list is used — Remote (URL or network file, with Check now) or Local
-  (`SysStateTracer.ignore.txt` beside the program). The local list's rules can be added (folder, registry key,
-  service), removed, imported and exported. Comments in the file are kept.
+- **Global Ignore list:** the local list (`SysStateTracer.ignore.txt` beside the program) is always used; **Also use
+  the shared remote list** (URL or network file, with Check now) adds its rules too (F22). The local list's rules can
+  be typed (Add rule…, with wildcards), edited in place (Edit…, double-click or F2), added from a folder, registry key
+  or service, removed, imported and exported (F25). Comments in the file are kept.
 
 ## Help / About (W6)
 

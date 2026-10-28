@@ -36,7 +36,7 @@ Switches:
 
 A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of
 a .stsnap file anywhere. Put names and paths with spaces in quotes.
-Comparisons and exports leave out everything matched by the Global Ignore list chosen in Preferences.
+Comparisons and exports leave out everything matched by the Global Ignore lists set in Preferences.
 
 Folders:
   Snapshots:                       C:\Tools\SysStateTracer
@@ -88,8 +88,8 @@ The folders shown are the real ones on the PC where it runs.
   and the snapshot cache, so a snapshot after the first is incremental. It prints a progress line every few seconds.
 - **/compare-snap and /export** compare older → newer by creation time, whatever order the names are given in;
   the report shows the first name on the left. Both print the new / modified / deleted counts.
-- **Global Ignore list:** comparisons and exports use the list chosen in Preferences (Remote, or Local; Remote
-  falls back to Local when it cannot be read), and print which one was used. The rules also apply inside new
+- **Global Ignore list:** comparisons and exports use the local list together with the remote list, or the local
+  list only, as set in Preferences (the local list alone when the remote one cannot be read), and print which. The rules also apply inside new
   folders and keys: for example, with `FS:C:\Program Files\App\logs` in the list, a new `App` folder is exported
   without its `logs` folder.
 - **/export** writes the .reg file and copies files as described in [exports.md](exports.md), and writes

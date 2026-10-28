@@ -124,15 +124,14 @@ public class ScreenshotTests
                     question.Close();
                 }
 
-                using (var question = Ui.Show(MessageDialog.Question(
+                using (var rules = Ui.Show(IgnoreRulesDialog.Create(
                     "Add to Global Ignore list",
-                    "Add these 2 rules to the local Global Ignore list? They are left out of new snapshots and comparisons from now on, and hidden here now.",
-                    "Add",
-                    "Cancel",
-                    [@"FS:C:\Temp", @"REG:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs"])))
+                    "Add these 2 rules to the local Global Ignore list? Change them first if needed. They are left out of new snapshots and comparisons from now on, and hidden here now.",
+                    [@"FS:C:\Users\*\AppData\Local\Contoso\Cache", @"REG:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs"],
+                    "Add")))
                 {
-                    Ui.Screenshot(question, "dialog-add-to-ignore");
-                    question.Close();
+                    Ui.Screenshot(rules, "dialog-add-to-ignore");
+                    rules.Close();
                 }
 
                 using (var input = Ui.Show(InputDialog.Create("Add registry key", "Key path, e.g. HKLM\\SOFTWARE\\Vendor\\App\\Cache or HKCU\\Software\\App\\MRU:", @"HKCU\Software\Contoso\RecentFiles", "Add", _ => null)))

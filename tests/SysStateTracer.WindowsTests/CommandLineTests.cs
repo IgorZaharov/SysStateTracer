@@ -61,7 +61,7 @@ public class CommandLineTests
         app.Settings.IgnoreListRemoteLocation = remoteList;
 
         Assert.Equal(0, app.Run("/new-snap", "With remote rules"));
-        Assert.Contains("Global Ignore list: remote, 2 rules", app.Text, StringComparison.Ordinal);
+        Assert.Contains("Global Ignore list: local + remote, 2 rules", app.Text, StringComparison.Ordinal);
 
         var snapshot = Core.Storage.SnapshotReader.Load(Path.Combine(app.SnapshotFolder, "With remote rules.stsnap"));
         var files = Enumerable.Range(0, snapshot.FileSystem.Count).Select(i => snapshot.FileSystem.GetFullPath(i, snapshot.Names)).ToList();
@@ -113,11 +113,11 @@ public class CommandLineTests
         var remoteList = Path.Combine(app.DataFolder, "shared-ignore-list.txt");
         File.WriteAllText(remoteList, rules);
 
-        // Remote chosen: its rules apply (the local list is empty).
+        // Local + remote: the remote rules apply (the local list is empty).
         app.Settings.IgnoreListSource = IgnoreListSource.Remote;
         app.Settings.IgnoreListRemoteLocation = remoteList;
         Assert.Equal(0, app.Run("/export", "Before app install", "After app install"));
-        Assert.Contains("Global Ignore list: remote, 5 rules", app.Text, StringComparison.Ordinal);
+        Assert.Contains("Global Ignore list: local + remote, 5 rules", app.Text, StringComparison.Ordinal);
 
         var reg = app.ReadRegExport("Export_Before app install_vs_After app install.reg");
         Assert.Contains("\"changed\"=\"new\"", reg, StringComparison.Ordinal);
@@ -133,11 +133,11 @@ public class CommandLineTests
         Assert.False(app.Exported(data.Path, @"NewApp\logs\run.log"));
         Assert.False(app.Exported(data.Path, @"keep\same.txt"));
 
-        // Local chosen: the remote rules no longer apply, so everything new is exported.
+        // Local only: the remote rules no longer apply, so everything new is exported.
         Directory.Delete(Path.Combine(app.DataFolder, AppPaths.FilesFolderName), recursive: true);
         app.Settings.IgnoreListSource = IgnoreListSource.Local;
         Assert.Equal(0, app.Run("/export", "Before app install", "After app install"));
-        Assert.Contains("Global Ignore list: local, 0 rules", app.Text, StringComparison.Ordinal);
+        Assert.Contains("Global Ignore list: local only, 0 rules", app.Text, StringComparison.Ordinal);
 
         reg = app.ReadRegExport("Export_Before app install_vs_After app install.reg");
         Assert.Contains("secret", reg, StringComparison.Ordinal);

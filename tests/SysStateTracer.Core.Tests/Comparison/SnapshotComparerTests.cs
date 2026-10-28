@@ -205,6 +205,38 @@ public class SnapshotComparerTests
     }
 
     [Fact]
+    public void WildcardRules_AlsoApplyInsideNewFolders()
+    {
+        var a = Build(fs =>
+        {
+            var c = fs.AddRoot("C:", Dir, T(1));
+            fs.Add(c, "Users", Dir, 0, T(1));
+        });
+        var b = Build(fs =>
+        {
+            var c = fs.AddRoot("C:", Dir, T(1));
+            var users = fs.Add(c, "Users", Dir, 0, T(1));
+            var alex = fs.Add(users, "alex", Dir, 0, T(9));                    // a new profile
+            var local = fs.Add(fs.Add(alex, "AppData", Dir, 0, T(9)), "Local", Dir, 0, T(9));
+            var temp = fs.Add(local, "Temp", Dir, 0, T(9));
+            fs.Add(temp, "a.tmp", Archive, 1, T(9));
+            fs.Add(temp, "b.tmp", Archive, 1, T(9));
+            fs.Add(alex, "notes.txt", Archive, 1, T(9));
+            var tempRoot = fs.Add(c, "temp", Dir, 0, T(9));                    // new folder whose contents are ignored
+            fs.Add(tempRoot, "x.log", Archive, 1, T(9));
+        });
+        var ignore = GlobalIgnoreList.Build([@"FS:C:\Users\*\AppData\Local\Temp", @"FS:C:\temp\*"]).Matcher;
+
+        var diff = SnapshotComparer.Compare(a, b, ignore);
+
+        // alex, AppData, Local, notes.txt; and the temp folder itself without its contents.
+        Assert.Equal(5, diff.FileSystemCounts.New);
+        var fs = diff.FileSystem;
+        var alexNode = Enumerable.Range(0, fs.Count).Single(n => diff.FullPath(fs, n) == @"C:\Users\alex");
+        Assert.Equal(4, fs.ChangedItems(alexNode));
+    }
+
+    [Fact]
     public void EmptyAgainstFull_EverythingIsNew()
     {
         var a = Build();

@@ -203,7 +203,7 @@ public class CliTests
 
         Assert.Equal(0, env.Run("/compare-snap", "before", "after", "r.html"));
         Assert.DoesNotContain("extra.dll", File.ReadAllText(Path.Combine(env.DataFolder, "r.html")), StringComparison.Ordinal);
-        Assert.Contains("Global Ignore list: local, 1 rules", env.Text, StringComparison.Ordinal);
+        Assert.Contains("Global Ignore list: local only, 1 rules", env.Text, StringComparison.Ordinal);
     }
 
     [Fact]

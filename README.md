@@ -7,6 +7,11 @@ snapshots to show what was created, modified or deleted in between — for examp
 [![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)
 [![Latest version](https://img.shields.io/github/v/release/IgorZaharov/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/IgorZaharov/SysStateTracer/releases/latest)
 
+**Before the first start:** the exe is not code-signed, so Windows blocks a downloaded copy. Right-click
+`SysStateTracer.exe` → **Properties**, tick **Unblock** at the bottom of the General tab, and click **OK**.
+
+<img src="docs/images/unblock.png" alt="SysStateTracer.exe Properties with Unblock ticked" width="380">
+
 ![Comparison window](docs/images/comparison.png)
 
 ## Download
@@ -25,8 +30,8 @@ On first start:
 - **No UAC prompt:** it starts with your own rights, and works for a standard user too. Snapshots are then
   missing the folders and registry keys only an administrator can read (they are greyed out in New Snapshot).
   For complete snapshots — and much faster reading of whole drives — click **Restart as administrator**.
-- **SmartScreen:** the exe is not code-signed, so Windows may say "Windows protected your PC". Choose
-  **More info → Run anyway**, or tick **Unblock** in the file's Properties.
+- **SmartScreen:** if you did not tick **Unblock** (above), Windows may say "Windows protected your PC". Choose
+  **More info → Run anyway**.
 
 SysStateTracer keeps its files beside the exe (settings, the ignore list, a cache for faster snapshots, a log,
 and the `Files` and `Backups` folders). If that folder cannot be written to, it uses
@@ -76,7 +81,7 @@ the latest build of it is on the [`ui-preview`](https://github.com/IgorZaharov/S
 | --- | --- |
 | [docs/user-interface.md](docs/user-interface.md) | The windows, keyboard shortcuts, and the manual test script |
 | [docs/command-line.md](docs/command-line.md) | Switches, examples, exit codes |
-| [docs/ignore-list.md](docs/ignore-list.md) | Global Ignore list: Remote or Local, rule syntax |
+| [docs/ignore-list.md](docs/ignore-list.md) | Global Ignore list: local and remote lists, rule syntax |
 | [docs/exports.md](docs/exports.md) | `.reg` export, copy to `.\Files`, Revert Value |
 | [docs/benchmarks.md](docs/benchmarks.md) | Measured speed and memory |
 | [docs/format.md](docs/format.md) | The `.stsnap` file format |

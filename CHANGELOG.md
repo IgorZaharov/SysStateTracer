@@ -14,11 +14,14 @@ The first release.
 
 ### Comparison
 - Expanding a new or deleted folder or registry key lists the files, folders, subkeys and values it holds.
+- Icons for drives, folders, files, keys and values; change colours in every column; the selected item's path in the status bar instead of hover tips.
+- Adding Global Ignore rules (they can be edited first) or Refresh keeps the tree open as it was.
 - Only what changed is shown, with the folders and keys leading to it: new in green (+), modified in yellow (~), deleted in red (−). Swap the two snapshots instantly.
 - A million changed items scroll and expand without delay.
 - Right-click actions: jump to Explorer, Regedit or the Services console; mark as non-important; add to the Global Ignore list; export registry changes to a `.reg` file; copy new and modified files to `.\Files` keeping their folders; revert registry values to the older snapshot (with a backup first). Exports also work on a whole drive, hive or category.
 
 ### Global Ignore list
+- The local list always applies, together with the shared remote list unless that is turned off. Rules can be typed and edited in Preferences, with wildcards, which also apply inside new folders.
 - Remote (a URL or network file shared by several PCs, with the local list as fallback) or Local (`SysStateTracer.ignore.txt` beside the program), chosen in Preferences.
 - Comes with rules for places that change all the time (temporary files, caches, logs, telemetry keys); every rule can be removed.
 
