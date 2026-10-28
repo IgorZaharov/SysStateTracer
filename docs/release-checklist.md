@@ -32,7 +32,9 @@ Use the release candidate (`v1.0.0-rc.N` pre-release) and tick each row.
 ## Publishing
 
 1. Update `CHANGELOG.md`.
-2. Tag and push: `git tag v1.0.0 && git push origin v1.0.0` (or `v1.0.0-rc.1` for a pre-release).
+2. Either tag and push (`git tag v1.0.0 && git push origin v1.0.0`, or `v1.0.0-rc.1` for a pre-release), or open
+   **Actions → release → Run workflow** and enter the version (`1.0.0`, `1.0.0-rc.1`); the tag is then created on
+   the latest commit of `main`.
 3. The `release` workflow builds, tests, checks the version the exe reports, and creates the GitHub release with
    `SysStateTracer.exe`, `SysStateTracer.exe.sha256` and the notes from the changelog.
 4. If Microsoft Defender ever flags a release, submit the exe to Microsoft as a false positive.
