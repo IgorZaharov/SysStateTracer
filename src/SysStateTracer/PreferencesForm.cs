@@ -23,7 +23,7 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly RadioButton _themeLight = new() { Text = "Light", AutoSize = true };
     private readonly RadioButton _themeDark = new() { Text = "Dark", AutoSize = true };
     private readonly CheckBox _remote = new() { Text = "Also use the shared remote list (a URL or network file, shared by several PCs)", AutoSize = true };
-    private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 470 };
+    private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 400 };
     private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(600, 0), Text = " " };
     private readonly ThemedListView _rules = new() { Dock = DockStyle.Fill, MultiSelect = true };
     private readonly Label _rulesCaption = new() { AutoSize = true };

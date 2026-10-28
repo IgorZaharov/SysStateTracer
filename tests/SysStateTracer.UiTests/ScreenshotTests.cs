@@ -79,7 +79,11 @@ public class ScreenshotTests
                         comparison.Marks.Toggle([new Core.Comparison.DiffItem(Core.Comparison.DiffArea.FileSystem, temp)]);
                     }
 
-                    grid.Select(model.Roots[1]);
+                    // Show the top of the tree, with a new folder selected (its path is in the status bar).
+                    var office = Enumerable.Range(0, comparison.Diff.FileSystem.Count)
+                        .FirstOrDefault(n => comparison.Diff.Name(comparison.Diff.FileSystem, n) == "Microsoft Office", -1);
+                    grid.Select(office >= 0 ? ComparisonModel.NodeId(Core.Comparison.DiffArea.FileSystem, office) : model.Roots[0]);
+                    grid.ScrollTo(0);
                     grid.Focus();
                     Ui.Screenshot(comparison, "w4-comparison");
                     comparison.Swap();
