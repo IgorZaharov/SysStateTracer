@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         env:
           SYSSTATETRACER_SCREENSHOTS: ${{ github.workspace }}\screenshots   # UI tests save every window in both themes
-        run: .github/scripts/run.ps1 dotnet test SysStateTracer.slnx -c Release --no-build --logger trx --results-directory TestResults
+        run: .github/scripts/run.ps1 dotnet test SysStateTracer.slnx -c Release --no-build --logger trx --results-directory TestResults --blame-hang-timeout 10m
 
       # Window screenshots for review without a Windows PC, kept on the "ui-preview" pre-release
       - name: Update "ui-preview" pre-release

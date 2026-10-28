@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using SysStateTracer.Core.Config;
 using SysStateTracer.Core.Model;
 using SysStateTracer.Core.Storage;
@@ -13,8 +14,14 @@ namespace SysStateTracer.UiTests;
 /// <summary>Runs window code on an STA thread, pumps messages, and saves screenshots.</summary>
 internal static class Ui
 {
+    private static readonly TimeSpan RunTimeout = TimeSpan.FromMinutes(3);
+
     static Ui()
     {
+        // SystemEvents keeps its hidden window on the thread that first uses it. Touching it here, on a
+        // test-runner (MTA) thread, makes it start its own thread; otherwise it would sit on the first STA
+        // test thread, and every later window would hang when that thread has ended.
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += (_, _) => { };
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
     }
@@ -40,9 +47,35 @@ internal static class Ui
             }
         });
         thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
         thread.Start();
-        thread.Join();
+        if (!thread.Join(RunTimeout))
+        {
+            // Most likely a message box waiting for a click: name the open windows.
+            throw new TimeoutException($"The window test did not finish in {RunTimeout.TotalMinutes} minutes. Open windows: {string.Join(" | ", OpenWindowTitles())}");
+        }
+
         error?.Throw();
+    }
+
+    /// <summary>Titles of the visible top-level windows of this process.</summary>
+    public static List<string> OpenWindowTitles()
+    {
+        var titles = new List<string>();
+        var pid = (uint)Environment.ProcessId;
+        EnumWindows((hwnd, _) =>
+        {
+            _ = GetWindowThreadProcessId(hwnd, out var owner);
+            if (owner == pid && IsWindowVisible(hwnd))
+            {
+                var buffer = new char[256];
+                var length = GetWindowText(hwnd, buffer, buffer.Length);
+                titles.Add(length > 0 ? new string(buffer, 0, length) : "(untitled)");
+            }
+
+            return true;
+        }, 0);
+        return titles;
     }
 
     /// <summary>Processes window messages for a while (layout, paint, async continuations).</summary>
@@ -119,6 +152,22 @@ internal static class Ui
         var theme = ThemeManager.Current.IsDark ? "dark" : "light";
         bitmap.Save(Path.Combine(folder, $"{name}-{theme}.png"), ImageFormat.Png);
     }
+
+    private delegate bool EnumWindowsProc(nint hwnd, nint lParam);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumWindows(EnumWindowsProc callback, nint lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hwnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(nint hwnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(nint hwnd, [Out] char[] text, int maxCount);
 }
 
 /// <summary>A program folder and a snapshot folder with hand-made snapshots.</summary>
