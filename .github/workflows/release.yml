@@ -75,10 +75,11 @@ jobs:
       - name: Manual.pdf
         shell: pwsh
         run: |
-          python -m pip install --quiet --disable-pip-version-check reportlab pillow
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          python tools/manual/make_manual.py --screens screenshots --help-text (Join-Path $env:RUNNER_TEMP 'help-full.txt') --version '${{ steps.version.outputs.version }}' --out publish/Manual.pdf
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $pip = python -m pip install --quiet --disable-pip-version-check reportlab pillow 2>&1
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error title=Manual.pdf::pip install failed: $((@($pip) | Select-Object -Last 4) -join ' | ')"; exit 1 }
+          $out = python tools/manual/make_manual.py --screens screenshots --help-text (Join-Path $env:RUNNER_TEMP 'help-full.txt') --version '${{ steps.version.outputs.version }}' --out publish/Manual.pdf 2>&1
+          $out | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error title=Manual.pdf::$((@($out) | Select-Object -Last 6) -join ' | ')"; exit 1 }
 
       - name: Release notes and SHA-256
         shell: pwsh
