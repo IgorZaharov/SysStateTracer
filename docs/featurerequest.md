@@ -24,3 +24,4 @@ Requested Features:
 24. Preferences > Global Ignore list - should be possible to modify/edit entries without going outside of Application.
 25. Bugfix: Global Ignore List - wildcards not working in File system paths.
 26. UX: Snapshot Comparison window: green/red/yellow fonts on added/deleted/modified entries must be in all columns (e.g.: date, size, values. etc.).
+27. GitHub: README.MD - after bar with download links and before first screenshot - add instruction to right-click downloaded .exe, press Properties, Unblock and press OK. Add screenshot of .exe file details with "Unblock" checkbox ticked.
