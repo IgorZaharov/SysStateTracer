@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using SysStateTracer.Core.Comparison;
+using SysStateTracer.Core.Ignore;
 
 namespace SysStateTracer.Core.Export;
 
@@ -65,31 +66,48 @@ public static class HtmlReport
         output.Write(".</p>\n</body></html>\n");
     }
 
-    /// <summary>Areas as [name, nodes]; a node is [name, kind, change, left, right, changedItems, descendants, marked].</summary>
+    /// <summary>
+    /// At most this many rows are added for the contents of new or deleted folders and keys, so a report
+    /// stays small enough to open; past it, such folders and keys show their item count only.
+    /// </summary>
+    public const int MaxContentRows = 250_000;
+
+    /// <summary>
+    /// Areas as [name, nodes]; a node is [name, kind, change, left, right, changedItems, descendants, marked],
+    /// in depth-first order. A whole new or deleted folder or key is followed by what it holds, read from the
+    /// snapshot that has it and without what the Global Ignore list leaves out (GitHub issue #3), so it can be
+    /// opened to any depth, as in the comparison window.
+    /// </summary>
     private static void WriteData(DiffResult diff, TextWriter output, ImportanceMarks? marks)
     {
         using var buffer = new MemoryStream();
         using (var json = new Utf8JsonWriter(buffer))
         {
+            var budget = MaxContentRows;
             json.WriteStartArray();
             foreach (var (area, label) in new[] { (DiffArea.FileSystem, "File system"), (DiffArea.Registry, "Registry"), (DiffArea.Services, "Services") })
             {
                 var tree = diff.Tree(area);
+                var rows = new List<Row>(tree.Count);
+                foreach (var root in tree.Roots())
+                {
+                    AddNode(diff, tree, area, root, marks, rows, ref budget);
+                }
+
                 json.WriteStartArray();
                 json.WriteStringValue(label);
                 json.WriteStartArray();
-                for (var n = 0; n < tree.Count; n++)
+                foreach (var row in rows)
                 {
-                    var item = new DiffItem(area, n);
                     json.WriteStartArray();
-                    json.WriteStringValue(NodeName(diff, tree, n));
-                    json.WriteNumberValue((int)tree.Kind(n));
-                    json.WriteNumberValue((int)tree.Change(n));
-                    json.WriteStringValue(DiffItems.Column(diff, item, right: false));
-                    json.WriteStringValue(DiffItems.Column(diff, item, right: true));
-                    json.WriteNumberValue(tree.ChangedItems(n));
-                    json.WriteNumberValue(tree.Descendants(n));
-                    json.WriteNumberValue(marks?.IsMarked(item) == true ? 1 : 0);
+                    json.WriteStringValue(row.Name);
+                    json.WriteNumberValue((int)row.Kind);
+                    json.WriteNumberValue((int)row.Change);
+                    json.WriteStringValue(row.Left);
+                    json.WriteStringValue(row.Right);
+                    json.WriteNumberValue(row.ChangedItems);
+                    json.WriteNumberValue(row.Descendants);
+                    json.WriteNumberValue(row.Marked ? 1 : 0);
                     json.WriteEndArray();
                 }
 
@@ -101,6 +119,148 @@ public static class HtmlReport
         }
 
         output.Write(Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length));
+    }
+
+    private sealed class Row(string name, DiffItemKind kind, ChangeKind change, string left, string right, bool marked)
+    {
+        public string Name { get; } = name;
+
+        public DiffItemKind Kind { get; } = kind;
+
+        public ChangeKind Change { get; } = change;
+
+        public string Left { get; } = left;
+
+        public string Right { get; } = right;
+
+        public bool Marked { get; } = marked;
+
+        public int ChangedItems { get; set; }
+
+        public int Descendants { get; set; }
+    }
+
+    private static void AddNode(DiffResult diff, DiffTree tree, DiffArea area, int node, ImportanceMarks? marks, List<Row> rows, ref int budget)
+    {
+        var item = new DiffItem(area, node);
+        var row = new Row(
+            NodeName(diff, tree, node),
+            tree.Kind(node),
+            tree.Change(node),
+            DiffItems.Column(diff, item, right: false),
+            DiffItems.Column(diff, item, right: true),
+            marks?.IsMarked(item) == true) { ChangedItems = tree.ChangedItems(node) };
+        var at = rows.Count;
+        rows.Add(row);
+        if (tree.Descendants(node) > 0)
+        {
+            foreach (var child in tree.Children(node))
+            {
+                AddNode(diff, tree, area, child, marks, rows, ref budget);
+            }
+        }
+        else if (tree.Change(node) is ChangeKind.New or ChangeKind.Deleted && tree.Kind(node) is DiffItemKind.Folder or DiffItemKind.Key && budget > 0)
+        {
+            var onRight = tree.Right(node) >= 0;
+            var snapshot = onRight ? diff.Right : diff.Left;
+            var index = onRight ? tree.Right(node) : tree.Left(node);
+            var path = diff.FullPath(tree, node);
+            if (area == DiffArea.FileSystem)
+            {
+                AddFolderContents(diff, snapshot, index, path, onRight, row.Change, row.Marked, rows, ref budget);
+            }
+            else
+            {
+                AddKeyContents(diff, snapshot, index, path, onRight, row.Change, row.Marked, rows, ref budget);
+            }
+        }
+
+        row.Descendants = rows.Count - at - 1;
+    }
+
+    /// <summary>Folders first, then files, as Explorer shows them.</summary>
+    private static void AddFolderContents(
+        DiffResult diff, Model.Snapshot snapshot, int folder, string path, bool onRight, ChangeKind change, bool marked, List<Row> rows, ref int budget)
+    {
+        var fs = snapshot.FileSystem;
+        var ignore = diff.Ignore.RuleCount > 0 ? diff.Ignore : null;
+        foreach (var directories in new[] { true, false })
+        {
+            for (var c = folder + 1; c <= folder + fs.Descendants[folder]; c += fs.Descendants[c] + 1)
+            {
+                if (fs.IsDirectory(c) != directories || budget <= 0)
+                {
+                    continue;
+                }
+
+                var name = snapshot.Names.GetString(fs.Name[c]);
+                var childPath = path + "\\" + name;
+                if (ignore?.IsIgnoredEntry(IgnoreTarget.FileSystem, childPath) == true)
+                {
+                    continue;
+                }
+
+                var text = directories
+                    ? string.Create(CultureInfo.CurrentCulture, $"{ItemFormat.Time(fs.LastWriteTime[c])} · {DiffItems.Count(fs.ChildFolders[c], "folder")}, {DiffItems.Count(fs.ChildFiles[c], "file")}")
+                    : $"{ItemFormat.Time(fs.LastWriteTime[c])} · {ItemFormat.Size(fs.Size[c])}";
+                var row = new Row(name, directories ? DiffItemKind.Folder : DiffItemKind.File, change, onRight ? string.Empty : text, onRight ? text : string.Empty, marked);
+                var at = rows.Count;
+                rows.Add(row);
+                budget--;
+                if (directories)
+                {
+                    AddFolderContents(diff, snapshot, c, childPath, onRight, change, marked, rows, ref budget);
+                }
+
+                row.Descendants = rows.Count - at - 1;
+                row.ChangedItems = 1 + row.Descendants;
+            }
+        }
+    }
+
+    /// <summary>Subkeys first, then values, as Regedit shows them.</summary>
+    private static void AddKeyContents(
+        DiffResult diff, Model.Snapshot snapshot, int key, string path, bool onRight, ChangeKind change, bool marked, List<Row> rows, ref int budget)
+    {
+        var reg = snapshot.Registry;
+        var ignore = diff.Ignore.RuleCount > 0 ? diff.Ignore : null;
+        for (var c = key + 1; c <= key + reg.Descendants[key] && budget > 0; c += reg.Descendants[c] + 1)
+        {
+            var name = snapshot.Names.GetString(reg.Name[c]);
+            var childPath = path + "\\" + name;
+            if (ignore?.IsIgnoredEntry(IgnoreTarget.Registry, childPath) == true)
+            {
+                continue;
+            }
+
+            var keys = 0;
+            for (var k = c + 1; k <= c + reg.Descendants[c]; k += reg.Descendants[k] + 1)
+            {
+                keys++;
+            }
+
+            var text = string.Create(CultureInfo.CurrentCulture, $"{ItemFormat.Time(reg.LastWriteTime[c])} · {DiffItems.Count(keys, "key")}, {DiffItems.Count(reg.KeyValueCount[c], "value")}");
+            var row = new Row(name, DiffItemKind.Key, change, onRight ? string.Empty : text, onRight ? text : string.Empty, marked);
+            var at = rows.Count;
+            rows.Add(row);
+            budget--;
+            AddKeyContents(diff, snapshot, c, childPath, onRight, change, marked, rows, ref budget);
+            row.Descendants = rows.Count - at - 1;
+            row.ChangedItems = 1 + row.Descendants;
+        }
+
+        for (var v = reg.FirstValue[key]; v < reg.FirstValue[key] + reg.KeyValueCount[key] && budget > 0; v++)
+        {
+            var name = snapshot.Names.GetString(reg.ValueName[v]);
+            if (ignore?.IsIgnoredEntry(IgnoreTarget.Registry, path + "\\" + name) == true)
+            {
+                continue;
+            }
+
+            var text = $"{ItemFormat.ValueType(reg.ValueDataType[v])} · {ItemFormat.ValueData(reg, v)}";
+            rows.Add(new Row(name.Length == 0 ? "(Default)" : name, DiffItemKind.Value, change, onRight ? string.Empty : text, onRight ? text : string.Empty, marked) { ChangedItems = 1 });
+            budget--;
+        }
     }
 
     private static string NodeName(DiffResult diff, DiffTree tree, int node)

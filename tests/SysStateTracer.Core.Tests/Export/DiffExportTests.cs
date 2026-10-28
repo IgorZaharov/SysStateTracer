@@ -178,7 +178,20 @@ public class DiffExportTests
         using var data = JsonDocument.Parse(json);
         Assert.Equal(3, data.RootElement.GetArrayLength());
         Assert.Equal("File system", data.RootElement[0][0].GetString());
-        Assert.Equal(diff.FileSystem.Count, data.RootElement[0][1].GetArrayLength());
+        // What new and deleted folders and keys hold is listed too, so they open to any depth (issue #3):
+        // NewFolder (sub, sub\b.txt, a.txt) and D:\Data (report.xlsx); NewApp (Sub, v, Huge) and OldApp (x).
+        var files = data.RootElement[0][1].EnumerateArray().ToList();
+        Assert.Equal(diff.FileSystem.Count + 4, files.Count);
+        var newFolder = files.FindIndex(r => r[0].GetString() == "NewFolder");
+        Assert.Equal(3, files[newFolder][6].GetInt32());
+        Assert.Equal(new[] { "sub", "b.txt", "a.txt" }, files.Skip(newFolder + 1).Take(3).Select(r => r[0].GetString()!));
+        Assert.Equal(1, files[newFolder + 1][6].GetInt32());
+        Assert.Equal((int)ChangeKind.New, files[newFolder + 2][2].GetInt32());
+        Assert.Equal(string.Empty, files[newFolder + 2][3].GetString());
+        var keys = data.RootElement[1][1].EnumerateArray().ToList();
+        Assert.Equal(diff.Registry.Count + 4, keys.Count);
+        var newApp = keys.FindIndex(r => r[0].GetString() == "NewApp");
+        Assert.Equal(new[] { "Sub", "v", "Huge" }, keys.Skip(newApp + 1).Take(3).Select(r => r[0].GetString()!));
         Assert.Contains("<td class=\"n\">", html, StringComparison.Ordinal);
     }
 

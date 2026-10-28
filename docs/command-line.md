@@ -87,7 +87,8 @@ The folders shown are the real ones on the PC where it runs.
 - **/new-snap** uses the scope saved in the New Snapshot window (by default all fixed drives, HKLM, HKU and services)
   and the snapshot cache, so a snapshot after the first is incremental. It prints a progress line every few seconds.
 - **/compare-snap and /export** compare older → newer by creation time, whatever order the names are given in;
-  the report shows the first name on the left. Both print the new / modified / deleted counts.
+  the report shows the first name on the left. Both print the new / modified / deleted counts. In the report, a new
+  or deleted folder or key opens like in the comparison window, to show what it holds (up to 250,000 such rows).
 - **Global Ignore list:** comparisons and exports use the local list together with the remote list, or the local
   list only, as set in Preferences (the local list alone when the remote one cannot be read), and print which. The rules also apply inside new
   folders and keys: for example, with `FS:C:\Program Files\App\logs` in the list, a new `App` folder is exported

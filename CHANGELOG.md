@@ -16,6 +16,7 @@ The first release.
 - Expanding a new or deleted folder or registry key lists the files, folders, subkeys and values it holds.
 - Icons for drives, folders, files, keys and values; change colours in every column; the selected item's path in the status bar instead of hover tips.
 - Adding Global Ignore rules (they can be edited first) or Refresh keeps the tree open as it was.
+- The HTML report (/compare-snap) also lists what new and deleted folders and keys hold, to any depth.
 - Only what changed is shown, with the folders and keys leading to it: new in green (+), modified in yellow (~), deleted in red (−). Swap the two snapshots instantly.
 - A million changed items scroll and expand without delay.
 - Right-click actions: jump to Explorer, Regedit or the Services console; mark as non-important; add to the Global Ignore list; export registry changes to a `.reg` file; copy new and modified files to `.\Files` keeping their folders; revert registry values to the older snapshot (with a backup first). Exports also work on a whole drive, hive or category.
