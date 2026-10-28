@@ -24,7 +24,7 @@ Direct links to the latest version — click to download, no GitHub account need
   `(Get-FileHash .\SysStateTracer.exe).Hash`.
 
 Please, report any bugs or issues to the document here:
-- **[BUGS/ISSUES](https://github.com/IgorZaharov/SysStateTracer/blob/main/docs/featurerequest.md)**
+- **[BUGS/ISSUES](https://github.com/IgorZaharov/SysStateTracer/issues)**
   
 Older versions and release candidates are on the [Releases](https://github.com/IgorZaharov/SysStateTracer/releases) page.
 
