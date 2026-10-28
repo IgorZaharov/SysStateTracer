@@ -67,7 +67,7 @@ jobs:
         run: |
           $out = Join-Path $env:RUNNER_TEMP 'help.txt'
           $p = Start-Process publish/SysStateTracer.exe -ArgumentList '/?' -Wait -PassThru -NoNewWindow -RedirectStandardOutput $out
-          $first = (Get-Content $out -TotalCount 1)
+          $first = (Get-Content $out | Where-Object { $_.Trim() } | Select-Object -First 1)
           Copy-Item $out (Join-Path $env:RUNNER_TEMP 'help-full.txt')
           if ($p.ExitCode -ne 0 -or $first -notmatch [regex]::Escape('SysStateTracer ${{ steps.version.outputs.version }}')) { Write-Error "Unexpected /? output: $first"; exit 1 }
           Write-Host "::notice title=Version::$first"

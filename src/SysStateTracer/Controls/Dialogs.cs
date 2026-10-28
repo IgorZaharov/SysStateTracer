@@ -88,10 +88,10 @@ internal sealed class MessageDialog : ThemedDialog
             {
                 Multiline = true,
                 ReadOnly = true,
-                ScrollBars = ScrollBars.Both,
-                WordWrap = false,
+                ScrollBars = ScrollBars.Vertical,
+                WordWrap = true,
                 Text = string.Join(Environment.NewLine, details),
-                Size = new Size(520, Math.Min(220, 22 + (details.Count * 16))),
+                Size = new Size(520, Math.Min(220, 22 + (details.Sum(d => 1 + (d.Length / 80)) * 16))),
                 Margin = new Padding(0, 12, 0, 0),
                 BorderStyle = BorderStyle.FixedSingle,
             };

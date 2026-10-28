@@ -19,7 +19,7 @@ internal sealed class CopyProgressForm : ThemedDialog
     private readonly ThemedProgressBar _progress = new() { Dock = DockStyle.Top, Height = 6 };
     private readonly Label _counts = new() { AutoSize = true, Text = " " };
     private readonly Label _current = new() { AutoSize = false, AutoEllipsis = true, Height = 20, Dock = DockStyle.Top };
-    private readonly TextBox _skipped = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Both, WordWrap = false, Dock = DockStyle.Fill, Visible = false, BorderStyle = BorderStyle.FixedSingle };
+    private readonly TextBox _skipped = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, WordWrap = true, Dock = DockStyle.Fill, Visible = false, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThemedButton _cancel;
     private readonly ThemedButton _open;
     private readonly CancellationTokenSource _stop = new();
@@ -121,9 +121,9 @@ internal sealed class CopyProgressForm : ThemedDialog
         _current.Text = report.Skipped.Count > 0 ? "Skipped files:" : string.Empty;
         if (report.Skipped.Count > 0)
         {
-            _skipped.Text = string.Join(Environment.NewLine, report.Skipped.Select(s => $"{s.Source}    {s.Reason}"));
+            _skipped.Text = string.Join(Environment.NewLine, report.Skipped.Select(s => $"{s.Reason}: {s.Source}"));
             _skipped.Visible = true;
-            Height += 200;
+            Height += Math.Min(220, 40 + (report.Skipped.Count * 32));
         }
 
         if (report.Copied > 0)
