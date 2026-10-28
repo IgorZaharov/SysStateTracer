@@ -92,7 +92,7 @@ public class UnblockScreenshotTests(Xunit.Abstractions.ITestOutputHelper output)
         var pid = (uint)Environment.ProcessId;
         nint found = 0;
         EnumWindows(
-            (hwnd, _) =>
+            (hwnd, unused) =>
             {
                 _ = GetWindowThreadProcessId(hwnd, out var owner);
                 if (owner == pid && IsWindowVisible(hwnd) && Text(hwnd) == title)
@@ -112,7 +112,7 @@ public class UnblockScreenshotTests(Xunit.Abstractions.ITestOutputHelper output)
         nint found = 0;
         EnumChildWindows(
             parent,
-            (hwnd, _) =>
+            (hwnd, unused) =>
             {
                 var cls = new StringBuilder(64);
                 _ = GetClassName(hwnd, cls, cls.Capacity);
