@@ -6,7 +6,7 @@ using SysStateTracer.Theming;
 namespace SysStateTracer.UiTests;
 
 /// <summary>Plan Steps 50–52: the tree grid and the comparison window.</summary>
-public class ComparisonWindowTests
+public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
     public void Grid_MillionRows_ExpandAndPaintWithinAFrame()
@@ -42,7 +42,7 @@ public class ComparisonWindowTests
 
             frames.Sort();
             var median = frames[frames.Count / 2];
-            Console.WriteLine($"1,000,000 rows: expand {expand.ElapsedMilliseconds} ms; scroll + paint median {median:0.0} ms, slowest {frames[^1]:0.0} ms (target < 16 ms)");
+            output.WriteLine($"1,000,000 rows: expand {expand.ElapsedMilliseconds} ms; scroll + paint median {median:0.0} ms, slowest {frames[^1]:0.0} ms (target < 16 ms)");
             Assert.True(median < 16, $"median frame {median:0.0} ms");
             Assert.True(expand.ElapsedMilliseconds < 1000, $"expand took {expand.ElapsedMilliseconds} ms");
 
@@ -53,7 +53,7 @@ public class ComparisonWindowTests
             Assert.Equal(1_000_001, grid.SelectedIds.Count);
             grid.Collapse(-1);
             Assert.Equal(1, grid.RowCount);
-            Console.WriteLine($"Select all: {select.ElapsedMilliseconds} ms");
+            output.WriteLine($"Select all: {select.ElapsedMilliseconds} ms");
             form.Close();
         });
     }

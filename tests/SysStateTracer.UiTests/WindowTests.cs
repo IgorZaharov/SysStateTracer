@@ -8,7 +8,7 @@ using SysStateTracer.Theming;
 namespace SysStateTracer.UiTests;
 
 /// <summary>Plan Steps 41–49: the windows, checked through their controls.</summary>
-public class WindowTests
+public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
     public void Theme_SwitchRecoloursOpenWindows()
@@ -49,7 +49,7 @@ public class WindowTests
             form.Reload();
             watch.Stop();
             Assert.True(watch.ElapsedMilliseconds < 500, $"100 snapshots listed in {watch.ElapsedMilliseconds} ms (target < 500 ms)");
-            Console.WriteLine($"100 snapshots listed in {watch.ElapsedMilliseconds} ms");
+            output.WriteLine($"100 snapshots listed in {watch.ElapsedMilliseconds} ms");
 
             app.Settings.SortOrder = SnapshotSortOrder.Name;
             app.AddSnapshot("Aardvark", hoursAgo: 500);
@@ -85,9 +85,9 @@ public class WindowTests
             var hklm = Find(tree.Nodes, "HKLM");
             hklm.Expand();
             var sam = Find(hklm.Nodes, @"HKLM\SAM");
-            Assert.Equal(ScopeTree.Unchecked, sam.StateImageIndex);
+            Assert.Equal(ScopeTree.Unchecked, ScopeTree.StateOf(sam));
             Assert.EndsWith("(ignored)", sam.Text, StringComparison.Ordinal);
-            Assert.Equal(ScopeTree.Checked, hklm.StateImageIndex);
+            Assert.Equal(ScopeTree.Checked, ScopeTree.StateOf(hklm));
             Assert.Empty(tree.ToScope().Excluded);
 
             // Unchecking a folder inside an included drive records it.
@@ -95,7 +95,7 @@ public class WindowTests
             drive.Expand();
             var windows = Find(drive.Nodes, Path.GetDirectoryName(Environment.SystemDirectory)!);
             tree.Toggle(windows);
-            Assert.Equal(ScopeTree.Mixed, drive.StateImageIndex);
+            Assert.Equal(ScopeTree.Mixed, ScopeTree.StateOf(drive));
             scope = tree.ToScope();
             Assert.Contains(IgnoreRuleParser.Format(IgnoreTarget.FileSystem, windows.Name), scope.Excluded);
 
@@ -106,8 +106,8 @@ public class WindowTests
 
             // The same scope loads back with the same states.
             tree.Load(scope, volumes);
-            Assert.Equal(ScopeTree.Mixed, Find(tree.Nodes, system.RootPath).StateImageIndex);
-            Assert.Equal(ScopeTree.Unchecked, Find(tree.Nodes, "HKU").StateImageIndex);
+            Assert.Equal(ScopeTree.Mixed, ScopeTree.StateOf(Find(tree.Nodes, system.RootPath)));
+            Assert.Equal(ScopeTree.Unchecked, ScopeTree.StateOf(Find(tree.Nodes, "HKU")));
             var again = tree.ToScope();
             Assert.Equal(scope.Excluded, again.Excluded);
             Assert.Equal(scope.RegistryRoots, again.RegistryRoots);

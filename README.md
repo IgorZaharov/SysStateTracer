@@ -31,8 +31,8 @@ Every push also builds it on GitHub Actions — download it from the run's **Art
 | --- | --- |
 | `src/SysStateTracer` | Windows Forms UI, command line, entry point |
 | `src/SysStateTracer.Core` | Scanning, snapshot storage, comparison, exports (no UI code) |
-| `tests/` | Unit tests, Windows integration tests, benchmarks |
-| `docs/` | Decisions, file format, exports and actions, benchmarks, command-line reference |
+| `tests/` | Unit tests, Windows integration tests, window tests with screenshots, benchmarks |
+| `docs/` | Decisions, file format, windows, exports and actions, benchmarks, command-line reference |
 
 ## Note on snapshot files
 

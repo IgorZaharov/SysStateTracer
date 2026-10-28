@@ -32,6 +32,9 @@ internal sealed class ScopeItem(ScopeKind kind, string path)
 
     public bool ChildrenLoaded { get; set; }
 
+    /// <summary>Check state: <see cref="ScopeTree.Unchecked"/>, <see cref="ScopeTree.Checked"/> or <see cref="ScopeTree.Mixed"/>.</summary>
+    public int State { get; set; }
+
     public IgnoreTarget? Target => Kind switch
     {
         ScopeKind.Volume or ScopeKind.Folder => IgnoreTarget.FileSystem,
@@ -67,7 +70,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     public ScopeTree()
     {
         CheckBoxes = false;
-        StateImageList = _stateImages;
+        ImageList = _stateImages;
         ShowLines = false;
         HideSelection = false;
         FullRowSelect = true;
@@ -183,7 +186,7 @@ internal sealed class ScopeTree : TreeView, IThemed
         {
             var roots = _fileSystem.Nodes.Cast<TreeNode>().ToList();
             var volumes = roots.Where(r => ((ScopeItem)r.Tag!).Kind == ScopeKind.Volume).ToList();
-            var included = roots.Where(v => v.StateImageIndex != Unchecked).ToList();
+            var included = roots.Where(v => StateOf(v) != Unchecked).ToList();
             scope.FileSystemRoots = included.Count == roots.Count && volumes.Count == roots.Count && roots.Count > 0
                 ? null
                 : [.. included.Select(v => ((ScopeItem)v.Tag!).Path)];
@@ -197,7 +200,7 @@ internal sealed class ScopeTree : TreeView, IThemed
         {
             foreach (TreeNode hive in _registry.Nodes)
             {
-                if (hive.StateImageIndex != Unchecked)
+                if (StateOf(hive) != Unchecked)
                 {
                     scope.RegistryRoots.Add(((ScopeItem)hive.Tag!).Path);
                     CollectExclusions(hive, scope.Excluded);
@@ -207,22 +210,25 @@ internal sealed class ScopeTree : TreeView, IThemed
 
         if (_services is not null)
         {
-            scope.IncludeServices = _services.Nodes[0].StateImageIndex == Checked;
-            scope.IncludeDrivers = _services.Nodes[1].StateImageIndex == Checked;
+            scope.IncludeServices = StateOf(_services.Nodes[0]) == Checked;
+            scope.IncludeDrivers = StateOf(_services.Nodes[1]) == Checked;
         }
 
         return scope;
     }
 
+    /// <summary>Checked, Unchecked or Mixed.</summary>
+    public static int StateOf(TreeNode node) => node.Tag is ScopeItem item ? item.State : Unchecked;
+
     /// <summary>True when nothing at all is checked.</summary>
-    public bool IsEmpty => Nodes.Cast<TreeNode>().All(n => n.StateImageIndex == Unchecked);
+    public bool IsEmpty => Nodes.Cast<TreeNode>().All(n => StateOf(n) == Unchecked);
 
     /// <summary>Toggles a node as a click on its checkbox does (tests and keyboard).</summary>
     public void Toggle(TreeNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
         var item = (ScopeItem)node.Tag!;
-        var target = node.StateImageIndex == Checked ? Unchecked : Checked;
+        var target = StateOf(node) == Checked ? Unchecked : Checked;
         if (item.Ignored && target == Checked)
         {
             IgnoredItemClicked?.Invoke(this, item);
@@ -248,7 +254,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     protected override void OnNodeMouseClick(TreeNodeMouseClickEventArgs e)
     {
         base.OnNodeMouseClick(e);
-        if (Enabled && e.Node is { } node && e.Button == MouseButtons.Left && HitTest(e.Location).Location == TreeViewHitTestLocations.StateImage)
+        if (Enabled && e.Node is { } node && e.Button == MouseButtons.Left && HitTest(e.Location).Location == TreeViewHitTestLocations.Image)
         {
             Toggle(node);
         }
@@ -299,6 +305,14 @@ internal sealed class ScopeTree : TreeView, IThemed
 
     private static bool IsPlaceholder(TreeNode node) => node.Tag is null;
 
+    /// <summary>Sets the state and shows it as the node's checkbox picture.</summary>
+    private static void Show(TreeNode node, int state)
+    {
+        ((ScopeItem)node.Tag!).State = state;
+        node.ImageIndex = state;
+        node.SelectedImageIndex = state;
+    }
+
     private int StartState(bool included, string path, IgnoreTarget target)
     {
         if (!included || _ignore.IsIgnored(target, path))
@@ -318,7 +332,8 @@ internal sealed class ScopeTree : TreeView, IThemed
 
     private TreeNode AddNode(TreeNodeCollection parent, ScopeItem item, string text, int state, bool lazy = false)
     {
-        var node = new TreeNode(text) { Tag = item, StateImageIndex = state };
+        var node = new TreeNode(text) { Tag = item };
+        Show(node, state);
         node.Name = item.Path;
         item.ChildrenLoaded = !lazy;
         if (item.Target is { } target)
@@ -363,7 +378,7 @@ internal sealed class ScopeTree : TreeView, IThemed
         item.ChildrenLoaded = true;
         BeginUpdate();
         node.Nodes.Clear();
-        var parentState = node.StateImageIndex;
+        var parentState = StateOf(node);
         foreach (var (childPath, label, kind) in ReadChildren(item))
         {
             var target = kind is ScopeKind.Folder ? IgnoreTarget.FileSystem : IgnoreTarget.Registry;
@@ -467,7 +482,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     private void SetState(TreeNode node, int state, bool cascade)
     {
         var item = (ScopeItem)node.Tag!;
-        node.StateImageIndex = item.Ignored ? Unchecked : state;
+        Show(node, item.Ignored ? Unchecked : state);
         if (!cascade)
         {
             return;
@@ -492,9 +507,9 @@ internal sealed class ScopeTree : TreeView, IThemed
         }
 
         // Ignored children are left out anyway, so they do not make their parent mixed.
-        var anyIncluded = children.Any(c => c.StateImageIndex != Unchecked);
-        var allChecked = children.All(c => c.StateImageIndex == Checked || ((ScopeItem)c.Tag!).Ignored);
-        node.StateImageIndex = !anyIncluded ? Unchecked : allChecked ? Checked : Mixed;
+        var anyIncluded = children.Any(c => StateOf(c) != Unchecked);
+        var allChecked = children.All(c => StateOf(c) == Checked || ((ScopeItem)c.Tag!).Ignored);
+        Show(node, !anyIncluded ? Unchecked : allChecked ? Checked : Mixed);
     }
 
     private void UpdateTreeStates(TreeNode node)
@@ -517,7 +532,7 @@ internal sealed class ScopeTree : TreeView, IThemed
         if (!item.ChildrenLoaded)
         {
             // Not expanded in this session: keep what was saved for anything inside it.
-            if (node.StateImageIndex == Mixed && item.RuleLine is { } rule)
+            if (StateOf(node) == Mixed && item.RuleLine is { } rule)
             {
                 var prefix = rule.TrimEnd('\\') + "\\";
                 excluded.AddRange(_excluded.Where(x => x.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
@@ -529,14 +544,14 @@ internal sealed class ScopeTree : TreeView, IThemed
         foreach (TreeNode child in node.Nodes)
         {
             var childItem = (ScopeItem)child.Tag!;
-            if (child.StateImageIndex == Unchecked)
+            if (StateOf(child) == Unchecked)
             {
                 if (!childItem.Ignored && childItem.RuleLine is { } line)
                 {
                     excluded.Add(line);
                 }
             }
-            else if (child.StateImageIndex == Mixed)
+            else if (StateOf(child) == Mixed)
             {
                 CollectExclusions(child, excluded);
             }
