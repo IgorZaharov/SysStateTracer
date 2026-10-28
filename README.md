@@ -23,6 +23,9 @@ Direct links to the latest version — click to download, no GitHub account need
 - [SysStateTracer.exe.sha256](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe.sha256) — the exe's SHA-256; check it in PowerShell with
   `(Get-FileHash .\SysStateTracer.exe).Hash`.
 
+Please, report any bugs or issues to the document here:
+- **[BUG/ISSUES](https://github.com/IgorZaharov/SysStateTracer/blob/main/docs/featurerequest.md)**
+  
 Older versions and release candidates are on the [Releases](https://github.com/IgorZaharov/SysStateTracer/releases) page.
 
 On first start:
