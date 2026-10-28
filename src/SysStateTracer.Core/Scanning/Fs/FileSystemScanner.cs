@@ -38,7 +38,11 @@ public enum FileSystemScanMethod
 /// Full file-system scan (plan §8.2). Worker threads list folders in bulk with
 /// GetFileInformationByHandleEx (FileIdBothDirectoryInfo, 64 KB at a time) and add each folder's
 /// entries to the shared builder in one short locked batch. File contents are never opened.
-/// Reparse points (junctions, symbolic links, cloud placeholders) are recorded but not followed.
+/// Folder links (junctions, symbolic links) are recorded where they are; their contents are read through
+/// the link only when it leads outside the folders being scanned — e.g. a Desktop redirected to a network
+/// share (GitHub issue #2) — and recorded under the link's own path. Links that point inside the scanned
+/// folders are not followed, so nothing is read twice and link loops cannot occur. Other reparse folders,
+/// such as cloud-file placeholders that are available on this PC, are read like ordinary folders.
 /// </summary>
 public sealed partial class FileSystemScanner
 {
@@ -52,6 +56,9 @@ public sealed partial class FileSystemScanner
     private readonly Dictionary<string, int> _chainIndex = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly ConcurrentQueue<string> _methods = new();
+
+    /// <summary>Folders that are reparse points, found while scanning; handled by <see cref="FollowLinks"/>.</summary>
+    private readonly ConcurrentQueue<(int Index, string Path)> _links = new();
 
     private long _entries;
     private int _pending;
@@ -78,6 +85,12 @@ public sealed partial class FileSystemScanner
     public void Scan(FileSystemScanOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ScanCore(options, cancellationToken);
+        FollowLinks(options, cancellationToken);
+    }
+
+    private void ScanCore(FileSystemScanOptions options, CancellationToken cancellationToken)
+    {
         ProcessPrivileges.TryEnable(ProcessPrivileges.Backup);
 
         var listRoots = new List<string>();
@@ -188,11 +201,11 @@ public sealed partial class FileSystemScanner
             return;
         }
 
-        ListFolders([.. roots.Select(root => (EnsureChain(root), TrimForJoin(root)))], options, cancellationToken);
+        ListFolders([.. roots.Select(root => new DirectoryJob(EnsureChain(root), TrimForJoin(root)))], options, cancellationToken);
     }
 
     /// <summary>Lists already-added folders and everything below them with worker threads.</summary>
-    private void ListFolders(List<(int Index, string Path)> folders, FileSystemScanOptions options, CancellationToken cancellationToken)
+    private void ListFolders(List<DirectoryJob> folders, FileSystemScanOptions options, CancellationToken cancellationToken)
     {
         if (folders.Count == 0)
         {
@@ -200,10 +213,10 @@ public sealed partial class FileSystemScanner
         }
 
         using var jobs = new BlockingCollection<DirectoryJob>(new ConcurrentQueue<DirectoryJob>());
-        foreach (var (index, path) in folders)
+        foreach (var job in folders)
         {
             Interlocked.Increment(ref _pending);
-            jobs.Add(new DirectoryJob(index, path), cancellationToken);
+            jobs.Add(job, cancellationToken);
         }
 
         var workers = options.MaxDegreeOfParallelism > 0
@@ -307,6 +320,10 @@ public sealed partial class FileSystemScanner
                     {
                         descend.Add((record, entry, link));
                     }
+                    else if (index.IsDirectory(record) && IsLink(attributes))
+                    {
+                        _links.Enqueue((entry, string.Concat(folder.Path, "\\", index.Name(link))));
+                    }
                 }
             }
 
@@ -406,7 +423,7 @@ public sealed partial class FileSystemScanner
         DirectoryJob job, WorkerState state, IgnoreMatcher ignore, BlockingCollection<DirectoryJob> jobs, CancellationToken cancellationToken)
     {
         Volatile.Write(ref _currentPath, job.Path);
-        if (!ListLive(job.Path, state, cancellationToken))
+        if (!ListLive(job.ReadPath ?? job.Path, state, cancellationToken))
         {
             return;
         }
@@ -432,11 +449,17 @@ public sealed partial class FileSystemScanner
                     continue;
                 }
 
-                var index = _builder.Add(job.Index, state.Name(entry), entry.Attributes, entry.Size, entry.LastWriteTime, entry.FileId);
+                // Through a link the ids belong to another volume or a server: not kept, so the next
+                // incremental snapshot cannot mistake them for ids on this drive.
+                var index = _builder.Add(job.Index, state.Name(entry), entry.Attributes, entry.Size, entry.LastWriteTime, job.ReadPath is null ? entry.FileId : 0);
                 if ((entry.Attributes & NativeMethods.FileAttributeDirectory) != 0 &&
                     (entry.Attributes & (NativeMethods.FileAttributeReparsePoint | NativeMethods.FileAttributeRecallOnOpen)) == 0)
                 {
                     subdirectories.Add((index, i));
+                }
+                else if ((entry.Attributes & NativeMethods.FileAttributeDirectory) != 0 && IsLink(entry.Attributes))
+                {
+                    _links.Enqueue((index, string.Concat(job.Path, "\\", state.Name(entry))));
                 }
             }
         }
@@ -445,16 +468,18 @@ public sealed partial class FileSystemScanner
 
         foreach (var (index, i) in subdirectories)
         {
-            var childPath = string.Concat(job.Path, "\\", state.Name(state.Entries[i]));
+            var name = state.Name(state.Entries[i]);
+            var childPath = string.Concat(job.Path, "\\", name);
+            var childRead = job.ReadPath is null ? null : string.Concat(job.ReadPath, "\\", name);
             Interlocked.Increment(ref _pending);
-            jobs.Add(new DirectoryJob(index, childPath), cancellationToken);
+            jobs.Add(new DirectoryJob(index, childPath, childRead), cancellationToken);
         }
     }
 
     /// <summary>Lists folder <paramref name="path"/> ("C:" for a drive root) into <paramref name="state"/>; false (and Skipped) on failure.</summary>
     private bool ListLive(string path, WorkerState state, CancellationToken cancellationToken)
     {
-        var openPath = @"\\?\" + (path.Length == 2 ? path + "\\" : path);
+        var openPath = OpenPath(path);
         using var handle = NativeMethods.CreateFile(
             openPath,
             NativeMethods.FileListDirectory | NativeMethods.Synchronize,
@@ -540,7 +565,8 @@ public sealed partial class FileSystemScanner
         }
     }
 
-    private readonly record struct DirectoryJob(int Index, string Path);
+    /// <summary>A folder to list: recorded as <paramref name="Path"/>, read from <paramref name="ReadPath"/> when it lies behind a link.</summary>
+    private readonly record struct DirectoryJob(int Index, string Path, string? ReadPath = null);
 
     private struct ListedEntry
     {

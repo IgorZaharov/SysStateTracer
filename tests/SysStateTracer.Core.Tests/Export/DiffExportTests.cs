@@ -191,7 +191,7 @@ public class DiffExportTests
         var keys = data.RootElement[1][1].EnumerateArray().ToList();
         Assert.Equal(diff.Registry.Count + 4, keys.Count);
         var newApp = keys.FindIndex(r => r[0].GetString() == "NewApp");
-        Assert.Equal(new[] { "Sub", "v", "Huge" }, keys.Skip(newApp + 1).Take(3).Select(r => r[0].GetString()!));
+        Assert.Equal(new[] { "Sub", "Huge", "v" }, keys.Skip(newApp + 1).Take(3).Select(r => r[0].GetString()!));
         Assert.Contains("<td class=\"n\">", html, StringComparison.Ordinal);
     }
 

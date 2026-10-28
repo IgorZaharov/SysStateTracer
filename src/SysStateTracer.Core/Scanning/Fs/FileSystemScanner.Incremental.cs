@@ -39,7 +39,7 @@ public sealed partial class FileSystemScanner
         var fullScan = fullRoots.Count == 0
             ? Task.CompletedTask
             : Task.Run(
-                () => Scan(
+                () => ScanCore(
                     new FileSystemScanOptions
                     {
                         Roots = fullRoots, Ignore = options.Ignore, MaxDegreeOfParallelism = options.MaxDegreeOfParallelism, Method = options.Method,
@@ -85,8 +85,11 @@ public sealed partial class FileSystemScanner
         }
 
         // Roots that are new since the previous snapshot: listed in full, in parallel.
-        ListFolders(newFolders, options, cancellationToken);
+        ListFolders([.. newFolders.Select(f => new DirectoryJob(f.Index, f.Path))], options, cancellationToken);
         Wait([fullScan], cancellationToken);
+
+        // What lies behind folder links is read again every time: this drive's journal does not see it change.
+        FollowLinks(options, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
     }
 
@@ -212,6 +215,11 @@ public sealed partial class FileSystemScanner
                     {
                         var name = listedName is not null ? listedName.AsSpan() : previousNames[nameId];
                         var index = scanner._builder.Add(folder.New, name, meta.Attributes, meta.Size, meta.LastWriteTime, meta.FileId);
+                        if (meta.IsDirectory && IsLink(meta.Attributes))
+                        {
+                            scanner._links.Enqueue((index, string.Concat(folder.Path, "\\", name)));
+                        }
+
                         if (!meta.IsDirectory || (meta.Attributes & NoDescend) != 0)
                         {
                             continue;

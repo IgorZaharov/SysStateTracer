@@ -74,20 +74,30 @@ public class FileSystemScannerTests
     }
 
     [Fact]
-    public void Scan_DoesNotFollowJunctions()
+    public void Scan_FollowsLinksOnlyOutsideTheScannedFolders()
     {
         using var folder = new TestFolder();
-        var target = folder.CreateFolder("target");
-        folder.CreateFile(@"target\inside.txt");
-        folder.CreateFolder("root");
-        Junction.Create(folder.Combine(@"root\link"), target);
+        var outside = folder.CreateFolder("share");                      // stands in for a network share
+        folder.CreateFile(@"share\on the share.txt", 3);
+        folder.CreateFile(@"share\sub\deeper.txt", 4);
+        folder.CreateFolder(@"root\inner");
+        folder.CreateFile(@"root\inner\inside.txt");
+        Junction.Create(folder.Combine(@"root\Desktop"), outside);         // redirected profile folder (issue #2)
+        Junction.Create(folder.Combine(@"root\again"), folder.Combine(@"root\inner"));   // inside: read once only
+        Junction.Create(folder.Combine(@"share\loop"), folder.Combine("root"));         // back into the scan: not followed
 
         var scan = ScanResult.Run([folder.Combine("root")]);
 
-        var link = scan.Paths[folder.Combine(@"root\link")];
-        Assert.NotEqual(0u, scan.Tree.Attributes[link] & (uint)FileAttributes.ReparsePoint);
-        Assert.Equal(0, scan.Tree.Descendants[link]);
-        Assert.DoesNotContain(scan.Paths.Keys, p => p.EndsWith("inside.txt", StringComparison.OrdinalIgnoreCase));
+        // Behind the link to outside: recorded under the link's own path.
+        var desktop = scan.Paths[folder.Combine(@"root\Desktop")];
+        Assert.NotEqual(0u, scan.Tree.Attributes[desktop] & (uint)FileAttributes.ReparsePoint);
+        Assert.Equal(3, scan.Tree.Size[scan.Paths[folder.Combine(@"root\Desktop\on the share.txt")]]);
+        Assert.Equal(4, scan.Tree.Size[scan.Paths[folder.Combine(@"root\Desktop\sub\deeper.txt")]]);
+        Assert.Equal(0, scan.Tree.Descendants[scan.Paths[folder.Combine(@"root\Desktop\loop")]]);
+
+        // A link to a folder that is scanned anyway is recorded, not followed.
+        Assert.Equal(0, scan.Tree.Descendants[scan.Paths[folder.Combine(@"root\again")]]);
+        Assert.Single(scan.Paths.Keys, p => p.EndsWith("inside.txt", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

@@ -8,6 +8,7 @@ The first release.
 - Runs without a UAC prompt and for standard users; **Restart as administrator** for complete snapshots. Items a standard user cannot read are greyed out in New Snapshot, and snapshots record which rights they were taken with.
 - Snapshots of folders and files (names, sizes, dates and attributes; file contents are never read), the registry (HKLM and every user under HKU) and Windows services, in one compressed `.stsnap` file.
 - Whole NTFS drives are read straight from the master file table: a typical system drive in seconds.
+- Folders behind junctions and symbolic links that lead outside the scanned folders (e.g. a Desktop redirected to a network share) are read through the link and recorded under the local path.
 - Consecutive snapshots are faster: the NTFS change journal tells SysStateTracer what changed, and unchanged folders and registry keys are reused from the previous snapshot. A drive without a journal is read in full.
 - Default names `YYYYMMDD_HH-MM-SS_COMPUTERNAME`; anything that cannot be read is skipped and listed in the snapshot's properties.
 - `HKLM\SAM` and `HKLM\SECURITY` are left out by default.
