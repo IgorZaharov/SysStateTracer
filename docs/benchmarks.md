@@ -95,6 +95,45 @@ Unchanged folders are skipped by their subtree digest, so the cost follows the n
 A folder's own time is not compared (it changes whenever its contents do); its changed contents
 appear below it. Names are matched ignoring case, so a case-only rename is not a change.
 
+## End to end (Phase J, Benchmark 4), 2026-10-28
+
+GitHub `windows-latest` runner (4 cores, SSD, Windows Server 2025): drive C: with 1.2 M files and 209,000
+folders, an empty drive D:, HKLM + HKU with 584,000 keys and 993,000 values, 259 services; the shipped Global
+Ignore rules. Each snapshot runs in its own process.
+
+| Run | Files | Registry | Total | Snapshot file | Peak memory | Target (§8.7) |
+| --- | --- | --- | --- | --- | --- | --- |
+| First snapshot (cold cache) | 21.7 s | 10.7 s | 23.5 s | 52.5 MB | 770 MB | files 20–60 s, registry 10–25 s ✔ |
+| Consecutive (incremental) | 1.3 s | 3.9 s | 6.0 s | 52.4 MB | 920 MB | files 1–5 s, registry 3–8 s ✔ |
+| Consecutive again | 1.2 s | 3.8 s | 6.0 s | 52.5 MB | 919 MB | ✔ |
+| Warm full snapshot | 12.0 s | 7.5 s | 13.5 s | 52.1 MB | 784 MB | |
+| Files only, master file table | 12.3 s | – | 13.1 s | 22.1 MB | 457 MB | |
+| Files only, folder listing | 348 s | – | 349 s | 22.1 MB | 297 MB | (fallback for non-NTFS drives) |
+
+Comparing the two consecutive snapshots, as the comparison window does (`compare` in the benchmark tool):
+
+| Step | Result | Target (§9.6) |
+| --- | --- | --- |
+| Load both 52 MB snapshots, in parallel | 298 ms | 1–2 s ✔ |
+| Both snapshots in memory | 479 MB | < ~500 MB ✔ |
+| Compare (13 new, 32 modified, 2 deleted files; 32 registry changes; 1 service) | 5 ms | < 1 s ✔ |
+| Swap the sides | 0.13 ms | instant ✔ |
+| Build the .reg export and the file list | 4 ms | |
+| HTML report | 16 ms | |
+
+The window side, measured by the UI tests on the same kind of runner:
+
+| Step | Result | Target |
+| --- | --- | --- |
+| List 100 snapshots in the main window | 7–17 ms | < 0.5 s ✔ |
+| Comparison tree with 1,000,000 rows: expand | 8–34 ms | |
+| Same: scroll and repaint one screen | 4–12 ms median | < 16 ms per frame ✔ |
+| Same: select all | 13–22 ms | |
+
+The same measurements on your own PC: double-click `SysStateTracer.Bench.exe` from the
+[`bench`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/bench) pre-release; it now also loads and
+compares the two consecutive snapshots.
+
 ## Open question: reading the NTFS master file table directly
 
 Listing folders one by one costs one or more random disk reads per folder. Reading the NTFS master
