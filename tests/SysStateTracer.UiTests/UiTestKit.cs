@@ -198,7 +198,7 @@ internal sealed class TestApp : IDisposable
     {
         var names = new NameTable();
         var fs = new FsTreeBuilder(names);
-        var time = DateTime.UtcNow.AddDays(-30).ToFileTimeUtc();
+        var time = new DateTime(2026, 9, 28, 7, 40, 9, DateTimeKind.Utc).ToFileTimeUtc();
         var c = fs.AddRoot("C:", FsTree.DirectoryAttribute, time);
         var programs = fs.Add(c, "Program Files", FsTree.DirectoryAttribute, 0, time);
         var app = fs.Add(programs, "Contoso", FsTree.DirectoryAttribute, 0, time);

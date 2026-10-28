@@ -92,7 +92,7 @@ public static class DiffItems
                 var fs = snapshot.FileSystem;
                 return string.Create(
                     CultureInfo.CurrentCulture,
-                    $"{ItemFormat.Time(fs.LastWriteTime[index])} · {fs.ChildFolders[index]:N0} folders, {fs.ChildFiles[index]:N0} files");
+                    $"{ItemFormat.Time(fs.LastWriteTime[index])} · {Count(fs.ChildFolders[index], "folder")}, {Count(fs.ChildFiles[index], "file")}");
             }
 
             case DiffItemKind.File:
@@ -115,7 +115,7 @@ public static class DiffItems
 
                 return string.Create(
                     CultureInfo.CurrentCulture,
-                    $"{ItemFormat.Time(reg.LastWriteTime[index])} · {keys:N0} keys, {reg.KeyValueCount[index]:N0} values");
+                    $"{ItemFormat.Time(reg.LastWriteTime[index])} · {Count(keys, "key")}, {Count(reg.KeyValueCount[index], "value")}");
             }
 
             case DiffItemKind.Value:
@@ -131,6 +131,10 @@ public static class DiffItems
             }
         }
     }
+
+    /// <summary>"1 file", "12 files".</summary>
+    public static string Count(long count, string noun) =>
+        string.Create(CultureInfo.CurrentCulture, $"{count:N0} {noun}{(count == 1 ? string.Empty : "s")}");
 
     /// <summary>The Global Ignore rule that hides this item: "FS:path", "REG:key[\value]" or "SVC:name".</summary>
     public static string IgnoreRule(DiffResult diff, DiffItem item)

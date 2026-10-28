@@ -117,6 +117,15 @@ internal sealed class ScopeTree : TreeView, IThemed
             AddNode(_fileSystem.Nodes, new ScopeItem(ScopeKind.Volume, volume.RootPath), $"{volume.RootPath}  {label} · {volume.FileSystem}{size}", StartState(included, volume.RootPath, IgnoreTarget.FileSystem), lazy: true);
         }
 
+        // Folders saved as roots of their own (e.g. by editing the settings for /new-snap) stay as such.
+        foreach (var folder in scope.FileSystemRoots ?? [])
+        {
+            if (!volumes.Any(v => string.Equals(v.RootPath.TrimEnd('\\'), folder.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
+            {
+                AddNode(_fileSystem.Nodes, new ScopeItem(ScopeKind.Folder, folder), $"{folder}  (folder)", StartState(true, folder, IgnoreTarget.FileSystem), lazy: true);
+            }
+        }
+
         _registry = AddNode(Nodes, new ScopeItem(ScopeKind.Category, string.Empty), "Registry", Unchecked);
         foreach (var (hive, label) in new[] { ("HKLM", "HKEY_LOCAL_MACHINE"), ("HKU", "HKEY_USERS (each user; yours is HKEY_CURRENT_USER)") })
         {
@@ -172,9 +181,10 @@ internal sealed class ScopeTree : TreeView, IThemed
         var scope = new SnapshotScope { RegistryRoots = [], Excluded = [] };
         if (_fileSystem is not null)
         {
-            var volumes = _fileSystem.Nodes.Cast<TreeNode>().ToList();
-            var included = volumes.Where(v => v.StateImageIndex != Unchecked).ToList();
-            scope.FileSystemRoots = included.Count == volumes.Count && volumes.Count > 0
+            var roots = _fileSystem.Nodes.Cast<TreeNode>().ToList();
+            var volumes = roots.Where(r => ((ScopeItem)r.Tag!).Kind == ScopeKind.Volume).ToList();
+            var included = roots.Where(v => v.StateImageIndex != Unchecked).ToList();
+            scope.FileSystemRoots = included.Count == roots.Count && volumes.Count == roots.Count && roots.Count > 0
                 ? null
                 : [.. included.Select(v => ((ScopeItem)v.Tag!).Path)];
             foreach (var volume in included)
@@ -310,6 +320,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     {
         var node = new TreeNode(text) { Tag = item, StateImageIndex = state };
         node.Name = item.Path;
+        item.ChildrenLoaded = !lazy;
         if (item.Target is { } target)
         {
             item.Ignored = _ignore.IsIgnored(target, item.Path);

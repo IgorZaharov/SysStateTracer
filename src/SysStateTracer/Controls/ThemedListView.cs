@@ -74,6 +74,37 @@ internal sealed class ThemedListView : ListView, IThemed
         Columns[^1].Width = Math.Max(60, ClientSize.Width - others);
     }
 
+    protected override void WndProc(ref Message m)
+    {
+        base.WndProc(ref m);
+        if (m.Msg == 0x000F /* WM_PAINT */)
+        {
+            PaintEmptyArea();
+        }
+    }
+
+    /// <summary>The list's theme draws column lines below the last row; that area is cleared to the background.</summary>
+    private void PaintEmptyArea()
+    {
+        var top = HeaderBottom();
+        if (Items.Count > 0)
+        {
+            var last = GetItemRect(Items.Count - 1);
+            top = Math.Max(top, last.Bottom);
+        }
+
+        if (top >= ClientSize.Height)
+        {
+            return;
+        }
+
+        using var g = CreateGraphics();
+        using var brush = new SolidBrush(_palette.Background);
+        g.FillRectangle(brush, 0, top, ClientSize.Width, ClientSize.Height - top);
+    }
+
+    private int HeaderBottom() => Items.Count > 0 ? GetItemRect(0).Top : (HeaderStyle == ColumnHeaderStyle.None ? 0 : Font.Height + 10);
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
