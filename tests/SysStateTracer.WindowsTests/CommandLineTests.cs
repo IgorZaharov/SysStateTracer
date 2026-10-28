@@ -37,6 +37,35 @@ public class CommandLineTests
         Assert.Equal(2, new SnapshotCatalog(app.SnapshotFolder).List().Count);
     }
 
+    /// <summary>/new-snap reads the Global Ignore list chosen in Preferences: with Remote, the remote rules apply.</summary>
+    [Fact]
+    public void NewSnap_UsesTheChosenRemoteList()
+    {
+        using var test = new TestRegistryKey();
+        using var data = new TestFolder();
+        using var app = new CliApp(data.Path, test.HkcuPath);
+        data.CreateFile(@"keep\a.txt", 5);
+        data.CreateFile(@"skip-me\b.txt", 5);
+        test.Key.SetValue("kept", 1);
+        test.Key.SetValue("secret", 2);
+        var remoteList = Path.Combine(app.DataFolder, "shared-ignore-list.txt");
+        File.WriteAllText(remoteList, $@"FS:{data.Path}\skip-me{Environment.NewLine}REG:{test.StoredPath}\secret");
+        app.Settings.IgnoreListSource = IgnoreListSource.Remote;
+        app.Settings.IgnoreListRemoteLocation = remoteList;
+
+        Assert.Equal(0, app.Run("/new-snap", "With remote rules"));
+        Assert.Contains("Global Ignore list: remote, 2 rules", app.Text, StringComparison.Ordinal);
+
+        var snapshot = Core.Storage.SnapshotReader.Load(Path.Combine(app.SnapshotFolder, "With remote rules.stsnap"));
+        var files = Enumerable.Range(0, snapshot.FileSystem.Count).Select(i => snapshot.FileSystem.GetFullPath(i, snapshot.Names)).ToList();
+        Assert.Contains(Path.Combine(data.Path, @"keep\a.txt"), files, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain(files, f => f.Contains("skip-me", StringComparison.OrdinalIgnoreCase));
+        var values = Enumerable.Range(0, snapshot.Registry.ValueCount).Select(v => snapshot.Names.GetString(snapshot.Registry.ValueName[v])).ToList();
+        Assert.Contains("kept", values);
+        Assert.DoesNotContain("secret", values);
+        Assert.Equal(2, snapshot.Meta.IgnoreRuleCount);
+    }
+
     /// <summary>
     /// /export leaves out what the Global Ignore list chosen in Preferences matches: single files and values,
     /// and also folders, files, keys and values inside a new folder or key (which the comparison keeps as one node).

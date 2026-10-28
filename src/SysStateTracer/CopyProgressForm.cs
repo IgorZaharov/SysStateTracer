@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using SysStateTracer.Controls;
 using SysStateTracer.Core.Comparison;
+using SysStateTracer.Core.Config;
 using SysStateTracer.Core.Export;
 using SysStateTracer.Theming;
 
