@@ -7,10 +7,11 @@ Requested Features:
 7. Command-line switches: /export should also create .ps1 script under .\Files to copy all folders/subfolders/files back to their place (e.g.: .\Files\C\Test\test1.txt > to C:\Test\test1.txt).
 8. Generate professional looking Manual.pdf with screenshots: Title page - utility name and description, table of contents: Introduction (description and links to GitHub), Common usage using UI, Command-line usage, Editing Global Ignore List, Preferences.
 9. Evaluate and add possibility to run SysSnapTracer under standard limited User, knowing it's restrictions. Grey out folders/registry that is impossible for user to read (e.g. under HKU/USERS/...) during New Snapshot creation. Get rid of UAC prompt at start if possible.
-10. Comparing snapshots window: should show created registry values, not only keys - when key is expanded.
-11. Bugfix UI: Windows state/size/positions are not saved. Resized windows return to defaults when Application closed.
-12. Bugfix UI: Preferences > General - when clicking on Theme Icon - it selects radiobutton, but does not deselect other ones. It is possible to click all three themes and it will select all three radiobuttons. Only 1 radiobutton may be selected at any given time.
-13. UI: main window initial size should be 850*450px, all other windows - no more than 580px by vertical.
-14. Bugfix UI: Main window - when mouse cursor is few pixels between rows other columns showing blank values.
-15. UI: Main window - remove "Sort by" drop-down selection and add possibility to sort by pressing on Column headers. Default remains as is - by date, newest on top.
-16. GitHub: README.MD should have easily visible and accessible direct link on latest version download for .exe and manual for people without GitHub UI knowledge.
+10. Comparing snapshots window: should show created registry values, not only keys - when subkey is expanded.
+11. Comparing snapshots window: should show created files, not only directory - when last subfolder is expanded.
+12. Bugfix UI: Windows state/size/positions are not saved. Resized windows return to defaults when Application closed.
+13. Bugfix UI: Preferences > General - when clicking on Theme Icon - it selects radiobutton, but does not deselect other ones. It is possible to click all three themes and it will select all three radiobuttons. Only 1 radiobutton may be selected at any given time.
+14. UI: main window initial size should be 850*450px, all other windows - no more than 580px by vertical.
+15. Bugfix UI: Main window - when mouse cursor is few pixels between rows other columns showing blank values.
+16. UI: Main window - remove "Sort by" drop-down selection and add possibility to sort by pressing on Column headers. Default remains as is - by date, newest on top.
+17. GitHub: README.MD should have easily visible and accessible direct link on latest version download for .exe and manual for people without GitHub UI knowledge.
