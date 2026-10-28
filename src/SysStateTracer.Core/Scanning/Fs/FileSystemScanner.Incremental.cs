@@ -35,7 +35,17 @@ public sealed partial class FileSystemScanner
 
         // Roots on drives without usable journal changes are scanned in full, at the same time as the walk.
         var roots = NormalizeRoots(options.Roots);
-        var fullRoots = roots.Where(r => !changes.ContainsKey(char.ToUpperInvariant(r[0]))).ToList();
+        FindForeignFolders(roots);
+
+        // A root that is itself on another volume (e.g. C:\Users\Alex on an FSLogix profile disk) is not in the
+        // drive's change journal either.
+        var otherVolume = roots.Where(r => _foreign.Any(f => IsSameOrInside(r, f)) || IsOnOtherVolume(r)).ToList();
+        foreach (var root in otherVolume)
+        {
+            _methods.Enqueue($"{root}: on another volume than drive {root[..2]}, read in full");
+        }
+
+        var fullRoots = roots.Where(r => !changes.ContainsKey(char.ToUpperInvariant(r[0])) || otherVolume.Contains(r)).ToList();
         var fullScan = fullRoots.Count == 0
             ? Task.CompletedTask
             : Task.Run(
@@ -222,6 +232,13 @@ public sealed partial class FileSystemScanner
 
                         if (!meta.IsDirectory || (meta.Attributes & NoDescend) != 0)
                         {
+                            continue;
+                        }
+
+                        if (scanner.IsForeign(folder.Path, name))
+                        {
+                            // On another volume: this drive's journal does not see it, so it is read again in full.
+                            scanner._links.Enqueue((index, string.Concat(folder.Path, "\\", name)));
                             continue;
                         }
 

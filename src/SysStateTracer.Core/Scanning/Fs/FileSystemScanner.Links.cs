@@ -93,7 +93,15 @@ public sealed partial class FileSystemScanner
                     continue;
                 }
 
-                // A mounted volume (FSLogix profile disk, a VHD or a second disk mounted in a folder).
+                // A profile folder on another volume without a reparse point (FSLogix profile disk): read in place.
+                if (_foreign.Contains(link.Path))
+                {
+                    _methods.Enqueue($"{link.Path}: on another volume (e.g. an FSLogix profile disk), read there");
+                    jobs.Add(new DirectoryJob(link.Index, link.Path, OpenPath(link.Path)));
+                    continue;
+                }
+
+                // A mounted volume (a VHD or a second disk mounted in a folder).
                 if (NativeMethods.GetMountedVolume(link.Path) is { } mounted)
                 {
                     var volume = NormalizeTarget(mounted);

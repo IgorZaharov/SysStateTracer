@@ -101,6 +101,19 @@ public class FileSystemScannerTests
     }
 
     [Fact]
+    public void ForeignFolders_OrdinaryFoldersAreOnTheirOwnDrive()
+    {
+        using var folder = new TestFolder();
+        var inner = folder.CreateFolder(@"Users\Alex");
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+        Assert.Empty(FileSystemScanner.ForeignFolders([folder.Path, windows[..3]], [inner, windows, folder.Path]));
+        Assert.False(FileSystemScanner.IsOnOtherVolume(inner));
+        Assert.NotNull(FileSystemScanner.VolumeSerialOf(windows[..3]));
+        Assert.Equal(FileSystemScanner.VolumeSerialOf(windows[..3]), FileSystemScanner.VolumeSerialOf(windows));
+    }
+
+    [Fact]
     public void Scan_ReadsPathsLongerThan260Characters()
     {
         using var folder = new TestFolder();

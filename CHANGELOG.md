@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 ### Fixed
-- Profiles on a mounted virtual disk (FSLogix Profile Containers, or any volume mounted in a folder) were left out of snapshots: everything under `C:\Users\<name>` was skipped. The mounted volume is now read and recorded under the profile path, in full and consecutive snapshots.
+- Changes in user profiles on FSLogix Profile Containers were missed: the profile disk is a separate volume that Windows redirects `C:\Users\<name>` to, so drive C:'s change journal never sees changes there, and a whole-drive scan read only the empty local folder. Profile folders that open on another volume are now read in full on every snapshot and recorded under `C:\Users\<name>`.
+- Folders with a volume mounted on them (a VHD or a second disk mounted in a folder) were skipped; the mounted volume is now read and recorded under the folder.
 
 ### Preferences
 - **Show grid lines** and **Use zebra striping** (Preferences → General → Lists) for the snapshot list and the comparison window. Both are off by default and apply at once.

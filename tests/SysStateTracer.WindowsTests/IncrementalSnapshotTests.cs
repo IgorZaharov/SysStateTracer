@@ -253,6 +253,69 @@ public class IncrementalSnapshotTests
         Assert.Contains(data.Combine(@"Users\Alex\Desktop\after.txt"), added, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// FSLogix Profile Containers without a mount point: a filter driver sends everything under C:\Users\name to
+    /// the profile disk, so this drive's change journal never sees changes there. Such a folder (forced here) is
+    /// read in full on every snapshot, without file ids, and a new file in it shows up.
+    /// </summary>
+    [Fact]
+    public void FileSystem_ProfileOnAnotherVolumeIsReadEveryTime()
+    {
+        if (!ProcessPrivileges.IsElevated)
+        {
+            return;
+        }
+
+        using var data = new TestFolder();
+        using var output = new TestFolder();
+        var cache = output.Combine("SysStateTracer.cache");
+        data.CreateFile(@"Users\Alex\Desktop\before.txt", 3);
+        data.CreateFile(@"Users\Bob\Desktop\bob.txt", 2);
+        var alex = data.Combine(@"Users\Alex");
+        FileSystemScanner.ForeignFoldersForTests = [alex];
+        try
+        {
+            var first = TakeSnapshot(data, output, "first", cache, Listing);
+            Assert.Contains(first.Meta.FileSystemMethods, m => m.StartsWith(alex, StringComparison.OrdinalIgnoreCase) && m.Contains("another volume", StringComparison.Ordinal));
+            Assert.Equal(0, FileIdOf(first, data.Combine(@"Users\Alex\Desktop\before.txt")));
+            Assert.NotEqual(0, FileIdOf(first, data.Combine(@"Users\Bob\Desktop\bob.txt")));
+
+            data.CreateFile(@"Users\Alex\Desktop\after.txt", 5);
+            var second = TakeSnapshot(data, output, "second", cache, Listing);
+            Assert.Equal(SnapshotMode.Incremental, second.Meta.Mode);
+            Assert.Contains(second.Meta.FileSystemMethods, m => m.StartsWith(alex, StringComparison.OrdinalIgnoreCase) && m.Contains("another volume", StringComparison.Ordinal));
+            Assert.Equal(3, Entries(second, data.Path)[@"Users\Alex\Desktop\before.txt"].Size);
+            Assert.Equal(2, Entries(second, data.Path)[@"Users\Bob\Desktop\bob.txt"].Size);
+
+            var diff = SnapshotComparer.Compare(first, second);
+            var tree = diff.FileSystem;
+            var changed = Enumerable.Range(0, tree.Count)
+                .Where(n => tree.Change(n) != ChangeKind.Unchanged)
+                .Select(n => (Path: diff.FullPath(tree, n), Change: tree.Change(n)))
+                .ToList();
+            Assert.Contains((data.Combine(@"Users\Alex\Desktop\after.txt"), ChangeKind.New), changed);
+            Assert.DoesNotContain(changed, c => c.Path.EndsWith("before.txt", StringComparison.OrdinalIgnoreCase) || c.Path.Contains(@"\Bob", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            FileSystemScanner.ForeignFoldersForTests = null;
+        }
+    }
+
+    private static long FileIdOf(Snapshot snapshot, string path)
+    {
+        var tree = snapshot.FileSystem;
+        for (var i = 0; i < tree.Count; i++)
+        {
+            if (string.Equals(tree.GetFullPath(i, snapshot.Names), path, StringComparison.OrdinalIgnoreCase))
+            {
+                return tree.HasFileIds ? tree.FileId[i] : 0;
+            }
+        }
+
+        throw new InvalidOperationException($"{path} is not in the snapshot");
+    }
+
     private static Snapshot TakeSnapshot(
         TestFolder data, TestFolder output, string name, string? cachePath, FileSystemScanMethod method = FileSystemScanMethod.MasterFileTable, bool fullRescan = false)
     {

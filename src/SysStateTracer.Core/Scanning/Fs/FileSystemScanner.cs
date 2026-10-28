@@ -85,6 +85,7 @@ public sealed partial class FileSystemScanner
     public void Scan(FileSystemScanOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
+        FindForeignFolders(NormalizeRoots(options.Roots));
         ScanCore(options, cancellationToken);
         FollowLinks(options, cancellationToken);
     }
@@ -318,7 +319,15 @@ public sealed partial class FileSystemScanner
                     if (index.IsDirectory(record) &&
                         (attributes & (NativeMethods.FileAttributeReparsePoint | NativeMethods.FileAttributeRecallOnOpen)) == 0)
                     {
-                        descend.Add((record, entry, link));
+                        if (IsForeign(folder.Path, index.Name(link)))
+                        {
+                            // The file table holds only the local folder; its real contents are on another volume.
+                            _links.Enqueue((entry, string.Concat(folder.Path, "\\", index.Name(link))));
+                        }
+                        else
+                        {
+                            descend.Add((record, entry, link));
+                        }
                     }
                     else if (index.IsDirectory(record) && IsLink(attributes))
                     {
@@ -455,7 +464,14 @@ public sealed partial class FileSystemScanner
                 if ((entry.Attributes & NativeMethods.FileAttributeDirectory) != 0 &&
                     (entry.Attributes & (NativeMethods.FileAttributeReparsePoint | NativeMethods.FileAttributeRecallOnOpen)) == 0)
                 {
-                    subdirectories.Add((index, i));
+                    if (job.ReadPath is null && IsForeign(job.Path, state.Name(entry)))
+                    {
+                        _links.Enqueue((index, string.Concat(job.Path, "\\", state.Name(entry))));
+                    }
+                    else
+                    {
+                        subdirectories.Add((index, i));
+                    }
                 }
                 else if ((entry.Attributes & NativeMethods.FileAttributeDirectory) != 0 && IsLink(entry.Attributes))
                 {
