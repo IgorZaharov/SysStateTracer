@@ -1,8 +1,6 @@
-# SysStateTracer shared Global Ignore list.
-# The default "Remote" list in Preferences reads this file from the repository:
-# https://raw.githubusercontent.com/IgorZaharov/SysStateTracer/main/ignore/SysStateTracer.ignore.txt
+# SysStateTracer local Global Ignore list (SysStateTracer.ignore.txt beside the exe).
 # These places change all the time without anything being installed or configured.
-# Syntax: docs/ignore-list.md.
+# Remove any rule whose changes you want to see; syntax: docs/ignore-list.md in the repository.
 
 # ---- File system: temporary files, caches and logs ----
 FS:C:\Windows\Temp
@@ -57,3 +55,23 @@ REG:HKCU\Software\Microsoft\Windows\Shell\Bags
 REG:HKU\*_Classes\Local Settings\Software\Microsoft\Windows\Shell\BagMRU
 REG:HKU\*_Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags
 REG:HKU\*_Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache
+
+# ---- General purpose ignore ----
+FS:C:\ProgramData\USOPrivate
+FS:C:\ProgramData\USOShared
+FS:C:\ProgramData\VMware\VDM\logs
+FS:C:\ProgramData\FSLogix\Logs
+FS:C:\ProgramData\Microsoft\Windows\wfp\wfpdiag.etl
+FS:C:\Users\*\AppData\LocalLow\Microsoft\CryptnetUrlCache
+FS:C:\Users\*\Downloads\SysStateTracer.cache
+FS:C:\Users\*\INetCache\IE
+FS:C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.log
+FS:C:\temp\*
+FS:C:\Windows\System32\wbem\Repository
+FS:C:\Windows\debug\netlogon.log
+FS:C:\Windows\ServiceState\EventLog
+FS:C:\Windows\appcompat\pca\PcaAppLaunchDic.txt
+FS:C:\Windows\appcompat\pca\PcaGeneralDb0.txt
+FS:C:\ProgramData\VMware\Horizon Monitoring Service Agent\Desktop Agent\logs
+FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\Windows-gather.db-wal
+FS:C:\ProgramData\Microsoft\Windows\AppRepository\StateRepository-Machine.srd-shm
