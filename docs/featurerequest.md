@@ -8,5 +8,6 @@ Requested Features:
 8. Generate professional looking Manual.pdf with screenshots: Title page - utility name and description, table of contents: Introduction (description and links to GitHub), Common usage using UI, Command-line usage, Editing Global Ignore List, Preferences.
 9. Evaluate and add possibility to run SysSnapTracer under standard limited User, knowing it's restrictions. Grey out folders/registry that is impossible for user to read (e.g. under HKU/USERS/...) during New Snapshot creation. Get rid of UAC prompt at start if possible.
 10. Comparing snapshots window: should show created registry values, not only keys - when key is expanded.
-11. UI: Windows state/size not saved. Resized windows return to defaults when Application closed.
-12. UI: Preferences > General - when clicking on Theme Icon - it selects radiobutton, but does not deselect other ones. It is possible to click all three themes and it will select all three radiobuttons. Only 1 radiobutton may be selected at any given time.
+11. Bugfix UI: Windows state/size/positions are not saved. Resized windows return to defaults when Application closed.
+12. Bugfix UI: Preferences > General - when clicking on Theme Icon - it selects radiobutton, but does not deselect other ones. It is possible to click all three themes and it will select all three radiobuttons. Only 1 radiobutton may be selected at any given time.
+13. UI: main window initial size should be 850*450px, all other windows - no more than 580px by vertical.
