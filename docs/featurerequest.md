@@ -23,3 +23,4 @@ Requested Features:
 23. Bugfix: New Snapshot window - Enter, Left, Right should work immediately. Enter should start new Snapshot creation.
 24. Preferences > Global Ignore list - should be possible to modify/edit entries without going outside of Application.
 25. Bugfix: Global Ignore List - wildcards not working in File system paths.
+26. UX: Snapshot Comparison window: green/red/yellow fonts on added/deleted/modified entries must be in all columns (e.g.: date, size, values. etc.).
