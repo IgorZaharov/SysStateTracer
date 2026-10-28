@@ -44,6 +44,11 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
 
     public static long NodeId(DiffArea area, int node) => ((long)area + 1) << 32 | (uint)node;
 
+    /// <summary>The comparison item of a row; categories have <c>Node = -1</c>. Not for inside rows.</summary>
+    public static DiffItem Item(long id) => id < 0
+        ? DiffActions.Category((DiffArea)(-id - 1))
+        : new DiffItem((DiffArea)((id >> 32) - 1), (int)(id & 0xFFFFFFFF));
+
     /// <summary>True for a row listed inside a whole new or deleted folder or key.</summary>
     public static bool IsInside(long id) => id > 0 && (id & InsideFlag) != 0;
 
