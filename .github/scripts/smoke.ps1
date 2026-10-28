@@ -60,7 +60,9 @@ try {
     Check (Test-Path $report) 'report not written'
     if (Test-Path $report) {
         $html = Get-Content $report -Raw
-        Check ($html -match 'app\.exe') 'report does not list app.exe'
+        # A new folder is one row ("App"), with its contents counted, not listed.
+        Check ($html -match '"App"') 'report does not list the new App folder'
+        Check ($html -match '"readme\.txt"') 'report does not list the modified readme.txt'
         Check ($html -match 'Installed') 'report does not list the new registry value'
     }
 
