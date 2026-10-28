@@ -21,7 +21,15 @@ public static class ProcessPrivileges
     /// <inheritdoc cref="TryEnable(string)"/>
     /// <param name="privilegeName">Privilege constant name, e.g. <see cref="Backup"/>.</param>
     /// <param name="error">Win32 error code when the result is false, otherwise 0.</param>
-    public static bool TryEnable(string privilegeName, out int error)
+    public static bool TryEnable(string privilegeName, out int error) => TrySet(privilegeName, enable: true, out error);
+
+    /// <summary>
+    /// Disables <paramref name="privilegeName"/> in the process token again, e.g. to see what a user without it
+    /// could read. Returns false (never throws) when the token cannot be adjusted.
+    /// </summary>
+    public static bool TryDisable(string privilegeName) => TrySet(privilegeName, enable: false, out _);
+
+    private static bool TrySet(string privilegeName, bool enable, out int error)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(privilegeName);
 
@@ -44,7 +52,7 @@ public static class ProcessPrivileges
                 Privilege = new NativeMethods.LuidAndAttributes
                 {
                     Luid = luid,
-                    Attributes = NativeMethods.SePrivilegeEnabled,
+                    Attributes = enable ? NativeMethods.SePrivilegeEnabled : 0,
                 },
             };
 

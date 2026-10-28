@@ -2,6 +2,7 @@ using System.Diagnostics;
 using SysStateTracer.Controls;
 using SysStateTracer.Core.Config;
 using SysStateTracer.Core.Ignore;
+using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Scanning.Fs;
 using SysStateTracer.Theming;
 
@@ -108,6 +109,10 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             var acl = locked.GetAccessControl();
             acl.AddAccessRule(rule);
             locked.SetAccessControl(acl);
+
+            // An earlier test may have enabled SeBackupPrivilege in this process (snapshots do), which reads
+            // through the deny rule. A standard user has no such privilege, so turn it off for this test.
+            var hadBackup = ProcessPrivileges.TryDisable(ProcessPrivileges.Backup);
             try
             {
                 using var form = new Form();
@@ -132,6 +137,11 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             }
             finally
             {
+                if (hadBackup)
+                {
+                    ProcessPrivileges.TryEnable(ProcessPrivileges.Backup);
+                }
+
                 acl.RemoveAccessRule(rule);
                 locked.SetAccessControl(acl);
             }
