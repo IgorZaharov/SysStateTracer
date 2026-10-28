@@ -15,3 +15,11 @@ Requested Features:
 15. Bugfix UI: Main window - when mouse cursor is few pixels between rows other columns showing blank values.
 16. UI: Main window - remove "Sort by" drop-down selection and add possibility to sort by pressing on Column headers. Default remains as is - by date, newest on top.
 17. GitHub: README.MD should have easily visible and accessible direct link on latest version download for .exe and manual for people without GitHub UI knowledge.
+18. Bugfix: Snapshot Comparison window: when User presses "Add to Global Ignore list" - the whole comparison collapses and User needs to expand it back manually. Should stay expanded as it was.
+19. UX: Snapshot Comparison window: remove tooltips on mouse hover of items. It blocks the row.
+20. UX: Add to Global Ignore list dialog from Snapshot Comparison right-click: must be able to modify entry (e.g. by adding "*").
+21. UX: Better differentiate visually Folders/Files in Snapshot Comparison table. Will adding small directory icon in front of directory name have impact on performance?
+22. Bugfix: Snapshot Deletion dialog - Enter, Left, Right should work immediately.
+23. Bugfix: New Snapshot window - Enter, Left, Right should work immediately. Enter should start new Snapshot creation.
+24. Preferences > Global Ignore list - should be possible to modify/edit entries without going outside of Application.
+25. Bugfix: Global Ignore List - wildcards not working in File system paths.
