@@ -10,7 +10,7 @@ namespace SysStateTracer;
 /// <summary>
 /// Rows of the comparison window (plan §10.4): the three categories, then the comparison nodes. Row ids are
 /// -1/-2/-3 for the categories and (area + 1) &lt;&lt; 32 | node for nodes, so they survive a swap.
-/// Columns: Name · status glyph · snapshot 1 · snapshot 2. Text is made only for rows on screen.
+/// Columns: status glyph · Name · snapshot 1 · snapshot 2. Text is made only for rows on screen.
 /// A whole new or deleted folder or registry key is one comparison node; expanding it lists what it holds
 /// straight from the snapshot that has it (F10, F11). Those "inside" rows have bit 62 set, bit 61 for a
 /// registry value, bit 60 when they come from the newer snapshot, bit 59 for the file system, and the
@@ -18,8 +18,9 @@ namespace SysStateTracer;
 /// </summary>
 internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, string? currentUserSid) : ITreeGridModel
 {
-    public const int NameColumn = 0;
-    public const int StatusColumn = 1;
+    // The change glyph comes first, left of the tree (F29).
+    public const int StatusColumn = 0;
+    public const int NameColumn = 1;
     public const int LeftColumn = 2;
     public const int RightColumn = 3;
 
@@ -307,13 +308,13 @@ internal sealed class ComparisonModel(DiffResult diff, ImportanceMarks marks, st
     {
         if (IsInside(id))
         {
-            var icon = InsideArea(id) == DiffArea.FileSystem
+            var insideIcon = InsideArea(id) == DiffArea.FileSystem
                 ? (SideOf(id).FileSystem.IsDirectory(Index(id)) ? Glyphs.Folder : Glyphs.File)
                 : (IsValue(id) ? Glyphs.Value : Glyphs.Folder);
             var owner = OwnerOf(id);
             return owner is { } o
-                ? Style(NodeId(o.Area, o.Node)) with { Icon = icon }
-                : new GridRowStyle(null, Strikeout: false, Dim: false, Bold: false, icon);
+                ? Style(NodeId(o.Area, o.Node)) with { Icon = insideIcon }
+                : new GridRowStyle(null, Strikeout: false, Dim: false, Bold: false, insideIcon);
         }
 
         var item = Item(id);

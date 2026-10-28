@@ -87,6 +87,12 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
     public int RowHeight { get; set; }
 
+    /// <summary>The column with the tree (indent, expander, icon); 0 unless a narrow column comes before it.</summary>
+    public int TreeColumn { get; set; }
+
+    /// <summary>Left edge of the tree column, before horizontal scrolling.</summary>
+    private int TreeLeft => Columns.Take(TreeColumn).Sum(c => c.Width);
+
     /// <summary>Show the model's tool tips on hover; off in the comparison window, where they covered the next rows (F19).</summary>
     public bool ShowToolTips { get; set; } = true;
 
@@ -686,7 +692,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             return false;
         }
 
-        var start = 4 + (_depth[row] * Indent) - _left;
+        var start = TreeLeft + 4 + (_depth[row] * Indent) - _left;
         return x >= start - 2 && x < start + Indent;
     }
 
@@ -858,7 +864,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             {
                 var column = Columns[c];
                 var cell = new Rectangle(x + 6, y, column.Width - 12, RowHeight);
-                if (c == 0)
+                if (c == TreeColumn)
                 {
                     var indent = 4 + (_depth[row] * Indent);
                     if (_model.HasChildren(id))

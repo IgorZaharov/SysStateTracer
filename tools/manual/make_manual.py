@@ -545,8 +545,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "is tracked in one list in the repository:"))
     story.append(p(f'<a href="{FEATURE_REQUESTS}" color="#005FB8"><b>{FEATURE_REQUESTS}</b></a>'))
     story += bullets([
-        "Each line is a feature request or a bug, numbered in the order it came in. Finished ones are marked "
-        "<b>[DONE]</b>, so the list also shows what is planned and what each new version brought.",
+        "Each line is a feature request or a bug, numbered in the order it came in. Finished ones are marked with the "
+        "version that brought them, e.g. <b>[DONE in v1.0.0-rc.2]</b>, so the list also shows what is still open.",
         "To ask for something new or report a problem, add it to the list (edit the file on GitHub and propose the "
         f'change), or open an issue at <a href="{GITHUB}/issues" color="#005FB8">{GITHUB}/issues</a>.',
     ])

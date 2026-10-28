@@ -46,7 +46,8 @@ reasons.
 
 - **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Refresh. Swap is instant: columns trade places and new ↔ deleted.
 - **Tree:** File system, Registry and Services, each with its counts; only changed items and the folders or keys
-  leading to them. New is green (+), modified yellow (~), deleted red (−). A parent shows how many changes it
+  leading to them. New is green (+), modified yellow (~), deleted red (−); the sign is in the first column (F29)
+  and the colour runs through every column (F27). A parent shows how many changes it
   holds; a new or deleted folder shows how many items it held. Hover for full paths, exact sizes and full values.
 - **Inside a new or deleted folder or key (F10, F11):** expanding it lists what it holds — folders and files with
   dates and sizes, or subkeys and values with their data — from the snapshot that has them (Global Ignore rules

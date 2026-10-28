@@ -89,7 +89,7 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal(3, form.Grid.RowCount); // the three categories, collapsed
 
             var model = (ComparisonModel)form.Grid.Model!;
-            Assert.StartsWith("File system  (", model.Text(ComparisonModel.CategoryId(DiffArea.FileSystem), 0), StringComparison.Ordinal);
+            Assert.StartsWith("File system  (", model.Text(ComparisonModel.CategoryId(DiffArea.FileSystem), ComparisonModel.NameColumn), StringComparison.Ordinal);
 
             // Expand the registry down to the changed value.
             form.Grid.Expand(ComparisonModel.CategoryId(DiffArea.Registry));

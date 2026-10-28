@@ -161,8 +161,9 @@ internal sealed class ComparisonForm : Form
         var progressHolder = new Panel { Dock = DockStyle.Top, Height = 4 };
         progressHolder.Controls.Add(_progress);
 
-        _grid.Columns.Add(new GridColumn("Name", 460));
         _grid.Columns.Add(new GridColumn(string.Empty, 28, HorizontalAlignment.Left));
+        _grid.Columns.Add(new GridColumn("Name", 460));
+        _grid.TreeColumn = ComparisonModel.NameColumn;
         _grid.Columns.Add(new GridColumn("Snapshot 1", 320));
         _grid.Columns.Add(new GridColumn("Snapshot 2", 320));
         _grid.SelectionChanged += (_, _) => UpdateStatus();
