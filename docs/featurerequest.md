@@ -19,9 +19,10 @@ Requested Features:
 19. UX: Snapshot Comparison window: remove tooltips on mouse hover of items. It blocks the row.
 20. UX: Add to Global Ignore list dialog from Snapshot Comparison right-click: must be able to modify entry (e.g. by adding "*").
 21. UX: Better differentiate visually Folders/Files in Snapshot Comparison table. Will adding small directory icon in front of directory name have impact on performance?
-22. Bugfix: Snapshot Deletion dialog - Enter, Left, Right should work immediately.
-23. Bugfix: New Snapshot window - Enter, Left, Right should work immediately. Enter should start new Snapshot creation.
-24. Preferences > Global Ignore list - should be possible to modify/edit entries without going outside of Application.
-25. Bugfix: Global Ignore List - wildcards not working in File system paths.
-26. UX: Snapshot Comparison window: green/red/yellow fonts on added/deleted/modified entries must be in all columns (e.g.: date, size, values. etc.).
-27. GitHub: README.MD - after bar with download links and before first screenshot - add instruction to right-click downloaded .exe, press Properties, Unblock and press OK. Add screenshot of .exe file details with "Unblock" checkbox ticked.
+22. UX: Changes done to local ignore list are not applied if set to use Remote list. By default should use both, radio button ignore list location selection in Preferences should be removed, logic changed to "use both" or "local only".
+23. Bugfix: Snapshot Deletion dialog - Enter, Left, Right should work immediately.
+24. Bugfix: New Snapshot window - Enter, Left, Right should work immediately. Enter should start new Snapshot creation.
+25. Preferences > Global Ignore list - should be possible to modify/edit entries without going outside of Application.
+26. Bugfix: Global Ignore List - wildcards not working in File system paths.
+27. UX: Snapshot Comparison window: green/red/yellow fonts on added/deleted/modified entries must be in all columns (e.g.: date, size, values. etc.).
+28. GitHub: README.MD - after bar with download links and before first screenshot - add instruction to right-click downloaded .exe, press Properties, Unblock and press OK. Add screenshot of .exe file details with "Unblock" checkbox ticked.
