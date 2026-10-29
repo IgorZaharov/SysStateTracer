@@ -38,6 +38,10 @@ FS:C:\swapfile.sys
 FS:C:\DumpStack.log.tmp
 FS:C:\$Recycle.Bin
 FS:C:\System Volume Information
+FS:C:\Windows\System32\config\DEFAULT
+FS:C:\Windows\System32\config\SAM
+FS:C:\Windows\System32\config\SECURITY
+FS:C:\Windows\System32\config\SOFTWARE
 
 # ---- Registry: security-sensitive hives (never stored) ----
 REG:HKLM\SAM
@@ -74,3 +78,11 @@ FS:C:\Windows\appcompat\pca\PcaGeneralDb0.txt
 FS:C:\ProgramData\VMware\Horizon Monitoring Service Agent\Desktop Agent\logs
 FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\Windows-gather.db-wal
 FS:C:\ProgramData\Microsoft\Windows\AppRepository\StateRepository-Machine.srd-shm
+FS:C:\ProgramData\Microsoft\EdgeUpdate\Log\MicrosoftEdgeUpdate.log
+FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\GatherLogs
+FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\Windows-gather.db
+FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\Windows.db-wal
+FS:C:\ProgramData\Microsoft\Windows\AppRepository\StateRepository-Deployment.srd-shm
+FS:C:\Users\*\AppData\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\TempState\prep_Activatable Class_Hermes_perf.cache
+FS:C:\Users\*\AppData\Local\Packages\Microsoft.Windows.Photos_8wekyb3d8bbwe\LocalState\MediaDb.v1.sqlite-wal
+FS:C:\Windows\System32\config\systemprofile\AppData\LocalLow\Microsoft\CryptnetUrlCache
