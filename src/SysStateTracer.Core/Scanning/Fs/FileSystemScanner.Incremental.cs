@@ -35,7 +35,7 @@ public sealed partial class FileSystemScanner
 
         // Roots on drives without usable journal changes are scanned in full, at the same time as the walk.
         var roots = NormalizeRoots(options.Roots);
-        FindForeignFolders(roots);
+        FindForeignFolders(roots, keepTables: false, cancellationToken);
 
         // A root that is itself on another volume (e.g. C:\Users\Alex on an FSLogix profile disk) is not in the
         // drive's change journal either.

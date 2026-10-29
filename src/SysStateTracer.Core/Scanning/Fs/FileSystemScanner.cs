@@ -85,7 +85,7 @@ public sealed partial class FileSystemScanner
     public void Scan(FileSystemScanOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
-        FindForeignFolders(NormalizeRoots(options.Roots));
+        FindForeignFolders(NormalizeRoots(options.Roots), keepTables: true, cancellationToken);
         ScanCore(options, cancellationToken);
         FollowLinks(options, cancellationToken);
     }
@@ -246,7 +246,7 @@ public sealed partial class FileSystemScanner
         var display = $@"{drive}:\ (file table)";
         Volatile.Write(ref _currentPath, display);
         long reported = 0;
-        var index = MftIndex.TryLoad(
+        var index = _preloadedTables.TryRemove(char.ToUpperInvariant(drive), out var preloaded) ? preloaded : MftIndex.TryLoad(
             drive,
             inUse =>
             {

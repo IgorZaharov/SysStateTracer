@@ -29,4 +29,15 @@ public class FolderLinkPathTests
     [InlineData(@"\\fileserver\share\alex\Desktop", @"\\fileserver\share\alex", true)]
     public void IsSameOrInside(string path, string folder, bool expected) =>
         Assert.Equal(expected, FileSystemScanner.IsSameOrInside(path, folder));
+
+    /// <summary>FSLogix detection: a listing with names the file table does not have comes from elsewhere.</summary>
+    [Fact]
+    public void HasNamesNotIn_ComparesIgnoringCase()
+    {
+        var table = new HashSet<string>(["Desktop", "NTUSER.DAT"], StringComparer.OrdinalIgnoreCase);
+        Assert.False(FileSystemScanner.HasNamesNotIn(["desktop", "ntuser.dat"], table));
+        Assert.False(FileSystemScanner.HasNamesNotIn([], table));
+        Assert.True(FileSystemScanner.HasNamesNotIn(["Desktop", "Documents"], table));
+        Assert.True(FileSystemScanner.HasNamesNotIn(["Desktop"], new HashSet<string>()));
+    }
 }

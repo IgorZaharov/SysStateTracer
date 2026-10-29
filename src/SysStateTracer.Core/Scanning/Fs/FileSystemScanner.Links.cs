@@ -93,10 +93,11 @@ public sealed partial class FileSystemScanner
                     continue;
                 }
 
-                // A profile folder on another volume without a reparse point (FSLogix profile disk): read in place.
+                // A profile folder whose contents come from elsewhere without a reparse point (an FSLogix
+                // profile disk): read in place, through the filter driver.
                 if (_foreign.Contains(link.Path))
                 {
-                    _methods.Enqueue($"{link.Path}: on another volume (e.g. an FSLogix profile disk), read there");
+                    _methods.Enqueue($"{link.Path}: contents on another volume (e.g. an FSLogix profile disk), read through Windows");
                     jobs.Add(new DirectoryJob(link.Index, link.Path, OpenPath(link.Path)));
                     continue;
                 }

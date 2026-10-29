@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Fixed
-- Changes in user profiles on FSLogix Profile Containers were missed: the profile disk is a separate volume that Windows redirects `C:\Users\<name>` to, so drive C:'s change journal never sees changes there, and a whole-drive scan read only the empty local folder. Profile folders that open on another volume are now read in full on every snapshot and recorded under `C:\Users\<name>`.
+- User profiles on FSLogix Profile Containers were missing from snapshots: FSLogix keeps the profile on a separate virtual disk and its driver shows it at `C:\Users\<name>`, while drive C: itself holds only an empty folder there, which is what a whole-drive scan read (and C:'s change journal never sees changes in the profile). Where FSLogix is installed, SysStateTracer now compares each profile folder with drive C:'s file table; a profile whose contents come from elsewhere is read through Windows, in full, on every snapshot, and recorded under `C:\Users\<name>`.
 - Folders with a volume mounted on them (a VHD or a second disk mounted in a folder) were skipped; the mounted volume is now read and recorded under the folder.
 
 ### Preferences

@@ -113,6 +113,26 @@ public class FileSystemScannerTests
         Assert.Equal(FileSystemScanner.VolumeSerialOf(windows[..3]), FileSystemScanner.VolumeSerialOf(windows));
     }
 
+    /// <summary>FSLogix detection: an ordinary folder lists exactly what the file table holds; links are left to the link rules.</summary>
+    [Fact]
+    public void VirtualizedFolders_OrdinaryFoldersAndLinksAreNot()
+    {
+        if (!SysStateTracer.Core.Interop.ProcessPrivileges.IsElevated)
+        {
+            return;
+        }
+
+        using var folder = new TestFolder();
+        folder.CreateFile(@"Users\Alex\Desktop\a.txt", 1);
+        folder.CreateFile(@"Users\Alex\NTUSER.DAT", 1);
+        folder.CreateFile(@"elsewhere\x.txt");
+        Junction.Create(folder.Combine(@"Users\All Users"), folder.Combine("elsewhere"));
+
+        var table = SysStateTracer.Core.Scanning.Fs.Ntfs.MftIndex.TryLoad(folder.Path[0], null, CancellationToken.None, out var reason);
+        Assert.True(table is not null, reason);
+        Assert.Empty(FileSystemScanner.VirtualizedFolders(table!, [folder.Combine(@"Users\Alex"), folder.Combine(@"Users\All Users"), folder.Combine("Users")]));
+    }
+
     [Fact]
     public void Scan_ReadsPathsLongerThan260Characters()
     {
