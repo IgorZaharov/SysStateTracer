@@ -2,8 +2,9 @@ name: repackage
 
 # Moves an existing release's SysStateTracer.exe into SysStateTracer.zip (as the release workflow publishes
 # since 1.1.0): the exe is checked against its published SHA-256, zipped unchanged and uploaded with the
-# zip's SHA-256; the bare exe and its checksum are then removed. Optionally Manual.pdf is replaced by the
-# one CI last built (the "ui-preview" pre-release), e.g. when only the manual's download chapter changed.
+# zip's SHA-256; the bare exe and its checksum are then removed, and the notes' "## Download" section is
+# rewritten for the zip. A release that has the zip already only gets its notes rewritten. Optionally
+# Manual.pdf is replaced by the one CI last built (the "ui-preview" pre-release).
 # Started by hand: Actions -> repackage -> Run workflow.
 on:
   workflow_dispatch:
@@ -23,7 +24,7 @@ jobs:
   repackage:
     runs-on: windows-latest
     steps:
-      - name: Zip the release's exe
+      - name: Zip the release's exe, rewrite the download notes
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,25 +32,67 @@ jobs:
         run: |
           $tag = '${{ github.event.inputs.tag }}'
           New-Item -ItemType Directory work, dist | Out-Null
-          gh release download $tag --pattern 'SysStateTracer.exe' --pattern 'SysStateTracer.exe.sha256' --dir work
-          if ($LASTEXITCODE -ne 0) { Write-Error "$tag has no SysStateTracer.exe to repackage"; exit 1 }
-          $expected = ((Get-Content work/SysStateTracer.exe.sha256 -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
-          $exeHash = (Get-FileHash work/SysStateTracer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($exeHash -ne $expected) { Write-Error "SysStateTracer.exe does not match its published SHA-256"; exit 1 }
-          Compress-Archive -Path work/SysStateTracer.exe -DestinationPath dist/SysStateTracer.zip -CompressionLevel Optimal
-          $hash = (Get-FileHash dist/SysStateTracer.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  SysStateTracer.zip" | Set-Content dist/SysStateTracer.zip.sha256 -Encoding ascii -NoNewline
-          $files = @('dist/SysStateTracer.zip', 'dist/SysStateTracer.zip.sha256')
+          $assets = (gh release view $tag --json assets --jq '.assets[].name') -split "`n"
+          $files = @()
+          if ($assets -contains 'SysStateTracer.exe') {
+            gh release download $tag --pattern 'SysStateTracer.exe' --pattern 'SysStateTracer.exe.sha256' --dir work
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            $expected = ((Get-Content work/SysStateTracer.exe.sha256 -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+            $exeHash = (Get-FileHash work/SysStateTracer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($exeHash -ne $expected) { Write-Error "SysStateTracer.exe does not match its published SHA-256"; exit 1 }
+            Compress-Archive -Path work/SysStateTracer.exe -DestinationPath dist/SysStateTracer.zip -CompressionLevel Optimal
+            $hash = (Get-FileHash dist/SysStateTracer.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  SysStateTracer.zip" | Set-Content dist/SysStateTracer.zip.sha256 -Encoding ascii -NoNewline
+            $files += @('dist/SysStateTracer.zip', 'dist/SysStateTracer.zip.sha256')
+            $zip = 'dist/SysStateTracer.zip'
+          } elseif ($assets -contains 'SysStateTracer.zip') {
+            gh release download $tag --pattern 'SysStateTracer.zip' --dir work
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            Expand-Archive work/SysStateTracer.zip -DestinationPath work/unzipped
+            $exeHash = (Get-FileHash work/unzipped/SysStateTracer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            $hash = (Get-FileHash work/SysStateTracer.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            $zip = 'work/SysStateTracer.zip'
+          } else {
+            Write-Error "$tag has neither SysStateTracer.exe nor SysStateTracer.zip"; exit 1
+          }
+
           if ('${{ github.event.inputs.manual_from_ui_preview }}' -eq 'true') {
             gh release download ui-preview --pattern 'Manual.pdf' --dir dist
             if ($LASTEXITCODE -ne 0) { Write-Error 'No Manual.pdf on ui-preview'; exit 1 }
             $files += 'dist/Manual.pdf'
           }
 
-          gh release upload $tag @files --clobber
+          if ($files.Count -gt 0) {
+            gh release upload $tag @files --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+
+          if ($assets -contains 'SysStateTracer.exe') {
+            gh release delete-asset $tag SysStateTracer.exe --yes
+            gh release delete-asset $tag SysStateTracer.exe.sha256 --yes
+          }
+
+          # The notes up to "## Download", then the download section for the zip (as the release workflow writes it).
+          $body = gh release view $tag --json body --jq '.body'
+          $cut = $body.IndexOf('## Download')
+          $section = if ($cut -ge 0) { $body.Substring(0, $cut).TrimEnd() } else { $body.TrimEnd() }
+          $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
+          @"
+          $section
+
+          ## Download
+
+          **SysStateTracer.zip** ($size MB) holds **SysStateTracer.exe**: one file for Windows 10 and 11 x64, nothing to install. It starts with your own rights (no UAC prompt); use **Restart as administrator** for complete snapshots.
+
+          **Before extracting:** right-click the downloaded zip → **Properties**, tick **Unblock**, click **OK**; then **Extract All**. The exe is not code-signed: unblocked this way, Windows does not stop it on the first start.
+
+          SHA-256 of SysStateTracer.zip: ``$hash``
+          SHA-256 of SysStateTracer.exe: ``$exeHash``
+
+          Check them in PowerShell: ``(Get-FileHash .\SysStateTracer.zip).Hash`` and ``(Get-FileHash .\SysStateTracer.exe).Hash``
+
+          **Manual.pdf**: the user manual, with screenshots of this version.
+          "@ -replace '(?m)^          ', '' | Set-Content notes.md -Encoding utf8
+          gh release edit $tag --notes-file notes.md
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          gh release delete-asset $tag SysStateTracer.exe --yes
-          gh release delete-asset $tag SysStateTracer.exe.sha256 --yes
-          Write-Host "::notice title=Repackaged::$tag now has SysStateTracer.zip (SHA-256 $hash; exe $exeHash)"
-          "zip=$hash" | Add-Content $env:GITHUB_STEP_SUMMARY
-          "exe=$exeHash" | Add-Content $env:GITHUB_STEP_SUMMARY
+          Write-Host "::notice title=Repackaged::$tag has SysStateTracer.zip (SHA-256 $hash; exe $exeHash)"
