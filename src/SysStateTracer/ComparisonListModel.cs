@@ -63,17 +63,18 @@ internal sealed class ComparisonListModel : ITreeGridModel
     /// <summary>The columns for an area: header, width, alignment.</summary>
     public static List<GridColumn> ColumnsFor(DiffArea area) => area switch
     {
+        // About 610 px: the list fits the pane of a comparison window at its first size; the last column takes the rest.
         DiffArea.FileSystem =>
         [
-            new(string.Empty, 32), new("Name", 320), new("Size", 100, HorizontalAlignment.Right), new("Date modified", 160), new("Attributes", 100),
+            new(string.Empty, 32), new("Name", 240), new("Size", 90, HorizontalAlignment.Right), new("Date modified", 150), new("Attributes", 90),
         ],
         DiffArea.Registry =>
         [
-            new(string.Empty, 32), new("Name", 260), new("Type", 130), new("Data", 420),
+            new(string.Empty, 32), new("Name", 220), new("Type", 120), new("Data", 240),
         ],
         _ =>
         [
-            new(string.Empty, 32), new("Name", 200), new("Display name", 300), new("Status", 110), new("Start type", 160),
+            new(string.Empty, 32), new("Name", 160), new("Display name", 220), new("Status", 90), new("Start type", 110),
         ],
     };
 
