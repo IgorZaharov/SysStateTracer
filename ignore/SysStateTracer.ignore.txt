@@ -30,6 +30,10 @@ FS:C:\Windows\System32\config\*.LOG?
 FS:C:\Windows\System32\config\*.blf
 FS:C:\Windows\System32\config\*.regtrans-ms
 FS:C:\Windows\System32\config\TxR
+FS:C:\Windows\System32\config\DEFAULT
+FS:C:\Windows\System32\config\SAM
+FS:C:\Windows\System32\config\SECURITY
+FS:C:\Windows\System32\config\SOFTWARE
 
 # ---- File system: system files rewritten by Windows ----
 FS:C:\pagefile.sys
@@ -38,10 +42,6 @@ FS:C:\swapfile.sys
 FS:C:\DumpStack.log.tmp
 FS:C:\$Recycle.Bin
 FS:C:\System Volume Information
-FS:C:\Windows\System32\config\DEFAULT
-FS:C:\Windows\System32\config\SAM
-FS:C:\Windows\System32\config\SECURITY
-FS:C:\Windows\System32\config\SOFTWARE
 
 # ---- Registry: security-sensitive hives (never stored) ----
 REG:HKLM\SAM
