@@ -1,7 +1,8 @@
 name: release
 
 # Plan Step 56 / §14.4: a tag such as v1.0.0 (or v1.0.0-rc.1 for a pre-release) builds, tests and
-# publishes SysStateTracer.exe with its SHA-256 and the release notes from CHANGELOG.md.
+# publishes SysStateTracer.zip (the exe inside: browsers warn less about a zip, and only the zip needs
+# Unblock) with its SHA-256, Manual.pdf and the release notes from CHANGELOG.md.
 # It can also be started by hand (Actions -> release -> Run workflow) with a version; the tag is then
 # created on the chosen branch's latest commit.
 on:
@@ -83,12 +84,16 @@ jobs:
           $out | ForEach-Object { Write-Host $_ }
           if ($LASTEXITCODE -ne 0) { Write-Host "::error title=Manual.pdf::$((@($out) | Select-Object -Last 6) -join ' | ')"; exit 1 }
 
-      - name: Release notes and SHA-256
+      - name: SysStateTracer.zip, release notes and SHA-256
         shell: pwsh
         run: |
           $version = '${{ steps.version.outputs.version }}'
-          $hash = (Get-FileHash publish/SysStateTracer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  SysStateTracer.exe" | Set-Content publish/SysStateTracer.exe.sha256 -Encoding ascii -NoNewline
+          New-Item -ItemType Directory dist | Out-Null
+          Compress-Archive -Path publish/SysStateTracer.exe -DestinationPath dist/SysStateTracer.zip -CompressionLevel Optimal
+          Copy-Item publish/Manual.pdf dist/Manual.pdf
+          $exeHash = (Get-FileHash publish/SysStateTracer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hash = (Get-FileHash dist/SysStateTracer.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  SysStateTracer.zip" | Set-Content dist/SysStateTracer.zip.sha256 -Encoding ascii -NoNewline
 
           # The CHANGELOG section for this version (without a pre-release label), up to the next "## ".
           $base = $version.Split('-')[0]
@@ -100,21 +105,22 @@ jobs:
             ($lines[($start + 1)..($end - 1)] -join "`n").Trim()
           } else { 'See CHANGELOG.md.' }
 
-          $size = [math]::Round((Get-Item publish/SysStateTracer.exe).Length / 1MB, 1)
+          $size = [math]::Round((Get-Item dist/SysStateTracer.zip).Length / 1MB, 1)
           @"
           $section
 
           ## Download
 
-          **SysStateTracer.exe** ($size MB): one file for Windows 10 and 11 x64, nothing to install. It starts with your own rights (no UAC prompt); use **Restart as administrator** for complete snapshots.
+          **SysStateTracer.zip** ($size MB) holds **SysStateTracer.exe**: one file for Windows 10 and 11 x64, nothing to install. It starts with your own rights (no UAC prompt); use **Restart as administrator** for complete snapshots.
 
-          SHA-256: ``$hash``
+          **Before extracting:** right-click the downloaded zip → **Properties**, tick **Unblock**, click **OK**; then **Extract All**. The exe is not code-signed: unblocked this way, Windows does not stop it on the first start.
 
-          Check it in PowerShell: ``(Get-FileHash .\SysStateTracer.exe).Hash``
+          SHA-256 of SysStateTracer.zip: ``$hash``
+          SHA-256 of SysStateTracer.exe: ``$exeHash``
+
+          Check them in PowerShell: ``(Get-FileHash .\SysStateTracer.zip).Hash`` and ``(Get-FileHash .\SysStateTracer.exe).Hash``
 
           **Manual.pdf**: the user manual, with screenshots of this version.
-
-          The exe is not code-signed, so on first start Windows SmartScreen may say "Windows protected your PC": choose **More info → Run anyway**, or tick **Unblock** in the file's Properties.
           "@ -replace '(?m)^          ', '' | Set-Content notes.md -Encoding utf8
 
       - name: Create the GitHub release
@@ -125,5 +131,5 @@ jobs:
           $flags = @('--title', "SysStateTracer ${{ steps.version.outputs.version }}", '--notes-file', 'notes.md')
           if ('${{ github.event_name }}' -eq 'workflow_dispatch') { $flags += @('--target', $env:GITHUB_SHA) } else { $flags += '--verify-tag' }
           if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' } else { $flags += '--latest' }
-          gh release create '${{ steps.version.outputs.tag }}' publish/SysStateTracer.exe publish/SysStateTracer.exe.sha256 publish/Manual.pdf @flags
+          gh release create '${{ steps.version.outputs.tag }}' dist/SysStateTracer.zip dist/SysStateTracer.zip.sha256 dist/Manual.pdf @flags
           if ($LASTEXITCODE -ne 0) { exit 1 }

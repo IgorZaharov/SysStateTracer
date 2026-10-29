@@ -15,6 +15,9 @@
 - New Snapshot could crash while showing progress or finishing (a window update from a background thread).
 - Snapshot Properties cut long lines off (how each folder was read, why a snapshot was incremental); they now wrap.
 
+### Download
+- The program now comes as **SysStateTracer.zip** with the exe inside: browsers warn less about it, and only the zip needs **Unblock** (Properties) before **Extract All**. README and manual links point to the zip.
+
 ### Preferences
 - **Show grid lines** and **Use zebra striping** (Preferences → General → Lists) for the snapshot list and the comparison window. Both are off by default and apply at once.
 

@@ -290,17 +290,19 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "(password hashes and system secrets) are left out by default.", "note"))
     story.append(p("Getting SysStateTracer", "h2"))
     story += bullets([
-        f'Download the latest <b>SysStateTracer.exe</b> directly from <a href="{LATEST}/SysStateTracer.exe" color="#005FB8">'
-        f'{LATEST}/SysStateTracer.exe</a> (older versions: <a href="{RELEASES}" color="#005FB8">{RELEASES}</a>). It is a single '
-        "file for Windows 10 and 11 x64; nothing needs to be installed. Put it in any folder you can write to.",
+        f'Download the latest <b>SysStateTracer.zip</b> directly from <a href="{LATEST}/SysStateTracer.zip" color="#005FB8">'
+        f'{LATEST}/SysStateTracer.zip</a> (older versions: <a href="{RELEASES}" color="#005FB8">{RELEASES}</a>). It holds '
+        "<b>SysStateTracer.exe</b>, a single file for Windows 10 and 11 x64; nothing needs to be installed. Extract it to "
+        "any folder you can write to.",
         "It starts without a UAC prompt, with your own rights, and also works for a standard user. Without "
         "administrator rights, snapshots miss the folders and registry keys only an administrator can read (New Snapshot "
         "shows them greyed out) and whole drives are read more slowly. For complete snapshots, click <b>Restart as "
         "administrator</b> in the main window.",
-        "The program is not code-signed, so Windows may block it or SmartScreen may say “Windows protected your "
-        "PC”. Before the first start, right-click the downloaded <b>SysStateTracer.exe</b>, choose <b>Properties</b>, "
-        "tick <b>Unblock</b> at the bottom of the General tab and click <b>OK</b> (shown below). Each release lists the "
-        "file's SHA-256 checksum, so you can check that the file is the published one.",
+        "The program is not code-signed, so Windows blocks the files of a downloaded zip and SmartScreen may say "
+        "“Windows protected your PC”. <b>Before extracting</b>, right-click the downloaded <b>SysStateTracer.zip</b>, "
+        "choose <b>Properties</b>, tick <b>Unblock</b> at the bottom of the General tab and click <b>OK</b> (shown below); "
+        "then right-click it and choose <b>Extract All</b>. The extracted exe then starts without a warning. Each release "
+        "lists the SHA-256 checksums of the zip and the exe, so you can check that they are the published ones.",
     ])
     story += screens.figure("unblock", "The downloaded file's Properties: (1) tick Unblock, (2) click OK.", width=70 * mm,
                             max_height=105 * mm, path=REPO / "docs" / "images" / "unblock.png")
@@ -312,7 +314,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(table([
         ["", ""],
         ["Project, source code and documentation", f'<a href="{GITHUB}" color="#005FB8">{GITHUB}</a>'],
-        ["Latest SysStateTracer.exe", f'<a href="{LATEST}/SysStateTracer.exe" color="#005FB8">{LATEST}/SysStateTracer.exe</a>'],
+        ["Latest SysStateTracer.zip", f'<a href="{LATEST}/SysStateTracer.zip" color="#005FB8">{LATEST}/SysStateTracer.zip</a>'],
         ["Latest manual", f'<a href="{LATEST}/Manual.pdf" color="#005FB8">{LATEST}/Manual.pdf</a>'],
         ["All versions", f'<a href="{RELEASES}" color="#005FB8">{RELEASES}</a>'],
         ["Problem reports, questions and feature requests", f'<a href="{ISSUES}" color="#005FB8">{ISSUES}</a>'],
