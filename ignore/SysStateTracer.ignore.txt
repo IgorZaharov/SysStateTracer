@@ -86,3 +86,12 @@ FS:C:\ProgramData\Microsoft\Windows\AppRepository\StateRepository-Deployment.srd
 FS:C:\Users\*\AppData\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\TempState\prep_Activatable Class_Hermes_perf.cache
 FS:C:\Users\*\AppData\Local\Packages\Microsoft.Windows.Photos_8wekyb3d8bbwe\LocalState\MediaDb.v1.sqlite-wal
 FS:C:\Windows\System32\config\systemprofile\AppData\LocalLow\Microsoft\CryptnetUrlCache
+FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\Projects\SystemIndex\SecStore\SecStore.db-wal
+FS:C:\ProgramData\Microsoft\Search\Data\Applications\Windows\Windows.db
+FS:C:\ProgramData\Microsoft\Windows\AppRepository\*.srd
+FS:C:\ProgramData\Microsoft\Windows\AppRepository\*.srd-wal
+FS:C:\ProgramData\Microsoft\Windows\ClipSVC\tokens.dat
+FS:C:\ProgramData\Microsoft\Windows\DeviceMetadataCache\dmrc.idx
+FS:C:\ProgramData\VMware\EUC\logs
+FS:C:\ProgramData\VMware\VMware Blast\Blast-Service.log
+FS:C:\Users\local_admigorza\AppData\Local\Microsoft\Windows\Notifications\wpndatabase.db-wal
