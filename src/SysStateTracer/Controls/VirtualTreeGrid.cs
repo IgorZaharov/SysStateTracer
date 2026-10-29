@@ -3,9 +3,11 @@ using SysStateTracer.Theming;
 
 namespace SysStateTracer.Controls;
 
-/// <summary>How one row is drawn.</summary>
-/// <summary>How a row is drawn; <paramref name="Icon"/> is a glyph drawn before the name (F21).</summary>
-internal readonly record struct GridRowStyle(Color? TextColor, bool Strikeout, bool Dim, bool Bold, string? Icon = null);
+/// <summary>
+/// How a row is drawn; <paramref name="Icon"/> is a glyph drawn before the name (F21), in
+/// <paramref name="IconColor"/> (secondary text when null).
+/// </summary>
+internal readonly record struct GridRowStyle(Color? TextColor, bool Strikeout, bool Dim, bool Bold, string? Icon = null, Color? IconColor = null);
 
 /// <summary>What <see cref="VirtualTreeGrid"/> shows: a tree of row ids with text per column, read on demand.</summary>
 internal interface ITreeGridModel
@@ -22,6 +24,9 @@ internal interface ITreeGridModel
     string? ToolTip(long id, int column);
 
     GridRowStyle Style(long id);
+
+    /// <summary>True for a cell whose value differs between the snapshots: drawn on a highlight.</summary>
+    bool IsChangedCell(long id, int column) => false;
 }
 
 /// <summary>A grid column: header, width, alignment.</summary>
@@ -69,6 +74,10 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     private int _resizeStartWidth;
     private (int Row, int Column) _toolTipCell = (-1, -1);
 
+    // Per visible row, for tree lines: bit k = a line passes down at level k (k < depth); bit depth = a next sibling.
+    private readonly List<ulong> _lines = [];
+    private bool _linesDirty = true;
+
     public VirtualTreeGrid()
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable | ControlStyles.ResizeRedraw, true);
@@ -83,6 +92,30 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     /// <summary>Raised for Enter or a double-click on a row without children.</summary>
     public event EventHandler<long>? RowActivated;
 
+    /// <summary>Raised when a column header is clicked (not its edge); the argument is the column.</summary>
+    public event EventHandler<int>? HeaderClicked;
+
+    /// <summary>Column headers on top; off for a tree without columns.</summary>
+    public bool ShowHeader { get; set; } = true;
+
+    /// <summary>Dotted lines from each row to its parent, and + / − boxes, instead of arrows.</summary>
+    public bool TreeLines { get; set; }
+
+    /// <summary>A plain list: no room for expanders before the first column's text.</summary>
+    public bool Flat { get; set; }
+
+    /// <summary>Grid lines and zebra stripes (Preferences) apply; off for the folder tree.</summary>
+    public bool UseListStyle { get; set; } = true;
+
+    /// <summary>The last column is as wide as the space left (at least its own width).</summary>
+    public bool StretchLastColumn { get; set; }
+
+    /// <summary>Column with the sort arrow in its header, or -1.</summary>
+    public int SortColumn { get; set; } = -1;
+
+    /// <summary>Arrow down (descending) or up.</summary>
+    public bool SortDescending { get; set; }
+
     public List<GridColumn> Columns { get; } = [];
 
     public int RowHeight { get; set; }
@@ -96,7 +129,10 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     /// <summary>Show the model's tool tips on hover; off in the comparison window, where they covered the next rows (F19).</summary>
     public bool ShowToolTips { get; set; } = true;
 
-    public int HeaderHeight => RowHeight + 4;
+    public int HeaderHeight => ShowHeader ? RowHeight + 4 : 0;
+
+    /// <summary>Room for the expander before a row's icon and text.</summary>
+    private int ExpanderWidth => Flat ? 0 : Indent;
 
     /// <summary>Visible rows (expanded state applied).</summary>
     public int RowCount => _rows.Count;
@@ -133,7 +169,12 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
     private int VisibleRowCount => Math.Max(1, (ClientSize.Height - HeaderHeight) / RowHeight);
 
-    private int TotalWidth => Columns.Sum(c => c.Width);
+    private int TotalWidth => Columns.Sum(c => c.Width) + StretchExtra;
+
+    /// <summary>Extra width the last column gets to fill the control.</summary>
+    private int StretchExtra => StretchLastColumn && Columns.Count > 0 ? Math.Max(0, ClientSize.Width - Columns.Sum(c => c.Width)) : 0;
+
+    private int ColumnWidth(int column) => Columns[column].Width + (column == Columns.Count - 1 ? StretchExtra : 0);
 
     public void ApplyTheme(Palette palette)
     {
@@ -168,6 +209,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             }
         }
 
+        _linesDirty = true;
         _selected.IntersectWith(_rows);
         _focus = focused is { } id ? _rows.IndexOf(id) : (_rows.Count > 0 ? 0 : -1);
         _anchor = _focus;
@@ -357,6 +399,10 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                 _resizeStartWidth = Columns[edge].Width;
                 Capture = true;
             }
+            else if (e.Button == MouseButtons.Left && ColumnAt(e.X) is var column and >= 0)
+            {
+                HeaderClicked?.Invoke(this, column);
+            }
 
             return;
         }
@@ -513,6 +559,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             return;
         }
 
+        _linesDirty = true;
         var added = _rows.Count - before;
         if (_focus > index)
         {
@@ -577,6 +624,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
             _rows.RemoveRange(index + 1, count);
             _depth.RemoveRange(index + 1, count);
+            _linesDirty = true;
         }
 
         if (_focus > index && _focus < end)
@@ -692,8 +740,73 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             return false;
         }
 
+        if (Flat)
+        {
+            return false;
+        }
+
         var start = TreeLeft + 4 + (_depth[row] * Indent) - _left;
         return x >= start - 2 && x < start + Indent;
+    }
+
+    /// <summary>The column at <paramref name="x"/>, or -1.</summary>
+    private int ColumnAt(int x)
+    {
+        var left = -_left;
+        for (var i = 0; i < Columns.Count; i++)
+        {
+            var width = ColumnWidth(i);
+            if (x >= left && x < left + width)
+            {
+                return i;
+            }
+
+            left += width;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Which dotted lines each row needs, in one pass from the bottom: a line at level k passes a row when the
+    /// nearest following row at level k or above is at level k (the ancestor at that level has a next sibling).
+    /// </summary>
+    private void ComputeLines()
+    {
+        _lines.Clear();
+        var maxDepth = 0;
+        foreach (var d in _depth)
+        {
+            maxDepth = Math.Max(maxDepth, d);
+        }
+
+        var seen = new bool[maxDepth + 2];
+        for (var i = 0; i < _rows.Count; i++)
+        {
+            _lines.Add(0);
+        }
+
+        for (var i = _rows.Count - 1; i >= 0; i--)
+        {
+            var depth = _depth[i];
+            ulong mask = 0;
+            for (var k = 0; k <= Math.Min(depth, 63); k++)
+            {
+                if (seen[k])
+                {
+                    mask |= 1UL << k;
+                }
+            }
+
+            _lines[i] = mask;
+            seen[depth] = true;
+            for (var k = depth + 1; k < seen.Length; k++)
+            {
+                seen[k] = false;
+            }
+        }
+
+        _linesDirty = false;
     }
 
     private int ColumnEdgeAt(int x)
@@ -701,8 +814,8 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         var edge = -_left;
         for (var i = 0; i < Columns.Count; i++)
         {
-            edge += Columns[i].Width;
-            if (Math.Abs(x - edge) <= 3)
+            edge += ColumnWidth(i);
+            if (Math.Abs(x - edge) <= 3 && !(StretchLastColumn && i == Columns.Count - 1))
             {
                 return i;
             }
@@ -789,13 +902,13 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         var x = -_left;
         for (var i = 0; i < Columns.Count; i++)
         {
-            if (location.X >= x && location.X < x + Columns[i].Width)
+            if (location.X >= x && location.X < x + ColumnWidth(i))
             {
                 column = i;
                 break;
             }
 
-            x += Columns[i].Width;
+            x += ColumnWidth(i);
         }
 
         if ((row, column) == _toolTipCell)
@@ -829,6 +942,11 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             return;
         }
 
+        if (TreeLines && _linesDirty)
+        {
+            ComputeLines();
+        }
+
         var flagsLeft = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         var flagsRight = (flagsLeft & ~TextFormatFlags.Left) | TextFormatFlags.Right;
 
@@ -838,7 +956,13 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         using var focusPen = new Pen(p.Accent) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot };
         using var stripe = new SolidBrush(p.Stripe);
         using var gridPen = new Pen(p.GridLine);
-        var gridLines = ThemeManager.GridLines;
+        using var linePen = new Pen(Palette.Blend(p.SecondaryText, p.Background, 0.35)) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot };
+        using var boxPen = new Pen(Palette.Blend(p.SecondaryText, p.Background, 0.2));
+        using var boxBrush = new SolidBrush(p.Background);
+        using var signPen = new Pen(p.Text);
+        using var chip = new SolidBrush(Palette.Blend(p.Modified, p.Background, p.IsDark ? 0.78 : 0.84));
+        var gridLines = UseListStyle && ThemeManager.GridLines;
+        var zebra = UseListStyle && ThemeManager.ZebraStripes;
         for (var row = _top; row < last; row++)
         {
             var id = _rows[row];
@@ -848,7 +972,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             {
                 g.FillRectangle(selected, rect);
             }
-            else if (ThemeManager.ZebraStripes && row % 2 == 1)
+            else if (zebra && row % 2 == 1)
             {
                 g.FillRectangle(stripe, rect);
             }
@@ -859,7 +983,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                 var line = -_left;
                 for (var c = 0; c < Columns.Count - 1; c++)
                 {
-                    line += Columns[c].Width;
+                    line += ColumnWidth(c);
                     g.DrawLine(gridPen, line - 1, y, line - 1, y + RowHeight - 1);
                 }
             }
@@ -881,25 +1005,41 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             for (var c = 0; c < Columns.Count; c++)
             {
                 var column = Columns[c];
-                var cell = new Rectangle(x + 6, y, column.Width - 12, RowHeight);
+                var width = ColumnWidth(c);
+                var cell = new Rectangle(x + 6, y, width - 12, RowHeight);
                 if (c == TreeColumn)
                 {
                     var indent = 4 + (_depth[row] * Indent);
-                    if (_model.HasChildren(id))
+                    var hasChildren = !Flat && _model.HasChildren(id);
+                    if (TreeLines)
+                    {
+                        DrawTreeLines(g, linePen, x + 4, y, row, hasChildren);
+                        if (hasChildren)
+                        {
+                            DrawBox(g, boxPen, boxBrush, signPen, x + indent + (Indent / 2), y + (RowHeight / 2), _expanded.Contains(id));
+                        }
+                    }
+                    else if (hasChildren)
                     {
                         var chevron = _expanded.Contains(id) ? "\uE70D" : "\uE76C";
                         TextRenderer.DrawText(g, chevron, _glyphFont, new Rectangle(x + indent, y, Indent, RowHeight), p.SecondaryText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                     }
 
-                    var textLeft = indent + Indent + 2;
+                    var textLeft = Flat ? 6 : indent + ExpanderWidth + 2;
                     if (style.Icon is { } icon)
                     {
                         // One glyph per row on screen: no measurable cost (the frame-time test covers it).
-                        TextRenderer.DrawText(g, icon, _iconFont, new Rectangle(x + textLeft, y, IconWidth, RowHeight), style.Dim ? color : p.SecondaryText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                        var iconColor = style.IconColor ?? (style.Dim ? color : p.SecondaryText);
+                        if (style.Dim && style.IconColor is { } own)
+                        {
+                            iconColor = Palette.Blend(own, p.Background, 0.5);
+                        }
+
+                        TextRenderer.DrawText(g, icon, _iconFont, new Rectangle(x + textLeft, y, IconWidth, RowHeight), iconColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                         textLeft += IconWidth + 4;
                     }
 
-                    cell = new Rectangle(x + textLeft, y, column.Width - textLeft - 6, RowHeight);
+                    cell = new Rectangle(x + textLeft, y, width - textLeft - 6, RowHeight);
                 }
 
                 if (cell.Right > 0 && cell.Left < ClientSize.Width && cell.Width > 0)
@@ -907,13 +1047,28 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                     var text = _model.Text(id, c);
                     if (text.Length > 0)
                     {
+                        var flags = column.Align == HorizontalAlignment.Right ? flagsRight : flagsLeft;
+                        if (_model.IsChangedCell(id, c))
+                        {
+                            // The value that differs between the snapshots, on a highlight.
+                            var size = TextRenderer.MeasureText(g, text, font, new Size(cell.Width, RowHeight), flags);
+                            var w = Math.Min(cell.Width, size.Width) + 8;
+                            var left = column.Align == HorizontalAlignment.Right ? cell.Right - w + 4 : cell.Left - 4;
+                            g.FillRectangle(chip, left, y + 3, w, RowHeight - 6);
+                        }
+
                         // New, modified and deleted colours go through every column (F27).
-                        TextRenderer.DrawText(g, text, font, cell, color, column.Align == HorizontalAlignment.Right ? flagsRight : flagsLeft);
+                        TextRenderer.DrawText(g, text, font, cell, color, flags);
                     }
                 }
 
-                x += column.Width;
+                x += width;
             }
+        }
+
+        if (!ShowHeader)
+        {
+            return;
         }
 
         // Header.
@@ -925,13 +1080,86 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         using var border = new Pen(p.Border);
         g.DrawLine(border, 0, HeaderHeight - 1, ClientSize.Width, HeaderHeight - 1);
         var hx = -_left;
-        foreach (var column in Columns)
+        for (var c = 0; c < Columns.Count; c++)
         {
-            var rect = new Rectangle(hx + 6, 0, column.Width - 12, HeaderHeight);
-            TextRenderer.DrawText(g, column.Header, Font, rect, p.SecondaryText, column.Align == HorizontalAlignment.Right ? flagsRight : flagsLeft);
-            hx += column.Width;
-            g.DrawLine(border, hx - 1, 5, hx - 1, HeaderHeight - 6);
+            var column = Columns[c];
+            var width = ColumnWidth(c);
+            var rect = new Rectangle(hx + 6, 0, width - 12, HeaderHeight);
+            var sorted = c == SortColumn;
+            var right = column.Align == HorizontalAlignment.Right;
+            if (sorted)
+            {
+                // The arrow goes on the side away from the text, as in the snapshot list.
+                const int arrow = 14;
+                var box = right ? new Rectangle(rect.Left, 0, arrow, HeaderHeight) : new Rectangle(rect.Right - arrow, 0, arrow, HeaderHeight);
+                rect = right ? Rectangle.FromLTRB(rect.Left + arrow, 0, rect.Right, HeaderHeight) : Rectangle.FromLTRB(rect.Left, 0, rect.Right - arrow, HeaderHeight);
+                DrawSortArrow(g, box, SortDescending, p.SecondaryText);
+            }
+
+            TextRenderer.DrawText(g, column.Header, sorted ? UiFonts.Bold : Font, rect, sorted ? p.Text : p.SecondaryText, right ? flagsRight : flagsLeft);
+            hx += width;
+            if (c < Columns.Count - 1 || !StretchLastColumn)
+            {
+                g.DrawLine(border, hx - 1, 5, hx - 1, HeaderHeight - 6);
+            }
         }
+    }
+
+    /// <summary>Dotted lines for one row: through-lines of its ancestors, then its own elbow to the icon.</summary>
+    private void DrawTreeLines(Graphics g, Pen pen, int left, int y, int row, bool hasChildren)
+    {
+        var depth = _depth[row];
+        var mask = row < _lines.Count ? _lines[row] : 0;
+        var middle = y + (RowHeight / 2);
+        for (var k = 0; k < depth && k < 64; k++)
+        {
+            if ((mask & (1UL << k)) != 0)
+            {
+                var lx = left + (k * Indent) + (Indent / 2);
+                g.DrawLine(pen, lx, y, lx, y + RowHeight);
+            }
+        }
+
+        var cx = left + (depth * Indent) + (Indent / 2);
+        var hasNext = depth < 64 && (mask & (1UL << depth)) != 0;
+        if (row > 0 || depth > 0)
+        {
+            g.DrawLine(pen, cx, y, cx, middle);
+        }
+
+        if (hasNext)
+        {
+            g.DrawLine(pen, cx, middle, cx, y + RowHeight);
+        }
+
+        g.DrawLine(pen, hasChildren ? cx + 5 : cx, middle, cx + (Indent / 2) + 2, middle);
+    }
+
+    /// <summary>The + / − box of a row with children, centred on (<paramref name="cx"/>, <paramref name="cy"/>).</summary>
+    private static void DrawBox(Graphics g, Pen border, Brush fill, Pen sign, int cx, int cy, bool expanded)
+    {
+        var box = new Rectangle(cx - 4, cy - 4, 8, 8);
+        g.FillRectangle(fill, box);
+        g.DrawRectangle(border, box);
+        g.DrawLine(sign, cx - 2, cy, cx + 2, cy);
+        if (!expanded)
+        {
+            g.DrawLine(sign, cx, cy - 2, cx, cy + 2);
+        }
+    }
+
+    private static void DrawSortArrow(Graphics g, Rectangle box, bool descending, Color color)
+    {
+        var cx = box.Left + (box.Width / 2f);
+        var cy = box.Top + (box.Height / 2f);
+        PointF[] points = descending
+            ? [new(cx - 4, cy - 2), new(cx + 4, cy - 2), new(cx, cy + 2.5f)]
+            : [new(cx - 4, cy + 2), new(cx + 4, cy + 2), new(cx, cy - 2.5f)];
+        var mode = g.SmoothingMode;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using var brush = new SolidBrush(color);
+        g.FillPolygon(brush, points);
+        g.SmoothingMode = mode;
     }
 
     [StructLayout(LayoutKind.Sequential)]

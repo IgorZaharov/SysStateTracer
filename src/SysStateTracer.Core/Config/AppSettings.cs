@@ -54,6 +54,12 @@ public sealed class AppSettings
     /// <summary>Every other row slightly shaded in the snapshot list and the comparison window.</summary>
     public bool ZebraStripes { get; set; }
 
+    /// <summary>Comparison window: Show all (unchanged items too) instead of Show only changes.</summary>
+    public bool ComparisonShowAll { get; set; }
+
+    /// <summary>Comparison window: the list also shows the files and values of every folder or key below the selected one.</summary>
+    public bool ComparisonIncludeSubfolders { get; set; }
+
     /// <summary>Which Global Ignore list is used (F1): the remote one, or the local file beside the exe.</summary>
     public IgnoreListSource IgnoreListSource { get; set; } = IgnoreListSource.Remote;
 

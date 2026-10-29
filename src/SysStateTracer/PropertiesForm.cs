@@ -11,6 +11,9 @@ namespace SysStateTracer;
 /// <summary>W2 Snapshot Properties (plan §10.2, Step 46): everything stored about a snapshot, and its skipped items.</summary>
 internal sealed class PropertiesForm : ThemedDialog
 {
+    /// <summary>Width the values wrap at: the window less the captions, margins and a scroll bar.</summary>
+    private const int ValueWidth = 380;
+
     private readonly TableLayoutPanel _grid = new()
     {
         ColumnCount = 2,
@@ -149,20 +152,21 @@ internal sealed class PropertiesForm : ThemedDialog
     {
         var caption = new Label { Text = name, AutoSize = true, Margin = new Padding(0, 3, 8, 3) };
         ThemeManager.SetRole(caption, ThemeRole.Secondary);
+        // Long values (how each folder was read, why a snapshot was incremental) wrap instead of being cut off.
         var text = new TextBox
         {
-            Text = value,
+            Text = value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", Environment.NewLine, StringComparison.Ordinal),
             ReadOnly = true,
             BorderStyle = BorderStyle.None,
-            Multiline = value.Contains('\n', StringComparison.Ordinal),
+            Multiline = true,
+            WordWrap = true,
+            ScrollBars = ScrollBars.None,
             Dock = DockStyle.Fill,
             Margin = new Padding(0, 3, 0, 3),
             TabStop = false,
         };
-        if (text.Multiline)
-        {
-            text.Height = (value.Split('\n').Length * (UiFonts.Normal.Height + 1)) + 4;
-        }
+        var wrapped = TextRenderer.MeasureText(text.Text, UiFonts.Normal, new Size(ValueWidth, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+        text.Height = Math.Max(UiFonts.Normal.Height, wrapped.Height) + 4;
 
         ThemeManager.SetRole(text, ThemeRole.Default);
         _grid.Controls.Add(caption);

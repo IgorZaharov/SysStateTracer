@@ -41,6 +41,7 @@ SURFACE = colors.HexColor("#F3F3F3")
 NEW = colors.HexColor("#0F7B0F")
 MODIFIED = colors.HexColor("#9D5D00")
 DELETED = colors.HexColor("#C42B1C")
+INSIDE = colors.HexColor("#0060C0")
 PAGE_W, PAGE_H = A4
 MARGIN = 20 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN
@@ -359,27 +360,34 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(p(
         "Drag one snapshot onto the other in the main window, or right-click one and choose <b>Compare with</b>. "
         "The older snapshot is always shown on the left."))
-    story += screens.figure("w4-comparison-light", "The comparison window: only what changed, with the folders and keys leading to it.")
+    story += screens.figure("w4-comparison-light", "The comparison window: folders on the left, the selected folder's files on the right, the selected file in both snapshots below.")
     story.append(table([
         ["Mark", "Colour", "Meaning"],
         ["<b>+</b>", f'<font color="{NEW.hexval()}">green</font>', "New: only in the second snapshot"],
-        ["<b>~</b>", f'<font color="{MODIFIED.hexval()}">yellow</font>', "Modified: size, date or attributes; a registry value's type or data; a service's state or startup type"],
+        ["<b>~</b>", f'<font color="{MODIFIED.hexval()}">orange</font>', "Modified: size, date or attributes; a registry value's type or data; a service's state or startup type"],
         ["<b>−</b>", f'<font color="{DELETED.hexval()}">red</font>', "Deleted: only in the first snapshot"],
+        ["", f'<font color="{INSIDE.hexval()}">blue</font>', "A folder or key that is the same itself but holds changes"],
     ], [16 * mm, 22 * mm, CONTENT_W - 38 * mm]))
     story.append(Spacer(1, 6))
     story += bullets([
-        "The three parts — File system, Registry, Services — show how much changed in each. A folder or key shows "
-        "how many changes are inside it; a new or deleted folder shows how many items it held.",
-        "Expand a new or deleted folder or registry key to see the files and folders, or subkeys and values, it holds. "
-        "These rows are for reading and Jump to; the other actions work on the folder or key itself.",
-        "The two columns on the right show each item in each snapshot: date and size for files, type and data for "
-        "registry values, state and startup type for services. Hover for full paths, exact sizes and long values.",
+        "<b>Left</b>: File system, Registry and Services, with how much changed in each, then drives, folders, hives "
+        "and keys, joined by dotted lines; click <b>+</b> to open one. A folder or key shows how many changes are inside "
+        "it; a new or deleted folder shows how many items it held. The legend at the bottom explains the colours.",
+        "<b>Show all</b> also lists folders, files, keys and values that are the same in both snapshots, in normal "
+        "text; <b>Show only changes</b> lists only what changed and the folders and keys leading to it. The choice is "
+        "remembered.",
+        "<b>Right</b>: the files of the selected folder, the values of the selected key, or every service. Click a column "
+        "heading to sort by it, again to turn the order round. Values that differ are highlighted. <b>Include "
+        "subfolders</b> also lists the files of every folder below, named from the selected one (<i>root\\office00.dll</i>).",
+        "<b>Below</b>: the selected item in both snapshots, side by side — size, date and attributes; type and data; "
+        "state and startup type. Its full path is in the status bar.",
+        "A new or deleted folder or key can be opened like any other: what it holds comes from the snapshot that has "
+        "it. Those items are for reading and Jump to; the other actions work on the folder or key itself.",
         "<b>Swap</b> exchanges the two sides: new and deleted trade places. <b>Refresh</b> compares again, for "
-        "example after the Global Ignore list was changed.",
-        "<b>Show unchanged</b> (off by default) also lists, in every folder or key you open, the items that are the same "
-        "in both snapshots — in normal text, without a sign — so you can see a change among its neighbours.",
+        "example after the Global Ignore list was changed. Both keep the open folders and the selection.",
         "Select several items with Ctrl+click and Shift+click, then right-click for the actions below.",
     ])
+    story += screens.figure("w4-comparison-subfolders-light", "Include subfolders: every file in a new folder, named from the selected folder.", width=150 * mm)
     story.append(CondPageBreak(75 * mm))
     story.append(p("Actions (right-click)", "h3"))
     story.append(table([

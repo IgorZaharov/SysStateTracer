@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Comparison window
+- **Two panes**, like Explorer: folders and registry keys on the left, joined by dotted lines with + / − boxes; the files of the selected folder, the values of the selected key, or all services on the right. Click a column heading to sort; by name at first.
+- **Show all / Show only changes** above the tree (replaces Show unchanged), remembered between sessions.
+- **Include subfolders**: the list also shows the files and values of every folder or key below the selected one.
+- **Details** below the list: the selected item in both snapshots side by side, with the differences highlighted; changed values are highlighted in the list too.
+- Colours: new folders and keys are green, modified **orange** (also in the dark theme, which used yellow), deleted red, and a folder or key that holds changes is **blue**; unchanged ones are in normal text. A **legend** in the status bar explains them.
+
 ### Fixed
 - User profiles on FSLogix Profile Containers were missing from snapshots: FSLogix keeps the profile on a separate virtual disk and its driver shows it at `C:\Users\<name>`, while drive C: itself holds only an empty folder there, which is what a whole-drive scan read (and C:'s change journal never sees changes in the profile). Where FSLogix is installed, SysStateTracer now compares each profile folder with drive C:'s file table; a profile whose contents come from elsewhere is read through Windows, in full, on every snapshot, and recorded under `C:\Users\<name>`.
 - Folders with a volume mounted on them (a VHD or a second disk mounted in a folder) were skipped; the mounted volume is now read and recorded under the folder.

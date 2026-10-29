@@ -219,7 +219,9 @@ internal sealed class TestApp : IDisposable
         fs.Add(app, "contoso.exe", 0x20, 2_400_000, time);
         for (var i = 0; i < extraFiles; i++)
         {
-            fs.Add(app, $"plugin{i:D2}.dll", 0x20, 40_000 + i, time);
+            // The installer updates plugin01.dll: larger and newer (a modified file in the comparison).
+            var updated = installed && i == 1;
+            fs.Add(app, $"plugin{i:D2}.dll", 0x20, updated ? 41_234 : 40_000 + i, updated ? time + TimeSpan.FromHours(1).Ticks : time);
         }
 
         if (installed)

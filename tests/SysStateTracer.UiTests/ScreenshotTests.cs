@@ -70,33 +70,39 @@ public class ScreenshotTests
                 using (var comparison = Ui.Show(new ComparisonForm(app.Paths, app.Settings, before, after)))
                 {
                     Ui.PumpUntil(() => comparison.Diff is not null && !comparison.IsLoading, 30_000);
-                    var grid = comparison.Grid;
-                    foreach (var area in new[] { Core.Comparison.DiffArea.FileSystem, Core.Comparison.DiffArea.Registry, Core.Comparison.DiffArea.Services })
-                    {
-                        ExpandAll(grid, ComparisonModel.CategoryId(area));
-                    }
+                    var fs = Core.Comparison.DiffArea.FileSystem;
+                    var registry = Core.Comparison.DiffArea.Registry;
 
-                    var model = (ComparisonModel)grid.Model!;
-                    var temp = Enumerable.Range(0, comparison.Diff!.FileSystem.Count)
-                        .FirstOrDefault(n => comparison.Diff.Name(comparison.Diff.FileSystem, n) == "Temp", -1);
-                    if (temp >= 0)
-                    {
-                        comparison.Marks.Toggle([new Core.Comparison.DiffItem(Core.Comparison.DiffArea.FileSystem, temp)]);
-                    }
-
-                    // Show the top of the tree, with a new folder selected (its path is in the status bar).
-                    var office = Enumerable.Range(0, comparison.Diff.FileSystem.Count)
-                        .FirstOrDefault(n => comparison.Diff.Name(comparison.Diff.FileSystem, n) == "Microsoft Office", -1);
-                    grid.Select(office >= 0 ? ComparisonModel.NodeId(Core.Comparison.DiffArea.FileSystem, office) : model.Roots[0]);
-                    grid.ScrollTo(0);
-                    grid.Focus();
+                    // Show all, the Contoso folder open, a modified file selected: its values side by side below.
+                    comparison.ShowAll = true;
+                    Ui.Pump();
+                    ComparisonWindowTests.Open(comparison, registry, @"HKLM\SOFTWARE\Microsoft");
+                    ComparisonWindowTests.Open(comparison, fs, @"C:\Program Files\Microsoft Office");
+                    ComparisonWindowTests.Open(comparison, fs, @"C:\Program Files\Contoso");
+                    SelectInList(comparison, "plugin01.dll");
+                    comparison.Tree.ScrollTo(0);
                     Ui.Screenshot(comparison, "w4-comparison");
                     ThemeManager.SetListStyle(true, true);
                     Ui.Pump();
                     Ui.Screenshot(comparison, "w4-comparison-grid-zebra");
                     ThemeManager.SetListStyle(false, false);
+
+                    // Include subfolders: the files of a whole new folder, named from the selected one.
+                    ComparisonWindowTests.Open(comparison, fs, @"C:\Program Files\Microsoft Office");
+                    comparison.IncludeSubfolders = true;
+                    SelectInList(comparison, @"root\office03.dll");
+                    Ui.Screenshot(comparison, "w4-comparison-subfolders");
+                    comparison.IncludeSubfolders = false;
+
+                    // Show only changes, a registry key with a changed value; then swapped.
+                    comparison.ShowAll = false;
+                    ComparisonWindowTests.Open(comparison, registry, @"HKLM\SOFTWARE\Contoso");
+                    SelectInList(comparison, "Version");
+                    Ui.Screenshot(comparison, "w4-comparison-registry");
                     comparison.Swap();
+                    Ui.Pump();
                     Ui.Screenshot(comparison, "w4-comparison-swapped");
+                    comparison.ShowAll = false;
                     comparison.Close();
                 }
 
@@ -189,16 +195,13 @@ public class ScreenshotTests
         });
     }
 
-    private static void ExpandAll(VirtualTreeGrid grid, long id)
+    /// <summary>Selects a row of the comparison list by name and moves the focus there, as a click would.</summary>
+    private static void SelectInList(ComparisonForm comparison, string name)
     {
-        grid.Expand(id);
-        foreach (var child in grid.Model!.Children(id))
-        {
-            if (grid.Model.HasChildren(child) && grid.RowCount < 60)
-            {
-                ExpandAll(grid, child);
-            }
-        }
+        var list = (ComparisonListModel)comparison.List.Model!;
+        comparison.List.SetSelection(list.Roots.Where(id => list.NameOf(id) == name).ToList());
+        comparison.List.Focus();
+        Ui.Pump();
     }
 
     /// <summary>Shared controls in their states: buttons, sidebar icons, progress, menu.</summary>

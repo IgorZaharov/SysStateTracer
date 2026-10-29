@@ -44,19 +44,32 @@ reasons.
 
 ## Comparison (W4)
 
-- **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Show unchanged · Refresh. Swap is instant: columns trade places and new ↔ deleted.
-- **Show unchanged** (off when the window opens; issue #4): opened folders, keys and categories also list the items that
-  are the same in both snapshots, in normal text without a sign, and these open further too. Nothing more is read until
-  something is opened, so the comparison stays as fast. Only Jump to works on them; counts still count changes only.
-- **Tree:** File system, Registry and Services, each with its counts; only changed items and the folders or keys
-  leading to them. New is green (+), modified yellow (~), deleted red (−); the sign is in the first column (F29)
-  and the colour runs through every column (F27). A parent shows how many changes it
-  holds; a new or deleted folder shows how many items it held. Hover for full paths, exact sizes and full values.
-- **Inside a new or deleted folder or key (F10, F11):** expanding it lists what it holds — folders and files with
-  dates and sizes, or subkeys and values with their data — from the snapshot that has them (Global Ignore rules
-  still apply). They are shown for information: Jump to opens Explorer or Regedit there; the other actions work on
-  the folder's or key's own row.
-- **Selection:** Ctrl+click, Shift+click, arrow keys, Ctrl+A. Right-click or the menu key for actions.
+Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" canvas).
+
+- **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Refresh. Swap is instant: new ↔ deleted; the open folders and the
+  selection stay.
+- **Left — Show all / Show only changes**, remembered between sessions. Show only changes lists what changed and the
+  folders and keys leading to it; Show all also lists what is the same in both snapshots (read from the snapshots
+  only for what is opened, so the comparison stays as fast; replaces 1.0's Show unchanged, issue #4).
+- **Left — the tree:** File system, Registry and Services with their counts, then drives, folders, hives and keys;
+  no files or values. Dotted lines join each row to its parent; + / − boxes open and close. New folders and keys are
+  green, modified orange, deleted red; one that is the same itself but holds changes is blue; unchanged ones are in
+  normal text. A folder or key shows how many changes it holds; a new or deleted one how many items it held, and
+  opens like any other (its contents come from the snapshot that has it; F10, F11).
+- **Right — the list:** the files of the selected folder, the values of the selected key, or every service (select
+  Services). Columns: change sign (F29), Name, then Size · Date modified · Attributes, Type · Data, or Display name
+  · Status · Start type, from the right-hand snapshot (the left one for an item only there). Click a heading to sort,
+  again to reverse; by name at first. Values that differ are highlighted; the colour runs through the row (F27).
+  **Include subfolders** (remembered) also lists the files of every folder below, named from the selected folder
+  (`root\office00.dll`); at most 250,000 rows.
+- **Below — details:** the selected item in both snapshots side by side (size with exact bytes, date, attributes;
+  type and data; display name, status, start type; for a folder or key its date and contents), differences
+  highlighted. Its full path is in the status bar (F19).
+- **Status bar:** path, marks, Global Ignore list, and the colour legend: + New, ~ Modified, − Deleted, Changes
+  inside, Unchanged, Changed value.
+- **Selection:** in either pane; Ctrl+click, Shift+click, arrow keys, Ctrl+A in the list; Tab moves between the panes.
+  Right-click or the menu key for actions. Items that are unchanged or inside a whole new or deleted folder are for
+  information: only Jump to works on them.
 
 | Action | Available for | What it does |
 |---|---|---|
@@ -67,7 +80,7 @@ reasons.
 | Copy to .\Files | folders and files, also a drive or the File system row | New and modified files, with a progress window and Cancel; skipped files are listed |
 | Revert Value | registry keys and values | Asks "Do you want to revert to value from Snapshot X?", lists current → restored values, writes a backup to `Backups\`, then reverts |
 
-The tree list paints only the rows on screen: with a million rows, scrolling and expanding stay within a frame.
+Both panes paint only the rows on screen: with a million rows, scrolling and expanding stay within a frame.
 
 ## Preferences (W5)
 

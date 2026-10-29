@@ -51,7 +51,7 @@ internal sealed record Palette(
         Accent: Hex(0x60CDFF),
         AccentText: Hex(0x000000),
         New: Hex(0x6CCB5F),
-        Modified: Hex(0xFCE100),
+        Modified: Hex(0xF7A44A), // orange, like the light theme (was yellow)
         Deleted: Hex(0xFF99A4),
         Border: Hex(0x3C3C3C),
         Hover: Hex(0x383838),
@@ -60,6 +60,9 @@ internal sealed record Palette(
         SelectionInactive: Hex(0x3A3A3A),
         Input: Hex(0x2D2D2D),
         DropTarget: Hex(0x245A85));
+
+    /// <summary>A folder or key that is the same itself but holds changes (blue in the comparison tree).</summary>
+    public Color Inside => IsDark ? Hex(0x6CB8FF) : Hex(0x0060C0);
 
     /// <summary>Background of every other row when zebra striping is on.</summary>
     public Color Stripe => Blend(Background, Text, IsDark ? 0.05 : 0.035);

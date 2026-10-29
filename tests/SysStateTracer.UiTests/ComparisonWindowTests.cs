@@ -70,7 +70,7 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
-    public void Comparison_ShowsChanges_Swaps_AndAppliesMenuRules()
+    public void Comparison_TwoPanes_ShowChanges_ListsSortsSwaps_AndAppliesMenuRules()
     {
         Ui.Run(() =>
         {
@@ -84,154 +84,154 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.True(Ui.PumpUntil(() => form.Diff is not null && !form.IsLoading, 30_000), "comparison did not load");
             var diff = form.Diff!;
             Assert.Equal("Before Office 2024 install", diff.Left.Meta.Name);
-            Assert.True(diff.FileSystemCounts.New > 0);
-            Assert.True(diff.RegistryCounts.Modified > 0);
-            Assert.Equal(3, form.Grid.RowCount); // the three categories, collapsed
+            Assert.False(form.ShowAll); // Show only changes until chosen otherwise
 
-            var model = (ComparisonModel)form.Grid.Model!;
-            Assert.StartsWith("File system  (", model.Text(ComparisonModel.CategoryId(DiffArea.FileSystem), ComparisonModel.NameColumn), StringComparison.Ordinal);
+            // The tree: the categories, open, with the drive and the hive; no files or values in it.
+            var tree = (ComparisonTreeModel)form.Tree.Model!;
+            Assert.Equal(5, form.Tree.RowCount);
+            Assert.StartsWith("File system  (", tree.Text(ComparisonTreeModel.CategoryId(DiffArea.FileSystem), 0), StringComparison.Ordinal);
+            Assert.Empty(tree.Children(ComparisonTreeModel.CategoryId(DiffArea.Services)));
 
-            // Expand the registry down to the changed value.
-            form.Grid.Expand(ComparisonModel.CategoryId(DiffArea.Registry));
-            var registry = diff.Registry;
-            var version = Enumerable.Range(0, registry.Count).Single(n => diff.FullPath(registry, n) == @"HKLM\SOFTWARE\Contoso\Version");
-            var versionId = ComparisonModel.NodeId(DiffArea.Registry, version);
-            var ancestors = new List<int>();
-            for (var n = registry.Parent(version); n >= 0; n = registry.Parent(n))
-            {
-                ancestors.Insert(0, n);
-            }
+            // A folder that holds changes is blue; selecting it lists its changed files.
+            var contoso = Open(form, DiffArea.FileSystem, @"C:\Program Files\Contoso");
+            Assert.Equal(ThemeManager.Current.Inside, tree.Style(contoso).TextColor);
+            var list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(6, list.Count); // plugin01 modified, plugin03–07 new
+            Assert.Equal([.. Enumerable.Range(3, 5).Select(i => $"plugin{i:D2}.dll").Prepend("plugin01.dll")], list.Roots.Select(list.NameOf));
+            var plugin01 = list.Roots[0];
+            Assert.Equal("~", list.Text(plugin01, ComparisonListModel.ChangeColumn));
+            Assert.Equal(ThemeManager.Current.Modified, list.Style(plugin01).TextColor);
+            Assert.True(list.IsChangedCell(plugin01, 2));  // size
+            Assert.True(list.IsChangedCell(plugin01, 3));  // date modified
+            Assert.False(list.IsChangedCell(plugin01, 4)); // attributes
+            Assert.Equal(@"C:\Program Files\Contoso\plugin01.dll", list.PathOf(plugin01));
+            var details = list.Data.Details(list.ItemOf(plugin01));
+            var size = Assert.Single(details, r => r.Label == "Size");
+            Assert.True(size.Changed);
+            Assert.Contains("40,001", size.Left.Replace('\u00a0', ','), StringComparison.Ordinal);
+            Assert.Contains("41,234", size.Right.Replace('\u00a0', ','), StringComparison.Ordinal);
+            Assert.Equal("+", list.Text(list.Roots[1], ComparisonListModel.ChangeColumn));
+            Assert.Equal(ThemeManager.Current.New, list.Style(list.Roots[1]).TextColor);
 
-            foreach (var n in ancestors)
-            {
-                form.Grid.Expand(ComparisonModel.NodeId(DiffArea.Registry, n));
-            }
+            // Sorting: by change (new first), then by size, largest first.
+            form.SortList(ComparisonListModel.ChangeColumn);
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal("+", list.Text(list.Roots[0], ComparisonListModel.ChangeColumn));
+            Assert.Equal("~", list.Text(list.Roots[^1], ComparisonListModel.ChangeColumn));
+            form.SortList(2);
+            form.SortList(2);
+            Assert.True(list.SortDescending);
+            Assert.Equal("plugin01.dll", list.NameOf(list.Roots[0])); // 41,234 bytes, then plugin07 with 40,007
+            form.SortList(ComparisonListModel.NameColumn);
 
-            Assert.True(form.Grid.RowCount > 3 + ancestors.Count);
-            Assert.Equal("~", model.Text(versionId, ComparisonModel.StatusColumn));
-            Assert.Contains("1.0", model.Text(versionId, ComparisonModel.LeftColumn), StringComparison.Ordinal);
-            Assert.Contains("2.4", model.Text(versionId, ComparisonModel.RightColumn), StringComparison.Ordinal);
-            Assert.Equal(ThemeManager.Current.Modified, model.Style(versionId).TextColor);
+            // A whole new folder: its folders are in the tree, its files in the list (F10, F11).
+            var office = Open(form, DiffArea.FileSystem, @"C:\Program Files\Microsoft Office");
+            Assert.Equal(ThemeManager.Current.New, tree.Style(office).TextColor);
+            Assert.Equal(0, ((ComparisonListModel)form.List.Model!).Count);
+            form.IncludeSubfolders = true;
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(12, list.Count);
+            Assert.Equal(@"root\office00.dll", list.NameOf(list.Roots[0]));
+            Assert.Equal(@"C:\Program Files\Microsoft Office\root\office00.dll", list.PathOf(list.Roots[0]));
+            form.IncludeSubfolders = false;
+            var root = Open(form, DiffArea.FileSystem, @"C:\Program Files\Microsoft Office\root");
+            Assert.Equal("root  (12 items)", tree.Text(root, 0));
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(12, list.Count);
+            Assert.Contains("MB", list.Text(list.Roots[0], 2), StringComparison.Ordinal);
+            Assert.All(list.Roots, id => Assert.Equal("+", list.Text(id, ComparisonListModel.ChangeColumn)));
 
-            // Swap: columns trade places, New and Deleted swap colours; the expanded rows stay.
-            var rows = form.Grid.RowCount;
+            // Show all: unchanged files too, in normal colour; the selected folder stays selected.
+            Open(form, DiffArea.FileSystem, @"C:\Program Files\Contoso");
+            form.ShowAll = true;
+            tree = (ComparisonTreeModel)form.Tree.Model!;
+            Assert.True(tree.Data.ShowAll);
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(@"C:\Program Files\Contoso", list.Data.Path(list.Folder));
+            Assert.Equal(9, list.Count); // contoso.exe and plugin00–07
+            var exe = Assert.Single(list.Roots, id => list.NameOf(id) == "contoso.exe");
+            Assert.Equal(string.Empty, list.Text(exe, ComparisonListModel.ChangeColumn));
+            Assert.Null(list.Style(exe).TextColor);
+            Assert.Equal(list.Roots.Select(list.NameOf).Order(StringComparer.OrdinalIgnoreCase), list.Roots.Select(list.NameOf));
+            form.ShowAll = false;
+
+            // Registry: keys in the tree, values in the list; a changed value's data is highlighted.
+            Open(form, DiffArea.Registry, @"HKLM\SOFTWARE\Contoso");
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(["Flags", "LegacyMode", "Version"], list.Roots.Select(list.NameOf));
+            var version = list.Roots[2];
+            Assert.True(list.IsChangedCell(version, 3));
+            Assert.Equal(@"HKLM\SOFTWARE\Contoso\Version", list.PathOf(version));
+            Assert.Equal(@"HKLM\SOFTWARE\Contoso", list.JumpPathOf(version));
+            var data = Assert.Single(list.Data.Details(list.ItemOf(version)), r => r.Label == "Data");
+            Assert.Contains("1.0", data.Left, StringComparison.Ordinal);
+            Assert.Contains("2.4", data.Right, StringComparison.Ordinal);
+            Assert.Equal("−", list.Text(list.Roots[1], ComparisonListModel.ChangeColumn));
+
+            // Swap: the same key stays selected; what was deleted is now new.
             form.Swap();
-            model = (ComparisonModel)form.Grid.Model!;
             Assert.Equal("After Office 2024 install", form.Diff!.Left.Meta.Name);
-            Assert.Contains("2.4", model.Text(versionId, ComparisonModel.LeftColumn), StringComparison.Ordinal);
-            Assert.Equal(rows, form.Grid.RowCount);
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(@"HKLM\SOFTWARE\Contoso", list.Data.Path(list.Folder));
+            Assert.Equal("+", list.Text(list.Roots[1], ComparisonListModel.ChangeColumn));
+            Assert.Contains("2.4", Assert.Single(list.Data.Details(list.ItemOf(list.Roots[2])), r => r.Label == "Data").Left, StringComparison.Ordinal);
             form.Swap();
 
-            // A whole new key lists its subkeys and values when expanded (F10).
-            model = (ComparisonModel)form.Grid.Model!;
-            var microsoft = Enumerable.Range(0, registry.Count).Single(n => diff.FullPath(registry, n) == @"HKLM\SOFTWARE\Microsoft");
-            var microsoftId = ComparisonModel.NodeId(DiffArea.Registry, microsoft);
-            Assert.True(model.HasChildren(microsoftId));
-            form.Grid.Expand(microsoftId);
-            var office = Assert.Single(model.Children(microsoftId));
-            Assert.True(ComparisonModel.IsInside(office));
-            Assert.StartsWith("Office", model.Text(office, ComparisonModel.NameColumn), StringComparison.Ordinal);
-            form.Grid.Expand(office);
-            var sixteen = Assert.Single(model.Children(office));
-            form.Grid.Expand(sixteen);
-            var installPath = Assert.Single(model.Children(sixteen));
-            Assert.Equal("InstallPath", model.Text(installPath, ComparisonModel.NameColumn));
-            Assert.Equal("+", model.Text(installPath, ComparisonModel.StatusColumn));
-            Assert.Contains(@"Microsoft Office\root", model.Text(installPath, ComparisonModel.RightColumn), StringComparison.Ordinal);
-            Assert.Equal(string.Empty, model.Text(installPath, ComparisonModel.LeftColumn));
-            Assert.Equal(ThemeManager.Current.New, model.Style(installPath).TextColor);
-            Assert.Equal(@"HKLM\SOFTWARE\Microsoft\Office\16.0", model.InsidePath(installPath));
-            Assert.False(model.HasChildren(installPath));
-
-            // A whole new folder lists its folders and files when expanded (F11).
-            form.Grid.Expand(ComparisonModel.CategoryId(DiffArea.FileSystem));
-            var fsTree = diff.FileSystem;
-            var officeFolder = Enumerable.Range(0, fsTree.Count).Single(n => diff.FullPath(fsTree, n) == @"C:\Program Files\Microsoft Office");
-            foreach (var n in Ancestors(fsTree, officeFolder))
-            {
-                form.Grid.Expand(ComparisonModel.NodeId(DiffArea.FileSystem, n));
-            }
-
-            var officeId = ComparisonModel.NodeId(DiffArea.FileSystem, officeFolder);
-            Assert.True(model.HasChildren(officeId));
-            form.Grid.Expand(officeId);
-            var rootFolder = Assert.Single(model.Children(officeId));
-            Assert.Equal(DiffArea.FileSystem, ComparisonModel.InsideArea(rootFolder));
-            Assert.Equal("root  (12 items)", model.Text(rootFolder, ComparisonModel.NameColumn));
-            form.Grid.Expand(rootFolder);
-            var dlls = model.Children(rootFolder);
-            Assert.Equal(12, dlls.Count);
-            Assert.Equal("office00.dll", model.Text(dlls[0], ComparisonModel.NameColumn));
-            Assert.Contains("MB", model.Text(dlls[0], ComparisonModel.RightColumn), StringComparison.Ordinal);
-            Assert.Equal(@"C:\Program Files\Microsoft Office\root\office00.dll", model.InsidePath(dlls[0]));
-            Assert.Equal(ThemeManager.Current.New, model.Style(dlls[0]).TextColor);
-
-            // After a swap the same rows are there, now on the left and deleted.
-            rows = form.Grid.RowCount;
-            form.Swap();
-            model = (ComparisonModel)form.Grid.Model!;
-            Assert.Equal(rows, form.Grid.RowCount);
-            Assert.Equal("−", model.Text(installPath, ComparisonModel.StatusColumn));
-            Assert.Contains(@"Microsoft Office\root", model.Text(installPath, ComparisonModel.LeftColumn), StringComparison.Ordinal);
-            form.Swap();
-            model = (ComparisonModel)form.Grid.Model!;
-
-            // Show unchanged (issue #4): the same items on both sides appear inside what is opened.
-            var contoso = Enumerable.Range(0, diff.FileSystem.Count).Single(n => diff.FullPath(diff.FileSystem, n) == @"C:\Program Files\Contoso");
-            var contosoId = ComparisonModel.NodeId(DiffArea.FileSystem, contoso);
-            form.Grid.Expand(contosoId);
-            var changedRows = model.Children(contosoId).Count;
-            var rowsBefore = form.Grid.RowCount;
-            form.ShowUnchanged = true;
-            model = (ComparisonModel)form.Grid.Model!;
-            Assert.True(model.ShowUnchanged);
-            Assert.Equal(rowsBefore + 4, form.Grid.RowCount); // contoso.exe and plugin00–02, in the Contoso folder that stays open
-            var withUnchanged = model.Children(contosoId);
-            Assert.Equal(changedRows + 4, withUnchanged.Count);
-            var exe = Assert.Single(withUnchanged, id => model.Text(id, ComparisonModel.NameColumn) == "contoso.exe");
-            Assert.True(ComparisonModel.IsUnchanged(exe));
-            Assert.Equal(string.Empty, model.Text(exe, ComparisonModel.StatusColumn));
-            Assert.Contains("MB", model.Text(exe, ComparisonModel.LeftColumn), StringComparison.Ordinal);
-            Assert.Equal(model.Text(exe, ComparisonModel.LeftColumn), model.Text(exe, ComparisonModel.RightColumn));
-            Assert.Null(model.Style(exe).TextColor);
-            Assert.Equal(@"C:\Program Files\Contoso\contoso.exe", model.JumpPath(exe));
-            Assert.Contains(withUnchanged, id => model.Text(id, ComparisonModel.NameColumn) == "plugin03.dll" && !ComparisonModel.IsUnchanged(id));
-            var names = withUnchanged.Select(id => model.Text(id, ComparisonModel.NameColumn)).ToList();
-            Assert.Equal(names.Order(StringComparer.OrdinalIgnoreCase), names);
-
-            // Unticking puts the view back.
-            form.ShowUnchanged = false;
-            model = (ComparisonModel)form.Grid.Model!;
-            Assert.Equal(rowsBefore, form.Grid.RowCount);
-            Assert.Equal(changedRows, model.Children(contosoId).Count);
+            // Services: the category lists them.
+            form.Tree.SetSelection([ComparisonTreeModel.CategoryId(DiffArea.Services)]);
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(["ClickToRunSvc", "Spooler"], list.Roots.Select(list.NameOf));
+            Assert.True(list.IsChangedCell(list.Roots[1], 3)); // status
 
             // Menu rules (§10.6).
+            var registry = form.Diff!.Registry;
+            var versionNode = Enumerable.Range(0, registry.Count).Single(n => form.Diff.FullPath(registry, n) == @"HKLM\SOFTWARE\Contoso\Version");
+            var value = new DiffItem(DiffArea.Registry, versionNode);
             var fsCategory = DiffActions.Category(DiffArea.FileSystem);
-            var value = new DiffItem(DiffArea.Registry, version);
             Assert.True(DiffActions.IsEnabled(DiffAction.JumpTo, [value]));
             Assert.True(DiffActions.IsEnabled(DiffAction.RevertValue, [value]));
             Assert.False(DiffActions.IsEnabled(DiffAction.CopyToFiles, [value]));
             Assert.True(DiffActions.IsEnabled(DiffAction.CopyToFiles, [fsCategory]));
             Assert.False(DiffActions.IsEnabled(DiffAction.JumpTo, [fsCategory]));
+            Assert.Null(ComparisonData.ItemOf(((ComparisonTreeModel)form.Tree.Model!).ItemOf(root))); // inside a new folder: information only
 
-            // Marks strike the row and everything below it, until the window closes.
-            form.Grid.Select(versionId);
+            // Marks strike the row through, until the window closes.
+            Open(form, DiffArea.Registry, @"HKLM\SOFTWARE\Contoso");
             form.Marks.Toggle([value]);
-            Assert.True(((ComparisonModel)form.Grid.Model!).Style(versionId).Strikeout);
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.True(list.Style(list.Roots[2]).Strikeout);
             form.Close();
         });
     }
 
-    /// <summary>The nodes from the top down to the parent of <paramref name="node"/>.</summary>
-    private static List<int> Ancestors(DiffTree tree, int node)
+    /// <summary>Opens the tree down to a folder or key and selects it, as a click would; returns its row id.</summary>
+    internal static long Open(ComparisonForm form, DiffArea area, string path)
     {
-        var list = new List<int>();
-        for (var n = tree.Parent(node); n >= 0; n = tree.Parent(n))
+        var tree = (ComparisonTreeModel)form.Tree.Model!;
+        var id = ComparisonTreeModel.CategoryId(area);
+        form.Tree.Expand(id);
+        while (true)
         {
-            list.Insert(0, n);
-        }
+            long? next = null;
+            foreach (var child in tree.Children(id))
+            {
+                var childPath = tree.Data.Path(tree.ItemOf(child));
+                if (string.Equals(childPath.TrimEnd('\\'), path, StringComparison.OrdinalIgnoreCase))
+                {
+                    form.Tree.SetSelection([child]);
+                    return child;
+                }
 
-        return list;
+                if (path.StartsWith(childPath.EndsWith('\\') ? childPath : childPath + "\\", StringComparison.OrdinalIgnoreCase))
+                {
+                    next = child;
+                    break;
+                }
+            }
+
+            id = next ?? throw new InvalidOperationException($"{path} is not in the tree");
+            form.Tree.Expand(id);
+        }
     }
 
     /// <summary>One root with <c>count</c> children; text made on demand like the comparison model.</summary>
