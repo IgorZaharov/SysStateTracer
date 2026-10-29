@@ -73,7 +73,7 @@ jobs:
           }
 
           # The notes up to "## Download", then the download section for the zip (as the release workflow writes it).
-          $body = gh release view $tag --json body --jq '.body'
+          $body = (gh release view $tag --json body --jq '.body') -join "`n"   # one string, not an array of lines
           $cut = $body.IndexOf('## Download')
           $section = if ($cut -ge 0) { $body.Substring(0, $cut).TrimEnd() } else { $body.TrimEnd() }
           $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
