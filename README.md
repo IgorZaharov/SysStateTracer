@@ -4,6 +4,7 @@
 
 Portable Windows utility that takes snapshots of the file system, registry and services, and compares two
 snapshots to show what was created, modified or deleted in between — for example, what an installer really did.
+(Inspired by SysTracer from Blue Project Software which is highly regarded and worth checking out too if you like this software)
 
 [![Download SysStateTracer.zip](https://img.shields.io/badge/Download-SysStateTracer.zip-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.zip)
 [![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)
