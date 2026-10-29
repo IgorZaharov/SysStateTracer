@@ -372,16 +372,42 @@ internal sealed class NewSnapshotForm : ThemedDialog
         finally
         {
             _running = false;
-            _clock.Stop();
             _watch.Stop();
-            _progress.Marquee = false;
         }
 
-        if (IsDisposed || Disposing)
+        if (IsDisposed || Disposing || !IsHandleCreated)
         {
             return; // the window went away while the snapshot was stopping
         }
 
+        if (InvokeRequired)
+        {
+            // Not back on the window's thread (it may have ended first, e.g. in tests): finish there, or not at all.
+            try
+            {
+                BeginInvoke(() => FinishRun(summary, failed));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+            {
+                // The window closed in the meantime.
+            }
+
+            return;
+        }
+
+        FinishRun(summary, failed);
+    }
+
+    /// <summary>Shows the outcome of a snapshot in the window (on its thread).</summary>
+    private void FinishRun(string summary, bool failed)
+    {
+        if (IsDisposed || Disposing)
+        {
+            return;
+        }
+
+        _clock.Stop();
+        _progress.Marquee = false;
         _elapsed.Text = FormatElapsed(_watch.Elapsed);
         _phase.Text = summary;
         _phase.ForeColor = failed ? ThemeManager.Current.Deleted : CreatedPath is null ? ThemeManager.Current.Text : ThemeManager.Current.New;
