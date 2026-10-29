@@ -246,6 +246,7 @@ public sealed partial class FileSystemScanner
         var display = $@"{drive}:\ (file table)";
         Volatile.Write(ref _currentPath, display);
         long reported = 0;
+        string? reason = null;
         var index = _preloadedTables.TryRemove(char.ToUpperInvariant(drive), out var preloaded) ? preloaded : MftIndex.TryLoad(
             drive,
             inUse =>
@@ -254,7 +255,7 @@ public sealed partial class FileSystemScanner
                 reported = inUse;
             },
             cancellationToken,
-            out var reason);
+            out reason);
 
         if (index is null)
         {
