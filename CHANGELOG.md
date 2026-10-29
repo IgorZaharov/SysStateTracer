@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0] — 2026-10-29
 
 ### Comparison window
 - **Two panes**, like Explorer: folders and registry keys on the left, joined by dotted lines with + / − boxes; the files of the selected folder, the values of the selected key, or all services on the right. Click a column heading to sort; by name at first.
@@ -12,6 +12,8 @@
 ### Fixed
 - User profiles on FSLogix Profile Containers were missing from snapshots: FSLogix keeps the profile on a separate virtual disk and its driver shows it at `C:\Users\<name>`, while drive C: itself holds only an empty folder there, which is what a whole-drive scan read (and C:'s change journal never sees changes in the profile). Where FSLogix is installed, SysStateTracer now compares each profile folder with drive C:'s file table; a profile whose contents come from elsewhere is read through Windows, in full, on every snapshot, and recorded under `C:\Users\<name>`.
 - Folders with a volume mounted on them (a VHD or a second disk mounted in a folder) were skipped; the mounted volume is now read and recorded under the folder.
+- New Snapshot could crash while showing progress (an update from a background thread).
+- Snapshot Properties cut long lines off (how each folder was read, why a snapshot was incremental); they now wrap.
 
 ### Preferences
 - **Show grid lines** and **Use zebra striping** (Preferences → General → Lists) for the snapshot list and the comparison window. Both are off by default and apply at once.

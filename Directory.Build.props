@@ -18,7 +18,7 @@
 
   <!-- Version: CI overrides it from the git tag at release time (plan Step 56) -->
   <PropertyGroup>
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionPrefix>1.1.0</VersionPrefix>
     <Product>SysStateTracer</Product>
     <Company>Igor Zaharov</Company>
     <Copyright>Copyright © 2026 Igor Zaharov</Copyright>

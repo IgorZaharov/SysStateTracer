@@ -27,3 +27,10 @@ Requested Features:
 27. [DONE in v1.0.0-rc.2] UX: Snapshot Comparison window: green/red/yellow fonts on added/deleted/modified entries must be in all columns (e.g.: date, size, values. etc.).
 28. [DONE in v1.0.0-rc.2] GitHub: README.MD - after bar with download links and before first screenshot - add instruction to right-click downloaded .exe, press Properties, Unblock and press OK. Add screenshot of .exe file details with "Unblock" checkbox ticked.
 29. [DONE in v1.0.0-rc.2] UX: On Snapshot Comparison window - first column on the left should be glyph whether item deleted/added/changed.
+30. [DONE in v1.1.0] UI: Snapshot Comparison window - tree view like Explorer: folders on the left, expanded with dotted lines to the parent and small "+" glyphs to expand them.
+31. [DONE in v1.1.0] UI: Snapshot Comparison window - right pane shows the files of the selected folder (no files in the left pane); table sortable by pressing column headers, alphabetical by default.
+32. [DONE in v1.1.0] UI: Snapshot Comparison window - for Registry, keys on the left, values of the selected key on the right.
+33. [DONE in v1.1.0] UI: Snapshot Comparison window - radio buttons Show All / Show Only Changes in the left part, above the tree.
+34. [DONE in v1.1.0] Preferences > General: Show Grid Lines and Use zebra striping, for the Comparison and Main windows.
+35. [DONE in v1.1.0] UI: Snapshot Comparison window - added / modified / deleted folders have green / orange / red glyphs; unchanged files, folders and keys in the standard font colour (plus: blue for folders holding changes, details pane with both snapshots side by side, Include subfolders, colour legend).
+36. [DONE in v1.1.0] Bugfix: profile folders (e.g. Desktop) on a test VM with FSLogix Profile Containers were not scanned.
