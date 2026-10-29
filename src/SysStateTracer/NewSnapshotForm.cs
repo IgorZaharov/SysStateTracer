@@ -414,7 +414,25 @@ internal sealed class NewSnapshotForm : ThemedDialog
 
     private void ShowProgress(ScanProgress p)
     {
-        if (!IsRunning || _cancel?.IsCancellationRequested == true)
+        // Progress<T> reports on the thread pool when no window context was captured: move to the window's thread.
+        if (InvokeRequired)
+        {
+            if (!IsDisposed && !Disposing && IsHandleCreated)
+            {
+                try
+                {
+                    BeginInvoke(() => ShowProgress(p));
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+                {
+                    // The window closed in the meantime.
+                }
+            }
+
+            return;
+        }
+
+        if (IsDisposed || !IsRunning || _cancel?.IsCancellationRequested == true)
         {
             return;
         }
