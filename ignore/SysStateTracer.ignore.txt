@@ -95,3 +95,4 @@ FS:C:\ProgramData\Microsoft\Windows\DeviceMetadataCache\dmrc.idx
 FS:C:\ProgramData\VMware\EUC\logs
 FS:C:\ProgramData\VMware\VMware Blast\Blast-Service.log
 FS:C:\Users\local_admigorza\AppData\Local\Microsoft\Windows\Notifications\wpndatabase.db-wal
+FS:C:\Windows\System32\config\systemprofile\AppData\Local\Microsoft\Windows\Notifications\wpndatabase.db-wal
