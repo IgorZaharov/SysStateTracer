@@ -46,8 +46,9 @@ reasons.
 
 Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" canvas).
 
-- **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Refresh. Swap is instant: new ↔ deleted; the open folders and the
-  selection stay.
+- **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Refresh. Each name has **OLDER** or **NEWER** before it, by
+  creation time (issue #6). Swap is instant: new ↔ deleted, the captions move with the snapshots; the open folders
+  and the selection stay.
 - **Left — Show all / Show only changes**, remembered between sessions. Show only changes lists what changed and the
   folders and keys leading to it; Show all also lists what is the same in both snapshots (read from the snapshots
   only for what is opened, so the comparison stays as fast; replaces 1.0's Show unchanged, issue #4).
@@ -64,7 +65,8 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
   (`root\office00.dll`); at most 250,000 rows.
 - **Below — details:** the selected item in both snapshots side by side (size with exact bytes, date, attributes;
   type and data; display name, status, start type; for a folder or key its date and contents), differences
-  highlighted. Its full path is in the status bar (F19).
+  highlighted; each column is headed OLDER or NEWER and the snapshot name (issue #6). Its full path is in the status
+  bar (F19).
 - **Status bar:** path, marks, Global Ignore list, and the colour legend: + New, ~ Modified, − Deleted, Changes
   inside, Unchanged, Changed value.
 - **Selection:** in either pane; Ctrl+click, Shift+click, arrow keys, Ctrl+A in the list; Tab moves between the panes.

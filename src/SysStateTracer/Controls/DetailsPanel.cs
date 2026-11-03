@@ -15,8 +15,8 @@ internal sealed class DetailsPanel : Control, IThemed
     private string _status = string.Empty;
     private Color? _statusColor;
     private string _path = string.Empty;
-    private string _leftHeader = string.Empty;
-    private string _rightHeader = string.Empty;
+    private (string Caption, string Name) _leftHeader = (string.Empty, string.Empty);
+    private (string Caption, string Name) _rightHeader = (string.Empty, string.Empty);
     private IReadOnlyList<ComparisonData.DetailRow> _rows = [];
     private string _message = "Select a folder, file, key, value or service to see it in both snapshots.";
 
@@ -33,6 +33,9 @@ internal sealed class DetailsPanel : Control, IThemed
     /// <summary>The properties shown (tests).</summary>
     internal IReadOnlyList<ComparisonData.DetailRow> Rows => _rows;
 
+    /// <summary>The column headers: "OLDER" or "NEWER" and the snapshot name (tests).</summary>
+    internal ((string Caption, string Name) Left, (string Caption, string Name) Right) Headers => (_leftHeader, _rightHeader);
+
     public void ApplyTheme(Palette palette)
     {
         _palette = palette;
@@ -40,8 +43,8 @@ internal sealed class DetailsPanel : Control, IThemed
         Invalidate();
     }
 
-    /// <summary>Shows one item.</summary>
-    public void ShowItem(string title, string status, Color? statusColor, string path, string leftHeader, string rightHeader, IReadOnlyList<ComparisonData.DetailRow> rows)
+    /// <summary>Shows one item. Each header is a caption ("OLDER", issue #6) and the snapshot name.</summary>
+    public void ShowItem(string title, string status, Color? statusColor, string path, (string Caption, string Name) leftHeader, (string Caption, string Name) rightHeader, IReadOnlyList<ComparisonData.DetailRow> rows)
     {
         _title = title;
         _status = status;
@@ -113,8 +116,8 @@ internal sealed class DetailsPanel : Control, IThemed
         var column = Math.Max(80, (width - LabelWidth) / 2);
         var leftX = x + LabelWidth;
         var rightX = leftX + column;
-        TextRenderer.DrawText(g, _leftHeader, Font, new Rectangle(leftX + 8, y, column - 16, LineHeight), p.SecondaryText, flags);
-        TextRenderer.DrawText(g, _rightHeader, Font, new Rectangle(rightX + 8, y, column - 16, LineHeight), p.SecondaryText, flags);
+        DrawHeader(g, _leftHeader, new Rectangle(leftX + 8, y, column - 16, LineHeight), flags);
+        DrawHeader(g, _rightHeader, new Rectangle(rightX + 8, y, column - 16, LineHeight), flags);
         y += LineHeight;
         using var chip = new SolidBrush(Palette.Blend(p.Modified, p.Surface, p.IsDark ? 0.78 : 0.84));
         foreach (var row in _rows)
@@ -135,5 +138,19 @@ internal sealed class DetailsPanel : Control, IThemed
             TextRenderer.DrawText(g, row.Right, row.Changed ? UiFonts.Bold : Font, new Rectangle(rightX + 8, y, column - 16, LineHeight), p.Text, flags);
             y += LineHeight;
         }
+    }
+
+    /// <summary>"OLDER" in bold, then the snapshot name; the name is cut with an ellipsis when narrow.</summary>
+    private void DrawHeader(Graphics g, (string Caption, string Name) header, Rectangle box, TextFormatFlags flags)
+    {
+        var x = box.X;
+        if (header.Caption.Length > 0)
+        {
+            var width = Math.Min(box.Width, TextRenderer.MeasureText(g, header.Caption, UiFonts.Bold, box.Size, flags).Width);
+            TextRenderer.DrawText(g, header.Caption, UiFonts.Bold, new Rectangle(x, box.Y, width, box.Height), _palette.SecondaryText, flags);
+            x += width + 6;
+        }
+
+        TextRenderer.DrawText(g, header.Name, Font, new Rectangle(x, box.Y, Math.Max(0, box.Right - x), box.Height), _palette.SecondaryText, flags);
     }
 }

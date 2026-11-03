@@ -383,9 +383,11 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "subfolders</b> also lists the files of every folder below, named from the selected one (<i>root\\office00.dll</i>).",
         "<b>Below</b>: the selected item in both snapshots, side by side — size, date and attributes; type and data; "
         "state and startup type. Its full path is in the status bar.",
+        "<b>OLDER</b> and <b>NEWER</b> before the snapshot names, at the top and above the details, show which "
+        "snapshot was taken first, whichever side it is on.",
         "A new or deleted folder or key can be opened like any other: what it holds comes from the snapshot that has "
         "it. Those items are for reading and Jump to; the other actions work on the folder or key itself.",
-        "<b>Swap</b> exchanges the two sides: new and deleted trade places. <b>Refresh</b> compares again, for "
+        "<b>Swap</b> exchanges the two sides: new and deleted trade places, and OLDER and NEWER move with them. <b>Refresh</b> compares again, for "
         "example after the Global Ignore list was changed. Both keep the open folders and the selection.",
         "Select several items with Ctrl+click and Shift+click, then right-click for the actions below.",
     ])

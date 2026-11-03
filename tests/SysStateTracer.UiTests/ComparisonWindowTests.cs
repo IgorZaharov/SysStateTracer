@@ -84,6 +84,7 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.True(Ui.PumpUntil(() => form.Diff is not null && !form.IsLoading, 30_000), "comparison did not load");
             var diff = form.Diff!;
             Assert.Equal("Before Office 2024 install", diff.Left.Meta.Name);
+            Assert.Equal(("OLDER", "NEWER"), form.AgeCaptions); // issue #6
             Assert.False(form.ShowAll); // Show only changes until chosen otherwise
 
             // The tree: the categories, open, with the drive and the hive; no files or values in it.
@@ -169,8 +170,13 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal("−", list.Text(list.Roots[1], ComparisonListModel.ChangeColumn));
 
             // Swap: the same key stays selected; what was deleted is now new.
+            form.List.SetSelection([version]);
+            Assert.Equal((("OLDER", "Before Office 2024 install"), ("NEWER", "After Office 2024 install")), form.Details.Headers);
             form.Swap();
             Assert.Equal("After Office 2024 install", form.Diff!.Left.Meta.Name);
+            Assert.Equal(("NEWER", "OLDER"), form.AgeCaptions); // the captions follow the snapshots (issue #6)
+            form.List.SetSelection([((ComparisonListModel)form.List.Model!).Roots[2]]);
+            Assert.Equal((("NEWER", "After Office 2024 install"), ("OLDER", "Before Office 2024 install")), form.Details.Headers);
             list = (ComparisonListModel)form.List.Model!;
             Assert.Equal(@"HKLM\SOFTWARE\Contoso", list.Data.Path(list.Folder));
             Assert.Equal("+", list.Text(list.Roots[1], ComparisonListModel.ChangeColumn));

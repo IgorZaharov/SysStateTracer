@@ -39,9 +39,11 @@ internal sealed class ComparisonForm : Form
     private readonly CheckBox _includeSubfolders = new() { Text = "Include subfolders", AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Label _listTitle = new() { AutoSize = true, Font = UiFonts.Bold, Anchor = AnchorStyles.Left };
     private readonly Label _listSummary = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-    private readonly Label _leftName = new() { AutoSize = true, Font = UiFonts.Bold };
+    private readonly Label _leftAge = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, 0, 6, 0) };
+    private readonly Label _leftName = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0) };
     private readonly Label _leftDate = new() { AutoSize = true };
-    private readonly Label _rightName = new() { AutoSize = true, Font = UiFonts.Bold };
+    private readonly Label _rightAge = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, 0, 6, 0) };
+    private readonly Label _rightName = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0) };
     private readonly Label _rightDate = new() { AutoSize = true };
     private readonly ThemedButton _swap = new() { Text = "Swap", Glyph = Glyphs.Swap, Width = 96 };
     private readonly ThemedButton _refresh = new() { Text = "Refresh", Glyph = Glyphs.Refresh, Width = 104, Anchor = AnchorStyles.Top | AnchorStyles.Right };
@@ -109,6 +111,9 @@ internal sealed class ComparisonForm : Form
     internal VirtualTreeGrid List => _list;
 
     internal DetailsPanel Details => _details;
+
+    /// <summary>"OLDER" or "NEWER" before the left and right snapshot names in the top bar (tests).</summary>
+    internal (string Left, string Right) AgeCaptions => (_leftAge.Text, _rightAge.Text);
 
     internal ImportanceMarks Marks => _marks;
 
@@ -183,6 +188,22 @@ internal sealed class ComparisonForm : Form
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
+    /// <summary>"OLDER  name": the caption and the snapshot name on one line (issue #6).</summary>
+    private static FlowLayoutPanel NameRow(Label age, Label name)
+    {
+        var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+        ThemeManager.SetRole(row, ThemeRole.Surface);
+        row.Controls.Add(age);
+        row.Controls.Add(name);
+        return row;
+    }
+
+    /// <summary>
+    /// "OLDER" or "NEWER" by creation time (issue #6). The comparison always takes the earlier snapshot first and
+    /// <see cref="DiffResult.Older"/> follows Swap, so the caption stays right on either side.
+    /// </summary>
+    private static string AgeCaption(DiffResult diff, Snapshot side) => ReferenceEquals(side, diff.Older) ? "OLDER" : "NEWER";
+
     private static string Stamp(SnapshotMeta meta) =>
         meta.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " · " + meta.ComputerName;
 
@@ -206,14 +227,16 @@ internal sealed class ComparisonForm : Form
         ThemeManager.SetRole(bar, ThemeRole.Surface);
         var left = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Location = new Point(16, 10) };
         ThemeManager.SetRole(left, ThemeRole.Surface);
-        left.Controls.Add(_leftName);
+        left.Controls.Add(NameRow(_leftAge, _leftName));
         left.Controls.Add(_leftDate);
         var right = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
         ThemeManager.SetRole(right, ThemeRole.Surface);
-        right.Controls.Add(_rightName);
+        right.Controls.Add(NameRow(_rightAge, _rightName));
         right.Controls.Add(_rightDate);
         ThemeManager.SetRole(_leftDate, ThemeRole.Secondary);
         ThemeManager.SetRole(_rightDate, ThemeRole.Secondary);
+        ThemeManager.SetRole(_leftAge, ThemeRole.Secondary);
+        ThemeManager.SetRole(_rightAge, ThemeRole.Secondary);
         bar.Controls.Add(left);
         bar.Controls.Add(_swap);
         bar.Controls.Add(right);
@@ -505,6 +528,8 @@ internal sealed class ComparisonForm : Form
             return;
         }
 
+        _leftAge.Text = AgeCaption(_diff, _diff.Left);
+        _rightAge.Text = AgeCaption(_diff, _diff.Right);
         _leftName.Text = _diff.Left.Meta.Name;
         _leftDate.Text = Stamp(_diff.Left.Meta);
         _rightName.Text = _diff.Right.Meta.Name;
@@ -726,7 +751,7 @@ internal sealed class ComparisonForm : Form
             RowStatus.Inside => "Changes inside",
             _ => "Unchanged",
         };
-        _details.ShowItem(name, status, ComparisonData.TextColor(item.Status), SelectedPath() ?? string.Empty, _diff.Left.Meta.Name, _diff.Right.Meta.Name, _data.Details(item));
+        _details.ShowItem(name, status, ComparisonData.TextColor(item.Status), SelectedPath() ?? string.Empty, (AgeCaption(_diff, _diff.Left), _diff.Left.Meta.Name), (AgeCaption(_diff, _diff.Right), _diff.Right.Meta.Name), _data.Details(item));
     }
 
     /// <summary>The full path of the one selected item in the active pane, or null.</summary>

@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Comparison window
+- **OLDER / NEWER** before each snapshot name, in the top bar and above the two columns of the details, by when the snapshots were taken. The captions move with the snapshots on Swap (issue #6).
+
 ## [1.1.0] — 2026-10-29
 
 ### Comparison window
