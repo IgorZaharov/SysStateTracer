@@ -14,7 +14,7 @@ taller than 580 pixels (F14, at 100 % display scaling).
   Without administrator rights a warning bar says what is missing and offers **Restart as administrator**; its close
   button hides it until the next start.
 
-- **Look (Windows 11):** Mica in the title bar on Windows 11; the window body in Mica's colours, the list on a
+- **Look (Windows 11):** Mica in the title bar on Windows 11 22H2 (build 22621) and later; the window body in Mica's colours, the list on a
   lighter card; rounded selection with a blue bar at the row's left end. The other windows share these colours, and
   their buttons sit in a footer below a thin line, as in Windows 11 dialogs.
 - **Command bar:** **New snapshot**, **Compare** (the two selected snapshots, or the selected one with one picked from

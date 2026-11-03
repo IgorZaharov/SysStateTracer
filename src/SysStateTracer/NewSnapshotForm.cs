@@ -62,7 +62,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
         // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
         Size = new Size(760, 580);
         MinimumSize = new Size(620, 480);
-        WindowLayout.Remember(this, "NewSnapshot", paths, settings, keepPosition: false);
+        WindowLayout.Remember(this, "NewSnapshot", paths, settings);
 
         BuildLayout();
         var standardUser = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
@@ -192,38 +192,38 @@ internal sealed class NewSnapshotForm : ThemedDialog
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // progress
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // details
 
-        layout.Controls.Add(_notElevated);
+        layout.Controls.Add(_notElevated, 0, 0); // fixed rows: a hidden bar must not move the tree out of the stretching row
 
         var nameRow = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Margin = new Padding(0) };
         nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         nameRow.Controls.Add(new Label { Text = "Name", AutoSize = true, Margin = new Padding(0, 5, 12, 0) }, 0, 0);
         nameRow.Controls.Add(_name, 1, 0);
-        layout.Controls.Add(nameRow);
+        layout.Controls.Add(nameRow, 0, 1);
 
         var info = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, FlowDirection = FlowDirection.TopDown, Margin = new Padding(0, 4, 0, 0), WrapContents = false };
         ThemeManager.SetRole(_folder, ThemeRole.Secondary);
         info.Controls.Add(_folder);
         info.Controls.Add(_nameProblem);
-        layout.Controls.Add(info);
+        layout.Controls.Add(info, 0, 2);
 
         var scopeTitle = new Label { Text = "What to include", AutoSize = true, Margin = new Padding(0, 8, 0, 6) };
         ThemeManager.SetRole(scopeTitle, ThemeRole.Heading);
-        layout.Controls.Add(scopeTitle);
+        layout.Controls.Add(scopeTitle, 0, 3);
 
         var treeCard = new LayerPanel { Dock = DockStyle.Fill, Padding = new Padding(6), Margin = new Padding(0) };
         treeCard.Controls.Add(_tree);
-        layout.Controls.Add(treeCard);
+        layout.Controls.Add(treeCard, 0, 4);
 
         ThemeManager.SetRole(_ignoreStatus, ThemeRole.Secondary);
         _ignoreStatus.Margin = new Padding(0, 6, 0, 0);
-        layout.Controls.Add(_ignoreStatus);
+        layout.Controls.Add(_ignoreStatus, 0, 5);
         _fullRescan.Margin = new Padding(0, 8, 0, 0);
-        layout.Controls.Add(_fullRescan);
+        layout.Controls.Add(_fullRescan, 0, 6);
 
         var progressBox = new Panel { Dock = DockStyle.Top, Height = 22, Margin = new Padding(0, 14, 0, 0), Padding = new Padding(0, 8, 0, 8) };
         progressBox.Controls.Add(_progress);
-        layout.Controls.Add(progressBox);
+        layout.Controls.Add(progressBox, 0, 7);
 
         var details = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Margin = new Padding(0) };
         details.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -236,7 +236,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
         _elapsed.Font = UiFonts.Bold;
         ThemeManager.SetRole(_current, ThemeRole.Secondary);
         ThemeManager.SetRole(_rate, ThemeRole.Secondary);
-        layout.Controls.Add(details);
+        layout.Controls.Add(details, 0, 8);
 
         // The window body on the Mica tint, the tree on a card, as in the main window.
         foreach (var surface in new Control[] { this, layout, nameRow, info, progressBox, details })

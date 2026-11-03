@@ -8,7 +8,6 @@ internal static partial class NativeUi
     private const int DwmUseImmersiveDarkMode = 20;
     private const int DwmUseImmersiveDarkModeBefore20H1 = 19;
     private const int DwmSystemBackdropType = 38;
-    private const int DwmMicaEffect = 1029;
 
     /// <summary>Dark or light title bar (Windows 10 2004+ and Windows 11; older builds use attribute 19).</summary>
     public static void SetDarkTitleBar(nint hwnd, bool dark)
@@ -21,18 +20,20 @@ internal static partial class NativeUi
     }
 
     /// <summary>
-    /// Mica behind the title bar (Windows 11). The window body stays opaque in Mica's own tint colours
-    /// (<see cref="Palette.Surface"/>), so text and standard controls draw as before. Build 22621 and later take
-    /// the documented backdrop attribute; 22000 only the earlier, undocumented Mica switch. Windows 10 ignores both.
+    /// Mica behind the title bar (Windows 11 22H2, build 22621, and later, with the documented backdrop attribute).
+    /// The window body stays opaque in Mica's own tint colours (<see cref="Palette.Surface"/>), so text and standard
+    /// controls draw as before. Build 22000 is left with its plain title bar: its earlier, undocumented Mica switch
+    /// drew the caption text on black boxes and let other windows show through the title bar. Windows 10 ignores it.
     /// </summary>
     public static void SetMica(nint hwnd)
     {
-        var mainWindow = 2; // DWMSBT_MAINWINDOW
-        if (DwmSetWindowAttribute(hwnd, DwmSystemBackdropType, ref mainWindow, sizeof(int)) != 0)
+        if (Environment.OSVersion.Version.Build < 22621)
         {
-            var on = 1;
-            _ = DwmSetWindowAttribute(hwnd, DwmMicaEffect, ref on, sizeof(int));
+            return;
         }
+
+        var mainWindow = 2; // DWMSBT_MAINWINDOW
+        _ = DwmSetWindowAttribute(hwnd, DwmSystemBackdropType, ref mainWindow, sizeof(int));
     }
 
     /// <summary>Explorer look for lists and trees; the dark variant also darkens their scrollbars.</summary>

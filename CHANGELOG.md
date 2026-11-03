@@ -3,11 +3,11 @@
 ## [Unreleased]
 
 ### Windows 11 look
-- **Mica** in the title bar on Windows 11; the window body in Mica's colours, with lists and trees on a lighter card. Text in Segoe UI Variable at the Windows 11 sizes (Segoe UI on Windows 10).
+- **Mica** in the title bar on Windows 11 22H2 and later (the first Windows 11 release keeps a plain title bar); the window body in Mica's colours, with lists and trees on a lighter card. Text in Segoe UI Variable at the Windows 11 sizes (Segoe UI on Windows 10).
 - Buttons, list rows and selection as in Windows 11: rounded, a soft blue selection with a blue bar at the row's left end, a light fill under the mouse.
 - **Main window:** a command bar replaces the sidebar: New snapshot, **Compare** (new: the two selected snapshots, or the selected one with one picked from a menu), Rename, Delete, Properties; Preferences and Help at the right end. Exit is gone: close the window. The administrator warning is a Windows 11 warning bar with a close button.
 - **Comparison window:** **Show all / Only changes** tabs; the tree opens with arrows instead of dotted lines and + / − boxes, in larger text, with the changes of File system, Registry and Services as **+20 ~1 −1** in their colours; the selected folder as a path bar (C:\ › Program Files › Contoso); OLDER / NEWER as small tags.
-- **New Snapshot, Snapshot Properties, Preferences:** the window body in Mica's colours with the content on cards: the scope tree, each group of Properties, each Preferences setting and the Global Ignore list. Preferences' **General / Global Ignore list** and **Local list / Remote list** are tabs as in the comparison window. Without administrator rights New Snapshot shows the same warning bar as the main window, with **Restart as administrator** (it was a link).
+- **New Snapshot, Snapshot Properties, Preferences:** the window body in Mica's colours with the content on cards: the scope tree, each group of Properties, each Preferences setting and the Global Ignore list. Preferences' **General / Global Ignore list** and **Local list / Remote list** are tabs as in the comparison window. Without administrator rights New Snapshot shows the same warning bar as the main window, with **Restart as administrator** (it was a link). New Snapshot now also comes back where it was closed, not only at its size.
 - **Every dialog:** the buttons sit in a footer below a thin line, as in Windows 11 dialogs. The Properties scroll bar is dark in the dark theme.
 
 ## [1.2.1]

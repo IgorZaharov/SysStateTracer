@@ -118,13 +118,23 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             using (var form = Ui.Show(new NewSnapshotForm(app.Paths, app.Settings)))
             {
                 Assert.True(form.Height <= 580, $"New Snapshot is {form.Height} px tall");
-                form.Size = new Size(800, 560);
+                form.Bounds = new Rectangle(70, 50, 800, 560);
                 form.Close();
             }
 
             using (var form = Ui.Show(new NewSnapshotForm(app.Paths, app.Settings)))
             {
-                Assert.Equal(new Size(800, 560), form.Size);
+                Assert.Equal(new Rectangle(70, 50, 800, 560), form.Bounds); // its place too, not only its size
+                form.Close();
+            }
+
+            // As administrator (no warning bar), the scope tree takes the height the window gains.
+            using (var form = Ui.Show(new NewSnapshotForm(app.Paths, app.Settings, elevated: true)))
+            {
+                var before = form.Tree.Height;
+                form.Height += 120;
+                Ui.Pump();
+                Assert.Equal(before + 120, form.Tree.Height);
                 form.Close();
             }
 
