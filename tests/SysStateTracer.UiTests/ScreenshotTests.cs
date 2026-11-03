@@ -64,6 +64,14 @@ public class ScreenshotTests
                     Ui.Screenshot(preferences, "w5-preferences-general");
                     preferences.ShowIgnorePage();
                     Ui.Screenshot(preferences, "w5-preferences-ignore-list");
+
+                    // The Remote list tab, read from a file so the picture does not depend on the network (issue #7).
+                    var remoteList = Path.Combine(app.Root, "shared.ignore.txt");
+                    File.WriteAllLines(remoteList, ["# Shared rules", @"FS:C:\Windows\SoftwareDistribution", @"FS:C:\ProgramData\Microsoft\Windows Defender", @"FS:C:\Users\*\AppData\Local\Temp", @"REG:HKLM\SOFTWARE\Microsoft\Windows Defender", @"REG:HKU\*\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs", "SVC:wuauserv"]);
+                    preferences.RemoteLocationBox.Text = remoteList;
+                    preferences.ShowRuleList(remote: true);
+                    Ui.PumpUntil(() => preferences.RemoteRules.Items.Count > 0, 10_000);
+                    Ui.Screenshot(preferences, "w5-preferences-ignore-list-remote");
                     preferences.Close();
                 }
 

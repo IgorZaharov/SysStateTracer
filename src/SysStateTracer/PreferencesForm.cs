@@ -28,7 +28,13 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 600 };
     private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(860, 0), Text = " " };
     private readonly ThemedListView _rules = new() { Dock = DockStyle.Fill, MultiSelect = true };
-    private readonly Label _rulesCaption = new() { AutoSize = true };
+    private readonly ThemedListView _remoteRules = new() { Dock = DockStyle.Fill, MultiSelect = true, Visible = false };
+    private readonly ThemedButton _localTab = new() { Text = "Local list", Width = 190, Primary = true };
+    private readonly ThemedButton _remoteTab = new() { Text = "Remote list", Width = 190 };
+    private readonly ThemedButton _check = new() { Text = "Check now", Margin = new Padding(8, 0, 0, 0) };
+    private readonly ThemedButton _editRule = new() { Text = "Edit…", Width = 80 };
+    private readonly ThemedButton _removeRule = new() { Text = "Remove", Width = 90 };
+    private Task? _remoteRead;
     private readonly Panel _generalPage = new() { Dock = DockStyle.Fill };
     private readonly Panel _ignorePage = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly ThemedButton _generalTab = new() { Text = "General", Width = 110 };
@@ -218,6 +224,9 @@ internal sealed class PreferencesForm : ThemedDialog
     /// <summary>"Use zebra striping" (tests).</summary>
     internal CheckBox ZebraBox => _zebra;
 
+    /// <summary>The remote list's location (tests).</summary>
+    internal TextBox RemoteLocationBox => _remoteLocation;
+
     private ThemePreference SelectedTheme() =>
         _themeLight.Checked ? ThemePreference.Light : _themeDark.Checked ? ThemePreference.Dark : ThemePreference.System;
 
@@ -234,11 +243,10 @@ internal sealed class PreferencesForm : ThemedDialog
         var remoteRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 4, 0, 0) };
         _remoteLocation.Text = _settings.IgnoreListRemoteLocation;
         _remoteLocation.Margin = new Padding(0, 4, 0, 0);
-        var check = new ThemedButton { Text = "Check now", Margin = new Padding(8, 0, 0, 0) };
-        check.Click += async (_, _) => await CheckRemoteAsync(check);
+        _check.Click += async (_, _) => await ReadRemoteAsync();
         var defaultButton = new ThemedButton { Text = "Default", Margin = new Padding(8, 0, 0, 0) };
         defaultButton.Click += (_, _) => _remoteLocation.Text = RemoteIgnoreSource.DefaultLocation;
-        remoteRow.Controls.AddRange([_remoteLocation, check, defaultButton]);
+        remoteRow.Controls.AddRange([_remoteLocation, _check, defaultButton]);
         top.Controls.Add(remoteRow);
         _remoteResult.Margin = new Padding(20, 4, 0, 8);
         ThemeManager.SetRole(_remoteResult, ThemeRole.Secondary);
@@ -256,36 +264,42 @@ internal sealed class PreferencesForm : ThemedDialog
         _remote.CheckedChanged += (_, _) => _remoteLocation.Enabled = _remote.Checked;
         _remoteLocation.Enabled = _remote.Checked;
 
-        _rulesCaption.Margin = new Padding(0, 0, 0, 6);
-        ThemeManager.SetRole(_rulesCaption, ThemeRole.Heading);
-        top.Controls.Add(_rulesCaption);
+        // Local / Remote, like browser tabs (issue #7); each list keeps its own scroll position.
+        var listTabs = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 6) };
+        _localTab.Margin = new Padding(0, 0, 8, 0);
+        _remoteTab.Margin = new Padding(0);
+        listTabs.Controls.AddRange([_localTab, _remoteTab]);
+        _localTab.Click += (_, _) => ShowRuleList(remote: false);
+        _remoteTab.Click += (_, _) => ShowRuleList(remote: true);
+        top.Controls.Add(listTabs);
 
-        // The local list's rules.
-        _rules.Columns.Add("Type", 120);
-        _rules.Columns.Add("Rule", 400);
-        _rules.ItemColor = (item, _) => item.Tag is string ? ThemeManager.Current.Deleted : null;
+        foreach (var list in new[] { _rules, _remoteRules })
+        {
+            list.Columns.Add("Type", 120);
+            list.Columns.Add("Rule", 400);
+            list.ItemColor = (item, _) => item.Tag is string ? ThemeManager.Current.Deleted : null;
+        }
+
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(0, 8, 0, 0), WrapContents = true };
         var addRule = new ThemedButton { Text = "Add rule…", Width = 100 };
-        var editRule = new ThemedButton { Text = "Edit…", Width = 80 };
         var addFolder = new ThemedButton { Text = "Add folder…", Width = 110 };
         var addKey = new ThemedButton { Text = "Add registry key…", Width = 140 };
         var addService = new ThemedButton { Text = "Add service…", Width = 110 };
-        var remove = new ThemedButton { Text = "Remove", Width = 90 };
         var import = new ThemedButton { Text = "Import…", Width = 90 };
         var export = new ThemedButton { Text = "Export…", Width = 90 };
-        foreach (var b in new[] { addRule, editRule, addFolder, addKey, addService, remove, import, export })
+        foreach (var b in new[] { addRule, _editRule, addFolder, addKey, addService, _removeRule, import, export })
         {
             b.Margin = new Padding(0, 0, 8, 0);
             buttons.Controls.Add(b);
         }
 
         addRule.Click += (_, _) => AddTypedRules();
-        editRule.Click += (_, _) => EditSelected();
+        _editRule.Click += (_, _) => EditSelected();
         _rules.DoubleClick += (_, _) => EditSelected();
         addFolder.Click += (_, _) => AddFolder();
         addKey.Click += (_, _) => AddRegistryKey();
         addService.Click += (_, _) => AddService();
-        remove.Click += (_, _) => RemoveSelected();
+        _removeRule.Click += (_, _) => RemoveSelected();
         import.Click += (_, _) => Import();
         export.Click += (_, _) => Export();
         _rules.KeyDown += (_, e) =>
@@ -303,6 +317,7 @@ internal sealed class PreferencesForm : ThemedDialog
 
         var rulesHolder = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None };
         rulesHolder.Controls.Add(_rules);
+        rulesHolder.Controls.Add(_remoteRules);
         _ignorePage.Controls.Add(rulesHolder);
         _ignorePage.Controls.Add(buttons);
         _ignorePage.Controls.Add(top);
@@ -324,33 +339,67 @@ internal sealed class PreferencesForm : ThemedDialog
     }
 
     /// <summary>Shows the rule lines of the local file (comments and blank lines are kept in the file but not listed).</summary>
-    private void FillRules()
+    private void FillRules() => _localTab.Text = $"Local list ({Fill(_rules, _localLines, IgnoreRuleSource.Local)} rules)";
+
+    /// <summary>Lists the rule lines of <paramref name="lines"/>; each item's name is its line index. Returns the count.</summary>
+    private static int Fill(ThemedListView list, IReadOnlyList<string> lines, IgnoreRuleSource source)
     {
-        _rules.BeginUpdate();
-        _rules.Items.Clear();
+        var top = list.Items.Count > 0 ? list.TopItem?.Index ?? 0 : 0;
+        list.BeginUpdate();
+        list.Items.Clear();
         var count = 0;
-        for (var i = 0; i < _localLines.Count; i++)
+        for (var i = 0; i < lines.Count; i++)
         {
-            var line = _localLines[i];
+            var line = lines[i];
             if (IgnoreRuleParser.IsBlankOrComment(line))
             {
                 continue;
             }
 
-            var item = IgnoreRuleParser.TryParse(line, IgnoreRuleSource.Local, out var rule, out var error)
+            var item = IgnoreRuleParser.TryParse(line, source, out var rule, out var error)
                 ? new ListViewItem(RuleType(rule.Target))
                 : new ListViewItem("Not valid") { Tag = error, ToolTipText = error };
             item.SubItems.Add(line.Trim());
             item.Name = i.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            _rules.Items.Add(item);
+            list.Items.Add(item);
             count++;
         }
 
-        _rules.EndUpdate();
-        _rulesCaption.Text = $"Local list ({count} rules)";
+        list.EndUpdate();
+        if (top > 0 && list.Visible && list.Items.Count > 0)
+        {
+            list.TopItem = list.Items[Math.Min(top, list.Items.Count - 1)];
+        }
+
+        return count;
     }
 
-    private void AddRule(string line)
+    /// <summary>The local list (editable) or the remote list (read-only, issue #7).</summary>
+    internal void ShowRuleList(bool remote)
+    {
+        _rules.Visible = !remote;
+        _remoteRules.Visible = remote;
+        _localTab.Primary = !remote;
+        _remoteTab.Primary = remote;
+        _localTab.Invalidate();
+        _remoteTab.Invalidate();
+        _editRule.Enabled = !remote;
+        _removeRule.Enabled = !remote;
+        if (remote && _remoteRead is null)
+        {
+            _ = ReadRemoteAsync();
+        }
+    }
+
+    /// <summary>Remote list shown (tests).</summary>
+    internal bool ShowsRemoteList => _remoteRules.Visible;
+
+    /// <summary>The local and remote rule lists (tests).</summary>
+    internal ThemedListView LocalRules => _rules;
+
+    internal ThemedListView RemoteRules => _remoteRules;
+
+    internal void AddRule(string line)
     {
         var trimmed = line.Trim();
         if (!IgnoreRuleParser.TryParse(trimmed, IgnoreRuleSource.Local, out _, out var error))
@@ -372,6 +421,7 @@ internal sealed class PreferencesForm : ThemedDialog
         }
 
         _localLines.Insert(insertAt, trimmed);
+        ShowRuleList(remote: false); // the buttons always add to the local list: show it
         FillRules();
         var added = _rules.Items.Cast<ListViewItem>().LastOrDefault(i => i.SubItems[1].Text == trimmed);
         if (added is not null)
@@ -532,32 +582,78 @@ internal sealed class PreferencesForm : ThemedDialog
         }
     }
 
-    private async Task CheckRemoteAsync(ThemedButton button)
+    /// <summary>
+    /// Check now, and the first time the Remote list tab is opened: reads the list at the location typed in and shows
+    /// its rules on the Remote list tab. A read already running is awaited instead of starting another.
+    /// </summary>
+    internal Task ReadRemoteAsync() => _remoteRead is { IsCompleted: false } running ? running : _remoteRead = ReadRemoteCoreAsync();
+
+    private async Task ReadRemoteCoreAsync()
     {
-        button.Enabled = false;
+        _check.Enabled = false;
         _remoteResult.Text = "Reading…";
+        _remoteResult.ForeColor = ThemeManager.Current.SecondaryText;
+        _remoteTab.Text = "Remote list (reading…)";
+        RemoteIgnoreFetch? fetch = null;
         try
         {
             using var http = new HttpClient();
-            var fetch = await RemoteIgnoreSource.FetchAsync(_remoteLocation.Text.Trim(), http);
-            if (fetch.Succeeded)
-            {
-                var (rules, errors) = IgnoreRuleParser.ParseText(fetch.Text!, IgnoreRuleSource.Remote);
-                _remoteResult.Text = $"OK: {rules.Count} rules" + (errors.Count > 0 ? $", {errors.Count} lines not valid" : string.Empty) + $". {fetch.Message}";
-                _remoteResult.ForeColor = ThemeManager.Current.New;
-            }
-            else
-            {
-                _remoteResult.Text = fetch.Message + " Only the local list would be used.";
-                _remoteResult.ForeColor = ThemeManager.Current.Deleted;
-            }
+            fetch = await RemoteIgnoreSource.FetchAsync(_remoteLocation.Text.Trim(), http);
         }
         finally
         {
-            if (!button.IsDisposed)
+            ShowRemote(fetch);
+        }
+    }
+
+    /// <summary>Shows a read of the remote list (null: the read failed unexpectedly) and enables Check now again.</summary>
+    private void ShowRemote(RemoteIgnoreFetch? fetch)
+    {
+        // Without a window context the read resumes on the thread pool: move to the window's thread.
+        if (InvokeRequired)
+        {
+            if (!IsDisposed && !Disposing && IsHandleCreated)
             {
-                button.Enabled = true;
+                try
+                {
+                    BeginInvoke(() => ShowRemote(fetch));
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+                {
+                    // The window closed in the meantime.
+                }
             }
+
+            return;
+        }
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        _check.Enabled = true;
+        if (fetch is null)
+        {
+            _remoteTab.Text = "Remote list";
+            return;
+        }
+
+        if (fetch.Succeeded)
+        {
+            var lines = fetch.Text!.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+            var count = Fill(_remoteRules, lines, IgnoreRuleSource.Remote);
+            var invalid = _remoteRules.Items.Cast<ListViewItem>().Count(i => i.Tag is string);
+            _remoteResult.Text = $"OK: {count - invalid} rules" + (invalid > 0 ? $", {invalid} lines not valid" : string.Empty) + $". {fetch.Message}";
+            _remoteResult.ForeColor = ThemeManager.Current.New;
+            _remoteTab.Text = $"Remote list ({count} rules)";
+        }
+        else
+        {
+            Fill(_remoteRules, [], IgnoreRuleSource.Remote);
+            _remoteResult.Text = fetch.Message + " Only the local list would be used.";
+            _remoteResult.ForeColor = ThemeManager.Current.Deleted;
+            _remoteTab.Text = "Remote list (not read)";
         }
     }
 

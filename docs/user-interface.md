@@ -91,9 +91,13 @@ Both panes paint only the rows on screen: with a million rows, scrolling and exp
   restores it. **Lists:** Show grid lines and Use zebra striping (both off by default) for the snapshot list and
   the comparison window; they also apply live and Cancel restores them.
 - **Global Ignore list:** the local list (`SysStateTracer.ignore.txt` beside the program) is always used; **Also use
-  the shared remote list** (URL or network file, with Check now) adds its rules too (F22). The local list's rules can
+  the shared remote list** (URL or network file, with Check now) adds its rules too (F22). Below, **Local list** and
+  **Remote list** tabs (issue #7), each with its rule count and its own scroll position. The local list's rules can
   be typed (Add rule…, with wildcards), edited in place (Edit…, double-click or F2), added from a folder, registry key
-  or service, removed, imported and exported (F25). Comments in the file are kept.
+  or service, removed, imported and exported (F25). Comments in the file are kept. The Remote list tab shows the
+  remote list's rules read-only: it is read the first time the tab is opened and again on Check now, from the
+  location typed in, even when the remote list is not ticked. Edit… and Remove are off there; the add buttons and
+  Import still add to the local list, and switch to its tab.
 
 ## Help / About (W6)
 

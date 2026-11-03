@@ -92,14 +92,7 @@ internal sealed class CopyProgressForm : ThemedDialog
     {
         base.OnShown(e);
         _running = true;
-        var progress = new Progress<CopyProgress>(p =>
-        {
-            _progress.Value = p.Fraction;
-            _counts.Text = string.Create(
-                CultureInfo.CurrentCulture,
-                $"{p.FilesDone:N0} of {p.FilesTotal:N0} files · {ItemFormat.Size(p.BytesDone)} of {ItemFormat.Size(p.BytesTotal)} · {p.Elapsed:hh\\:mm\\:ss}");
-            _current.Text = p.CurrentFile ?? string.Empty;
-        });
+        var progress = new Progress<CopyProgress>(ShowProgress);
         try
         {
             Report = await Task.Run(() => FileCopier.Copy(_files, _target, progress, _stop.Token));
@@ -144,6 +137,38 @@ internal sealed class CopyProgressForm : ThemedDialog
         _cancel.Enabled = true;
         _open.Visible = report.Copied > 0;
         Log.Info($"Copied {report.Copied} files to {_target}; {report.Skipped.Count} skipped; cancelled: {report.Cancelled}");
+    }
+
+    private void ShowProgress(CopyProgress p)
+    {
+        // Progress<T> reports on the thread pool when no window context was captured: move to the window's thread.
+        if (InvokeRequired)
+        {
+            if (!IsDisposed && !Disposing && IsHandleCreated)
+            {
+                try
+                {
+                    BeginInvoke(() => ShowProgress(p));
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+                {
+                    // The window closed in the meantime.
+                }
+            }
+
+            return;
+        }
+
+        if (IsDisposed || !_running)
+        {
+            return;
+        }
+
+        _progress.Value = p.Fraction;
+        _counts.Text = string.Create(
+            CultureInfo.CurrentCulture,
+            $"{p.FilesDone:N0} of {p.FilesTotal:N0} files · {ItemFormat.Size(p.BytesDone)} of {ItemFormat.Size(p.BytesTotal)} · {p.Elapsed:hh\\:mm\\:ss}");
+        _current.Text = p.CurrentFile ?? string.Empty;
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

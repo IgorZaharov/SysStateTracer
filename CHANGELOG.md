@@ -5,6 +5,13 @@
 ### Comparison window
 - **OLDER / NEWER** before each snapshot name, in the top bar and above the two columns of the details, by when the snapshots were taken. The captions move with the snapshots on Swap (issue #6).
 
+### Preferences
+- Global Ignore list: **Local list** and **Remote list** tabs below the settings (issue #7). The Remote list tab shows the shared remote list's rules, read-only; it is read when the tab is first opened and again with **Check now**. Each tab keeps its scroll position. The buttons still add to the local list.
+
+### Fixed
+- Copy to .\Files could update its progress from a background thread (the same fix New Snapshot got in 1.1.0).
+- Lists could fail to repaint while their rows were being replaced.
+
 ## [1.1.0] — 2026-10-29
 
 ### Comparison window

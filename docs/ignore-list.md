@@ -53,7 +53,7 @@ Snapshots store only `HKLM` and `HKU`; the other root keys are views of those.
   ([ignore/SysStateTracer.ignore.txt](../ignore/SysStateTracer.ignore.txt)).
   It is read when a snapshot or comparison starts (at most 1 MB, 10 seconds). If it cannot be read — offline, server
   or share unreachable, not a rule list — the local list is used alone and Preferences shows why. The remote list is
-  never changed by SysStateTracer.
+  never changed by SysStateTracer; its rules can be viewed, read-only, on the **Remote list** tab in Preferences.
 
 Rules from both lists apply together (F22). Untick the remote list to use the local list only.
 

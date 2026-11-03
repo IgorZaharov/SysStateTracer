@@ -95,10 +95,17 @@ internal sealed class ThemedListView : ListView, IThemed
     /// <summary>The list's theme draws column lines below the last row; that area is cleared to the background.</summary>
     private void PaintEmptyArea()
     {
-        var top = HeaderBottom();
-        if (Items.Count > 0)
+        // Between BeginUpdate and EndUpdate, Items holds rows the native list has not got yet: ask the list itself.
+        var count = NativeItemCount();
+        if (count != Items.Count)
         {
-            var last = GetItemRect(Items.Count - 1);
+            return;
+        }
+
+        var top = HeaderBottom();
+        if (count > 0)
+        {
+            var last = GetItemRect(count - 1);
             top = Math.Max(top, last.Bottom);
         }
 
@@ -110,6 +117,13 @@ internal sealed class ThemedListView : ListView, IThemed
         using var g = CreateGraphics();
         using var brush = new SolidBrush(_palette.Background);
         g.FillRectangle(brush, 0, top, ClientSize.Width, ClientSize.Height - top);
+    }
+
+    private int NativeItemCount()
+    {
+        var message = Message.Create(Handle, 0x1004 /* LVM_GETITEMCOUNT */, 0, 0);
+        DefWndProc(ref message);
+        return (int)message.Result;
     }
 
     private int HeaderBottom() => Items.Count > 0 ? GetItemRect(0).Top : (HeaderStyle == ColumnHeaderStyle.None ? 0 : Font.Height + 10);

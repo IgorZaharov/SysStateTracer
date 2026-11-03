@@ -389,7 +389,7 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 Assert.True(ThemeManager.ZebraStripes);
 
                 // A rule is edited in place, e.g. to add a wildcard (F25).
-                var rules = all.OfType<ThemedListView>().Single();
+                var rules = form.LocalRules;
                 var sam = rules.Items.Cast<ListViewItem>().Single(i => i.SubItems[1].Text == @"REG:HKLM\SAM");
                 form.ReplaceRule(int.Parse(sam.Name, System.Globalization.CultureInfo.InvariantCulture), [@"REG:HKLM\SAM*"]);
                 Assert.Contains(rules.Items.Cast<ListViewItem>(), i => i.SubItems[1].Text == @"REG:HKLM\SAM*");
@@ -445,6 +445,56 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.True(ThemeManager.ZebraStripes); // Cancel put it back too
             ThemeManager.SetPreference(ThemePreference.Light);
             ThemeManager.SetListStyle(false, false);
+        });
+    }
+
+    [Fact]
+    public void Preferences_RemoteListTab_ShowsRemoteRulesReadOnly_AndKeepsEachScrollPosition()
+    {
+        Ui.Run(() =>
+        {
+            using var app = new TestApp();
+            var remoteFile = Path.Combine(app.Root, "remote.ignore.txt");
+            File.WriteAllLines(remoteFile, ["# shared rules", .. Enumerable.Range(0, 80).Select(i => $@"FS:C:\Shared\Folder{i:00}"), "not a rule"]);
+            using var form = Ui.Show(new PreferencesForm(app.Paths, app.Settings));
+            form.ShowIgnorePage();
+            form.RemoteLocationBox.Text = remoteFile;
+            var edit = Controls(form).OfType<ThemedButton>().Single(b => b.Text == "Edit…");
+            var remove = Controls(form).OfType<ThemedButton>().Single(b => b.Text == "Remove");
+
+            // Opening the Remote list tab reads the list; its rules are listed, read-only (issue #7).
+            form.ShowRuleList(remote: true);
+            Assert.True(Ui.PumpUntil(() => form.RemoteRules.Items.Count > 0, 10_000), "the remote list was not read");
+            Assert.True(form.ShowsRemoteList);
+            Assert.False(form.LocalRules.Visible);
+            Assert.Equal(81, form.RemoteRules.Items.Count);
+            Assert.Equal(@"FS:C:\Shared\Folder00", form.RemoteRules.Items[0].SubItems[1].Text);
+            Assert.Equal("Not valid", form.RemoteRules.Items[80].Text);
+            Assert.False(edit.Enabled);
+            Assert.False(remove.Enabled);
+            Assert.Contains(Controls(form).OfType<ThemedButton>(), b => b.Text == "Remote list (81 rules)");
+
+            // Each tab keeps its scroll position.
+            form.RemoteRules.TopItem = form.RemoteRules.Items[50];
+            form.ShowRuleList(remote: false);
+            Assert.True(edit.Enabled);
+            form.ShowRuleList(remote: true);
+            Ui.Pump();
+            Assert.Equal(50, form.RemoteRules.TopItem!.Index);
+
+            // Check now reads the list again.
+            File.AppendAllLines(remoteFile, [@"REG:HKLM\SOFTWARE\Shared"]);
+            _ = form.ReadRemoteAsync();
+            Assert.True(Ui.PumpUntil(() => form.RemoteRules.Items.Count == 82, 10_000), "Check now did not refresh the Remote list tab");
+            Assert.Equal(50, form.RemoteRules.TopItem!.Index);
+
+            // The buttons add to the local list, and show it.
+            var localCount = form.LocalRules.Items.Count;
+            form.AddRule(@"FS:C:\Added");
+            Assert.False(form.ShowsRemoteList);
+            Assert.Equal(localCount + 1, form.LocalRules.Items.Count);
+            Assert.DoesNotContain(form.RemoteRules.Items.Cast<ListViewItem>(), i => i.SubItems[1].Text == @"FS:C:\Added");
+            form.Close();
         });
     }
 

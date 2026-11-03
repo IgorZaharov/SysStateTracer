@@ -498,10 +498,14 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "a file, also on a network share such as \\\\server\\share\\SysStateTracer.ignore.txt, so several PCs can share "
         "one list. The default is the shared list in the project on GitHub. <b>Check now</b> reads it and shows how many "
         "rules it has. If it cannot be read, the local list is used alone.",
+        "Below are two tabs: <b>Local list</b> and <b>Remote list</b>. The Remote list tab shows the shared list's rules, "
+        "read-only; it is read when the tab is first opened and again with <b>Check now</b>. Each tab keeps its place "
+        "when you switch between them.",
     ])
+    story += screens.figure("w5-preferences-ignore-list-remote-light", "The Remote list tab: the shared rules, read-only.", max_height=105 * mm)
     story.append(p("4.2&nbsp;&nbsp;Adding and removing rules", "h2"))
     story.append(p(
-        "Below is the local list. <b>Add rule</b> lets you type rules, with wildcards too; <b>Edit</b> (or a double-click, "
+        "On the Local list tab, <b>Add rule</b> lets you type rules, with wildcards too; <b>Edit</b> (or a double-click, "
         "F2) changes the selected rule. <b>Add folder</b> picks a folder; <b>Add registry key</b> asks for a key "
         "path; <b>Add service</b> lists the installed services. <b>Remove</b> deletes the selected rules (also with Del). "
         "<b>Import</b> adds the rules from a text file; <b>Export</b> saves the list. Click <b>OK</b> to save."))

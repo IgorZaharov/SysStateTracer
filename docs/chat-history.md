@@ -110,7 +110,7 @@ GitHub issues (created 29 Oct 2026, all open, no comments yet):
 | # | Type | What is asked | Notes for the implementer |
 | --- | --- | --- | --- |
 | 6 | Feature | Comparison window, bottom (details) pane: an **OLDER / NEWER** caption before each snapshot name, by creation time. | **Implemented on `main` (Unreleased)**, in the details headers and the top bar; captions follow Swap. Waiting for the owner to try it and close the issue. |
-| 7 | Feature | Preferences → Global Ignore list: view the **remote list's rules read-only**. Rename "Local list" to a Local / Remote selector (like browser tabs), remember the scroll position per tab; buttons keep adding to the local list; "Check now" also refreshes the Remote tab. | `PreferencesForm.BuildIgnorePage`; remote text via `IgnoreListLoader` / `RemoteIgnoreSource`. |
+| 7 | Feature | Preferences → Global Ignore list: view the **remote list's rules read-only**. Rename "Local list" to a Local / Remote selector (like browser tabs), remember the scroll position per tab; buttons keep adding to the local list; "Check now" also refreshes the Remote tab. | **Implemented on `main` (Unreleased).** Two `ThemedListView`s (each keeps its scroll); the remote one is read on first open and on Check now, even when the remote list is unticked; Edit/Remove disabled there; adding switches to the Local tab. Waiting for the owner to try it and close the issue. |
 | 8 | Feature | `/export` and `/compare-snap`: **filters** (`/registry:"HKCU","HKLM\Software"`, `/files:"C:\Program Files\Test"`) and **`--output:`** location; same syntax for both; verbose output and error handling; examples in About and the manual. | Switch syntax is "TBD" in the issue: agree it with the owner first. `CliRunner`, `CliHelp`, `docs/command-line.md`, `make_manual.py`, `CommandLineTests`. Export already takes node lists (`DiffActions.Nodes`). |
 | 9 | Bug | **Memory**: ~79 MB at start, ~500 MB after a few snapshots and comparisons, not released. Test: idle → compare two snapshots → close window → check again. | Not investigated yet. Candidates: comparison windows or their snapshots/`DiffResult` kept alive (event handlers such as `ThemeManager.Changed`, `WindowLayout`; `MainForm` itself keeps only `SnapshotInfo` metadata), the snapshot cache and previous snapshot loaded for incremental scans, the MFT index kept in `_preloadedTables` if a scan fails, large arrays on the LOH that the GC returns to Windows late (try `GC.Collect` with `GCSettings.LargeObjectHeapCompactionMode` after a window closes; no GC settings are set in the projects today, so `GCConserveMemory`, workstation non-concurrent GC or a `GCHeapHardLimit` are options to measure), and the NameTable growth. Measure first (dotnet-counters / a memory test in UiTests). |
 
@@ -120,12 +120,12 @@ Other known loose ends (not filed as issues):
   whole C:\\** or **Include subfolders on a large folder** on real snapshots.
 - README/manual "Unblock" screenshot (`docs/images/unblock.png`) shows the exe's Properties, not the zip's (same
   dialog; the owner may send a new one).
-- `CopyProgressForm` uses `Progress<T>` the same way `NewSnapshotForm` did before its thread fix; consider the same
-  `InvokeRequired` guard.
+- `CopyProgressForm` thread guard: done (Unreleased), same `InvokeRequired` pattern as `NewSnapshotForm`.
 - CI warns that `actions/checkout@v4`, `setup-dotnet@v4`, `upload-artifact@v4` target Node 20 (deprecated);
   move to newer major versions when available.
-- Old links to `releases/latest/download/SysStateTracer.exe` (1.0.0 README and manual) now return 404; v1.0.0
-  still has its exe.
+- Old links to `releases/latest/download/SysStateTracer.exe` return 404. They are only in the README of the `v1.0.0`
+  tag (the 1.0.0 manual has no download links); everything current links to `releases/latest/download/SysStateTracer.zip`.
+  The owner chose (3 Nov 2026) to keep releases zip-only rather than attach the bare exe again; v1.0.0 still has its exe.
 
 ## 6. Conventions we agreed on
 
@@ -190,5 +190,5 @@ Tooling notes (from the cloud chat sandbox; may not apply in Claude Code on the 
 4. Issue **#7** remote list tab in Preferences.
 5. Issue **#8** command-line filters and `--output`: agree the switch syntax with the owner, then implement with
    tests, help text, About, manual.
-6. Housekeeping: zip Unblock screenshot, `CopyProgressForm` thread guard, GitHub Actions versions.
+6. Housekeeping: zip Unblock screenshot, GitHub Actions versions.
 7. Release 1.2.0 (rc first if the memory or comparison changes are large).
