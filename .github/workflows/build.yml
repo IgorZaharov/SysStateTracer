@@ -173,7 +173,7 @@ jobs:
         shell: pwsh
         # Called directly: passing "-p:Name=value" through a script splits it at the colon
         run: |
-          dotnet publish tests/SysStateTracer.Benchmarks/SysStateTracer.Benchmarks.csproj -c Release -r win-x64 --self-contained '-p:PublishSingleFile=true' '-p:IncludeNativeLibrariesForSelfExtract=true' '-p:EnableCompressionInSingleFile=true' -o bench
+          dotnet publish tests/SysStateTracer.Benchmarks/SysStateTracer.Benchmarks.csproj -c Release -r win-x64 --self-contained '-p:PublishSingleFile=true' '-p:IncludeNativeLibrariesForSelfExtract=true' -o bench
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Update "bench" pre-release

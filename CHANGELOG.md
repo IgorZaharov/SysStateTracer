@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.1]
+
+### Fixed
+- Browsers could block the download of 1.2.0 with **"Virus detected"**, a false positive. `SysStateTracer.exe` is no longer stored compressed inside itself, so it does not look like a packed program to antivirus software. The exe is now 118 MB instead of 52 MB; the download (`SysStateTracer.zip`, 47 MB) is the same size, and the program starts slightly faster.
+
 ## [1.2.0] — 2026-11-03
 
 ### Comparison window

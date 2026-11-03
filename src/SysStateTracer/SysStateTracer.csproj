@@ -25,7 +25,9 @@
   <!-- Single-file publish: `dotnet publish -c Release` gives one SysStateTracer.exe (plan §14.1) -->
   <PropertyGroup>
     <PublishSingleFile>true</PublishSingleFile>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- false on purpose: a compressed bundle looks like a packed exe, which antivirus machine-learning rules
+         flag ("Virus detected" on 1.2.0). The release zip compresses the exe anyway. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <!-- false on purpose: any native DLL that would need extracting to %TEMP% shows up
          beside the exe instead, and the CI single-file check fails (plan Step 5) -->
     <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>

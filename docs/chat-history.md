@@ -122,6 +122,11 @@ Other known loose ends (not filed as issues):
 - `CopyProgressForm` thread guard: done in v1.2.0, same `InvokeRequired` pattern as `NewSnapshotForm`.
 - GitHub Actions moved off Node 20 (3 Nov 2026): `checkout@v7`, `setup-dotnet@v6`, `upload-artifact@v7`,
   `download-artifact@v8`.
+- 1.2.0's zip was blocked as "Virus detected" by the owner's browser (3 Nov 2026); Defender on the owner's PC found
+  nothing in it. No code-signing certificate can be bought now, and a self-signed one would not help (not trusted
+  by Windows or antivirus). Done: `EnableCompressionInSingleFile` off (exe 52 → 118 MB, zip unchanged), released as
+  `v1.2.1-rc.1` for the owner to test the download. Suggested to the owner: apply to SignPath Foundation (free
+  signing for open-source projects from GitHub Actions) and report false positives at microsoft.com/wdsi/filesubmission.
 - Old links to `releases/latest/download/SysStateTracer.exe` return 404. They are only in the README of the `v1.0.0`
   tag (the 1.0.0 manual has no download links); everything current links to `releases/latest/download/SysStateTracer.zip`.
   The owner chose (3 Nov 2026) to keep releases zip-only rather than attach the bare exe again; v1.0.0 still has its exe.

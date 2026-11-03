@@ -4,7 +4,7 @@ Confirmed by the project owner on 27 Oct 2026 (plan Step 1).
 
 | # | Topic | Decision |
 | --- | --- | --- |
-| D1 | Runtime | C# 14, .NET 10 LTS, Windows Forms, self-contained single-file `SysStateTracer.exe` (win-x64). Performance is favoured over official support on regular Windows 10 22H2, which is not on Microsoft's .NET 10 support list; it is tested explicitly on a clean VM. |
+| D1 | Runtime | C# 14, .NET 10 LTS, Windows Forms, self-contained single-file `SysStateTracer.exe` (win-x64). Performance is favoured over official support on regular Windows 10 22H2, which is not on Microsoft's .NET 10 support list; it is tested explicitly on a clean VM. The exe is not compressed inside (since 1.2.1): a compressed bundle looked like a packed program and 1.2.0 was blocked as "Virus detected"; the release zip compresses it anyway. |
 | D2 | Comparison view | Only new, modified and deleted items plus the parents needed to reach them. No "show unchanged" option. |
 | D3 | Copy folder to `.\Files` | Copies the new and modified files inside the folder and its subfolders, with a progress window and Cancel. |
 | D4 | `.\Files` path | System drive: `.\Files\ProgramData\Test`. Other drives: `.\Files\_D\Data\X`. |
