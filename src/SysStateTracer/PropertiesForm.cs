@@ -11,17 +11,22 @@ namespace SysStateTracer;
 /// <summary>W2 Snapshot Properties (plan §10.2, Step 46): everything stored about a snapshot, and its skipped items.</summary>
 internal sealed class PropertiesForm : ThemedDialog
 {
-    /// <summary>Width the values wrap at: the window less the captions, margins and a scroll bar.</summary>
-    private const int ValueWidth = 380;
+    /// <summary>Width the values wrap at: the window less the captions, the cards' padding, margins and a scroll bar.</summary>
+    private const int ValueWidth = 360;
 
-    private readonly TableLayoutPanel _grid = new()
+    /// <summary>The groups, each a heading and a card, one below the other (Windows 11 settings).</summary>
+    private readonly TableLayoutPanel _sections = new()
     {
-        ColumnCount = 2,
+        ColumnCount = 1,
         AutoSize = true,
         AutoSizeMode = AutoSizeMode.GrowAndShrink,
         Dock = DockStyle.Top,
-        Padding = new Padding(0, 0, 8, 0),
+        Padding = new Padding(0, 0, 4, 0),
     };
+
+    private readonly List<(LayerPanel Card, TableLayoutPanel Grid)> _cards = [];
+    private readonly Panel _scroller;
+    private TableLayoutPanel? _grid;
 
     public PropertiesForm(string path)
         : base("Snapshot Properties")
@@ -29,11 +34,14 @@ internal sealed class PropertiesForm : ThemedDialog
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
         Size = new Size(640, 580);
-        _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
-        _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _sections.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         var scroller = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
-        scroller.Controls.Add(_grid);
+        _scroller = scroller;
+        scroller.Controls.Add(_sections);
+        ThemeManager.SetRole(this, ThemeRole.Surface);
+        ThemeManager.SetRole(scroller, ThemeRole.Surface);
+        ThemeManager.SetRole(_sections, ThemeRole.Surface);
         Controls.Add(scroller);
         scroller.BringToFront();
         AddButton("Close", DialogResult.Cancel, primary: true);
@@ -46,8 +54,11 @@ internal sealed class PropertiesForm : ThemedDialog
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SnapshotFormatException)
         {
+            Group("Error");
             Row("Error", Core.Config.FriendlyErrors.Describe(ex));
         }
+
+        FitCards();
     }
 
     private void Fill(SnapshotInfo info, IReadOnlyList<SkippedItem> skipped)
@@ -118,34 +129,46 @@ internal sealed class PropertiesForm : ThemedDialog
                 list.Visible = !list.Visible;
                 expander.Text = (list.Visible ? "Hide" : "Show") + $" skipped items ({skipped.Count:N0})";
             };
-            _grid.Controls.Add(expander);
-            _grid.SetColumnSpan(expander, 2);
-            _grid.Controls.Add(list);
-            _grid.SetColumnSpan(list, 2);
+            _sections.Controls.Add(expander);
+            _sections.Controls.Add(list);
         }
 
         var note = new Label
         {
             Text = "Snapshots contain registry data, which can include sensitive settings such as product keys. Treat the file like a registry backup.",
             AutoSize = true,
-            MaximumSize = new Size(590, 0),
+            MaximumSize = new Size(560, 0),
             Margin = new Padding(0, 16, 0, 0),
         };
         ThemeManager.SetRole(note, ThemeRole.Secondary);
-        _grid.Controls.Add(note);
-        _grid.SetColumnSpan(note, 2);
+        _sections.Controls.Add(note);
     }
 
     private static string Seconds(long ms) => ms <= 0 ? "–" : string.Create(CultureInfo.CurrentCulture, $"{ms / 1000.0:0.0} s");
 
     private static string N(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
 
+    /// <summary>Starts a group: its heading, and a card that the following rows go on.</summary>
     private void Group(string title)
     {
-        var label = new Label { Text = title, AutoSize = true, Margin = new Padding(0, _grid.Controls.Count == 0 ? 0 : 14, 0, 4) };
-        ThemeManager.SetRole(label, ThemeRole.Heading);
-        _grid.Controls.Add(label);
-        _grid.SetColumnSpan(label, 2);
+        var label = new Label { Text = title, AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, _sections.Controls.Count == 0 ? 0 : 16, 0, 6) };
+        _sections.Controls.Add(label);
+        _grid = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top, Margin = new Padding(0) };
+        _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
+        _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var card = new LayerPanel { Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, Padding = new Padding(16, 8, 16, 8), Margin = new Padding(0) };
+        card.Controls.Add(_grid);
+        _sections.Controls.Add(card);
+        _cards.Add((card, _grid));
+    }
+
+    /// <summary>Each card as tall as its rows, whose heights do not depend on the width (values wrap at <see cref="ValueWidth"/>).</summary>
+    private void FitCards()
+    {
+        foreach (var (card, grid) in _cards)
+        {
+            card.Height = grid.PreferredSize.Height + card.Padding.Vertical;
+        }
     }
 
     private void Row(string name, string value)
@@ -169,7 +192,7 @@ internal sealed class PropertiesForm : ThemedDialog
         text.Height = Math.Max(UiFonts.Normal.Height, wrapped.Height) + 4;
 
         ThemeManager.SetRole(text, ThemeRole.Default);
-        _grid.Controls.Add(caption);
+        _grid!.Controls.Add(caption);
         _grid.Controls.Add(text);
         Plain.Add(text);
     }
@@ -193,5 +216,7 @@ internal sealed class PropertiesForm : ThemedDialog
         {
             box.BackColor = ThemeManager.Current.Background;
         }
+
+        NativeUi.SetExplorerTheme(_scroller.Handle, ThemeManager.Current.IsDark); // a dark scroll bar in the dark theme
     }
 }

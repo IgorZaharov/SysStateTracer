@@ -472,7 +472,7 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal("Not valid", form.RemoteRules.Items[80].Text);
             Assert.False(edit.Enabled);
             Assert.False(remove.Enabled);
-            Assert.Contains(Controls(form).OfType<ThemedButton>(), b => b.Text == "Remote list (81 rules)");
+            Assert.Equal("Remote list (81 rules)", form.RuleListTabs.Items[1]);
 
             // Each tab keeps its scroll position.
             form.RemoteRules.TopItem = form.RemoteRules.Items[50];

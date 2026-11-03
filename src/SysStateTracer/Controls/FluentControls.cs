@@ -153,6 +153,13 @@ internal sealed class SelectorBar : Control, IThemed
 
     public IList<string> Items => _items;
 
+    /// <summary>Renames a tab (a count in it changed).</summary>
+    public void SetItem(int index, string text)
+    {
+        _items[index] = text;
+        Invalidate();
+    }
+
     public int SelectedIndex
     {
         get => _selected;

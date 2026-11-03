@@ -15,7 +15,8 @@ taller than 580 pixels (F14, at 100 % display scaling).
   button hides it until the next start.
 
 - **Look (Windows 11):** Mica in the title bar on Windows 11; the window body in Mica's colours, the list on a
-  lighter card; rounded selection with a blue bar at the row's left end. The other windows share these colours.
+  lighter card; rounded selection with a blue bar at the row's left end. The other windows share these colours, and
+  their buttons sit in a footer below a thin line, as in Windows 11 dialogs.
 - **Command bar:** **New snapshot**, **Compare** (the two selected snapshots, or the selected one with one picked from
   a menu), Rename, Delete, Properties; Preferences and Help at the right end. Close the window to exit.
 - **List:** Name, Created, Computer, Duration, Size, read from the snapshot headers only (100 snapshots list in
@@ -32,15 +33,16 @@ taller than 580 pixels (F14, at 100 % display scaling).
 
 General (name, file, size, created in local time and UTC, computer, user, Windows, version), Timing (total and per
 part, Full or Incremental and why), Scope, Global Ignore rule count, Counts, and the skipped items with their
-reasons.
+reasons. Each group is a card with its heading above it, as in Windows 11 Settings.
 
 ## New Snapshot (W3)
 
 - **Name:** prefilled with `YYYYMMDD_HH-MM-SS_COMPUTERNAME`; problems (invalid characters, name in use) show at once.
 - **What to include:** drives, registry (HKLM, HKU with each user) and services, with tri-state checkboxes.
   Sub-folders and sub-keys load when expanded. Items in the Global Ignore list are unchecked and marked
-  "(ignored)"; to include one, remove its rule in Preferences. Without administrator rights, folders and keys
-  your user cannot read are greyed out as "(no access)", with a link to restart as administrator. Unchecking a folder or key inside an included
+  "(ignored)"; to include one, remove its rule in Preferences. The tree is on a card. Without administrator rights,
+  folders and keys your user cannot read are greyed out as "(no access)", and a warning bar at the top offers
+  **Restart as administrator**. Unchecking a folder or key inside an included
   drive or hive leaves it out of this and later snapshots. The scope is remembered and also used by `/new`.
 - **Full rescan:** reads everything again instead of reusing unchanged parts of the previous snapshot.
 - **Start / Stop:** progress bar, elapsed time ticking every second, current phase and path, items per second.
@@ -91,13 +93,17 @@ Both panes paint only the rows on screen: with a million rows, scrolling and exp
 
 ## Preferences (W5)
 
+**General** and **Global Ignore list** are tabs at the top, as in the comparison window; each setting group is a card
+with its heading above it.
+
 - **General:** snapshot folder (Browse…, or the program folder; it must be writable) and theme, each choice with a
   small picture of the window in that theme (F5; click the picture or the button). The theme applies live; Cancel
   restores it. **Lists:** Show grid lines and Use zebra striping (both off by default) for the snapshot list and
   the comparison window; they also apply live and Cancel restores them.
 - **Global Ignore list:** the local list (`SysStateTracer.ignore.txt` beside the program) is always used; **Also use
   the shared remote list** (URL or network file, with Check now) adds its rules too (F22). Below, **Local list** and
-  **Remote list** tabs (issue #7), each with its rule count and its own scroll position. The local list's rules can
+  **Remote list** tabs (issue #7), each with its rule count and its own scroll position, above the list on a card
+  (in compact rows). The local list's rules can
   be typed (Add rule…, with wildcards), edited in place (Edit…, double-click or F2), added from a folder, registry key
   or service, removed, imported and exported (F25). Comments in the file are kept. The Remote list tab shows the
   remote list's rules read-only: it is read the first time the tab is opened and again on Check now, from the
@@ -113,7 +119,7 @@ Version, the GitHub link, and the command-line help (the same text as `SysStateT
 Run on a Windows PC with the published `SysStateTracer.exe`. It starts without a UAC prompt; click
 **Restart as administrator** in the main window for complete snapshots (and once without, to see the standard-user view):
 
-1. Start the program with no snapshots: the list says there are none. Click **+**, keep the default name, Start.
+1. Start the program with no snapshots: the list says there are none. Click **New snapshot**, keep the default name, Start.
    The timer ticks, the phase and path change, Stop becomes available; at the end the summary shows and the new
    snapshot is selected in the list.
 2. Install or change something small (e.g. a program), take a second snapshot. It should say "incremental".

@@ -344,13 +344,15 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(CondPageBreak(90 * mm))
     story.append(p("2.2&nbsp;&nbsp;Taking a snapshot", "h2"))
     story.append(p(
-        "Click <b>+</b>. The name is filled in as date, time and computer name; change it to something meaningful, "
+        "Click <b>New snapshot</b>. The name is filled in as date, time and computer name; change it to something meaningful, "
         "such as “Before Office 2024 install”. Choose what to include, then click <b>Start</b>."))
     story += screens.figure("w3-new-snapshot-light", "New Snapshot: drives, the registry and services, with the saved choice ticked.")
     story += bullets([
         "Tick or untick drives, registry hives and services. Expand a drive or a key to leave out single folders or keys. "
         "Your choice is remembered, and the command line uses it too.",
         "Items in the Global Ignore list are unticked and marked “(ignored)” (chapter 4).",
+        "Without administrator rights, a warning bar at the top says that greyed-out items are skipped; <b>Restart as "
+        "administrator</b> on it restarts SysStateTracer with full rights.",
         "<b>Full rescan</b> reads everything again. Normally a snapshot after the first one reads only what changed "
         "since the previous one, using the NTFS change journal, which takes seconds instead of minutes.",
     ])

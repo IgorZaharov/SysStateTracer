@@ -212,7 +212,21 @@ internal sealed class ThemedListView : ListView, IThemed
         SetRowHeight();
     }
 
-    /// <summary>Windows 11 row height (the text plus 16 px at 96 DPI): a details list takes it from its small image list.</summary>
+    /// <summary>Space above and below the text of each row at 96 DPI: 16 is Windows 11's standard row, 8 its compact one.</summary>
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public int RowPadding
+    {
+        get => _rowPadding;
+        set
+        {
+            _rowPadding = value;
+            SetRowHeight();
+        }
+    }
+
+    private int _rowPadding = 16;
+
+    /// <summary>Windows 11 row height (the text plus <see cref="RowPadding"/>): a details list takes it from its small image list.</summary>
     private void SetRowHeight()
     {
         if (!IsHandleCreated)
@@ -221,7 +235,7 @@ internal sealed class ThemedListView : ListView, IThemed
         }
 
         var old = _rowHeight;
-        _rowHeight = new ImageList { ImageSize = new Size(1, Math.Min(256, Font.Height + LogicalToDeviceUnits(16))) };
+        _rowHeight = new ImageList { ImageSize = new Size(1, Math.Min(256, Font.Height + LogicalToDeviceUnits(_rowPadding))) };
         SmallImageList = _rowHeight;
         old?.Dispose();
     }

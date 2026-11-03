@@ -22,14 +22,16 @@ internal sealed class NewSnapshotForm : ThemedDialog
     private readonly AppSettings _settings;
     private readonly TextBox _name = new() { BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill };
     private readonly Label _nameProblem = new() { AutoSize = true, Text = " " };
-    private readonly LinkLabel _elevateLink = new() { Text = "Restart SysStateTracer as administrator", AutoSize = true, Visible = false };
-    private readonly Label _notElevated = new()
+    private readonly InfoBar _notElevated = new()
     {
-        AutoSize = true,
+        Dock = DockStyle.Top,
+        Height = 48,
+        Margin = new Padding(0, 0, 0, 12),
         Visible = false,
-        MaximumSize = new Size(700, 0),
-        Text = "Not running as administrator: folders and registry keys that need administrator rights are greyed out and skipped, and whole drives are read more slowly.",
+        Title = "Not running as administrator",
+        Message = "Greyed-out items are skipped; drives are read more slowly.",
     };
+    private readonly ThemedButton _elevate = new() { Text = "Restart as administrator", Glyph = Glyphs.Shield };
     private readonly Label _folder = new() { AutoSize = true, AutoEllipsis = true };
     private readonly ScopeTree _tree = new() { Dock = DockStyle.Fill };
     private readonly Label _ignoreStatus = new() { AutoSize = true, Text = "Reading the Global Ignore list…" };
@@ -65,9 +67,9 @@ internal sealed class NewSnapshotForm : ThemedDialog
         BuildLayout();
         var standardUser = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
         _notElevated.Visible = standardUser;
-        _elevateLink.Visible = standardUser;
+        _notElevated.AddAction(_elevate);
         _tree.Elevated = !standardUser;
-        _elevateLink.LinkClicked += (_, _) =>
+        _elevate.Click += (_, _) =>
         {
             if (!IsRunning && Elevation.RestartAsAdministrator(this))
             {
@@ -122,7 +124,6 @@ internal sealed class NewSnapshotForm : ThemedDialog
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        _notElevated.ForeColor = ThemeManager.Current.Modified;
         ValidateName();
         _ignoreLoad = LoadIgnoreListAsync();
 
@@ -179,8 +180,9 @@ internal sealed class NewSnapshotForm : ThemedDialog
 
     private void BuildLayout()
     {
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8 };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 9 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // the window's width, never a long label's
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // not running as administrator
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // name
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // folder / problem
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // scope heading
@@ -189,6 +191,8 @@ internal sealed class NewSnapshotForm : ThemedDialog
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // options
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // progress
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // details
+
+        layout.Controls.Add(_notElevated);
 
         var nameRow = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Margin = new Padding(0) };
         nameRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -201,22 +205,15 @@ internal sealed class NewSnapshotForm : ThemedDialog
         ThemeManager.SetRole(_folder, ThemeRole.Secondary);
         info.Controls.Add(_folder);
         info.Controls.Add(_nameProblem);
-        info.Controls.Add(_notElevated);
-        info.Controls.Add(_elevateLink);
         layout.Controls.Add(info);
 
         var scopeTitle = new Label { Text = "What to include", AutoSize = true, Margin = new Padding(0, 8, 0, 6) };
         ThemeManager.SetRole(scopeTitle, ThemeRole.Heading);
         layout.Controls.Add(scopeTitle);
 
-        var treeBorder = new Panel { Dock = DockStyle.Fill, Padding = new Padding(1), Margin = new Padding(0) };
-        treeBorder.Controls.Add(_tree);
-        treeBorder.Paint += (_, e) =>
-        {
-            using var pen = new Pen(ThemeManager.Current.Border);
-            e.Graphics.DrawRectangle(pen, 0, 0, treeBorder.Width - 1, treeBorder.Height - 1);
-        };
-        layout.Controls.Add(treeBorder);
+        var treeCard = new LayerPanel { Dock = DockStyle.Fill, Padding = new Padding(6), Margin = new Padding(0) };
+        treeCard.Controls.Add(_tree);
+        layout.Controls.Add(treeCard);
 
         ThemeManager.SetRole(_ignoreStatus, ThemeRole.Secondary);
         _ignoreStatus.Margin = new Padding(0, 6, 0, 0);
@@ -240,6 +237,12 @@ internal sealed class NewSnapshotForm : ThemedDialog
         ThemeManager.SetRole(_current, ThemeRole.Secondary);
         ThemeManager.SetRole(_rate, ThemeRole.Secondary);
         layout.Controls.Add(details);
+
+        // The window body on the Mica tint, the tree on a card, as in the main window.
+        foreach (var surface in new Control[] { this, layout, nameRow, info, progressBox, details })
+        {
+            ThemeManager.SetRole(surface, ThemeRole.Surface);
+        }
 
         Controls.Add(layout);
         layout.BringToFront();

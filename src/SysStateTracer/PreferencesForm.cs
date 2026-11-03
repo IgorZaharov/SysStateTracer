@@ -27,18 +27,16 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly CheckBox _remote = new() { Text = "Also use the shared remote list (a URL or network file, shared by several PCs)", AutoSize = true };
     private readonly TextBox _remoteLocation = new() { BorderStyle = BorderStyle.FixedSingle, Width = 600 };
     private readonly Label _remoteResult = new() { AutoSize = true, MaximumSize = new Size(860, 0), Text = " " };
-    private readonly ThemedListView _rules = new() { Dock = DockStyle.Fill, MultiSelect = true };
-    private readonly ThemedListView _remoteRules = new() { Dock = DockStyle.Fill, MultiSelect = true, Visible = false };
-    private readonly ThemedButton _localTab = new() { Text = "Local list", Width = 190, Primary = true };
-    private readonly ThemedButton _remoteTab = new() { Text = "Remote list", Width = 190 };
+    private readonly ThemedListView _rules = new() { Dock = DockStyle.Fill, MultiSelect = true, RowPadding = 8 };
+    private readonly ThemedListView _remoteRules = new() { Dock = DockStyle.Fill, MultiSelect = true, Visible = false, RowPadding = 8 };
+    private readonly SelectorBar _ruleLists = new() { Width = 400, Margin = new Padding(0, 0, 0, 4), Items = { "Local list", "Remote list" } };
     private readonly ThemedButton _check = new() { Text = "Check now", Margin = new Padding(8, 0, 0, 0) };
     private readonly ThemedButton _editRule = new() { Text = "Edit…", Width = 80 };
     private readonly ThemedButton _removeRule = new() { Text = "Remove", Width = 90 };
     private Task? _remoteRead;
     private readonly Panel _generalPage = new() { Dock = DockStyle.Fill };
     private readonly Panel _ignorePage = new() { Dock = DockStyle.Fill, Visible = false };
-    private readonly ThemedButton _generalTab = new() { Text = "General", Width = 110 };
-    private readonly ThemedButton _ignoreTab = new() { Text = "Global Ignore list", Width = 150 };
+    private readonly SelectorBar _pageTabs = new() { Dock = DockStyle.Top, Items = { "General", "Global Ignore list" } };
 
     public PreferencesForm(AppPaths paths, AppSettings settings)
         : base("Preferences")
@@ -57,20 +55,19 @@ internal sealed class PreferencesForm : ThemedDialog
         MinimumSize = new Size(940, 460); // issue #5: the Global Ignore list buttons fit on one row
         WindowLayout.Remember(this, "Preferences", paths, settings, keepPosition: false);
 
-        var tabs = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 12), WrapContents = false };
-        _generalTab.Margin = new Padding(0, 0, 8, 0);
-        _ignoreTab.Margin = new Padding(0);
-        tabs.Controls.Add(_generalTab);
-        tabs.Controls.Add(_ignoreTab);
-        _generalTab.Click += (_, _) => ShowPage(general: true);
-        _ignoreTab.Click += (_, _) => ShowPage(general: false);
+        _pageTabs.SelectedIndexChanged += (_, _) => ShowPage(general: _pageTabs.SelectedIndex == 0);
 
-        var pages = new Panel { Dock = DockStyle.Fill };
+        // The window body on the Mica tint, settings and lists on cards (Windows 11 settings).
+        var pages = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 8, 0, 0) };
         pages.Controls.Add(_generalPage);
         pages.Controls.Add(_ignorePage);
         Controls.Add(pages);
-        Controls.Add(tabs);
+        Controls.Add(_pageTabs);
         pages.BringToFront();
+        foreach (var surface in new Control[] { this, pages, _generalPage, _ignorePage })
+        {
+            ThemeManager.SetRole(surface, ThemeRole.Surface);
+        }
 
         BuildGeneralPage();
         BuildIgnorePage();
@@ -110,18 +107,33 @@ internal sealed class PreferencesForm : ThemedDialog
     {
         _generalPage.Visible = general;
         _ignorePage.Visible = !general;
-        _generalTab.Primary = general;
-        _ignoreTab.Primary = !general;
-        _generalTab.Invalidate();
-        _ignoreTab.Invalidate();
+        _pageTabs.SelectedIndex = general ? 0 : 1;
+    }
+
+    /// <summary>A heading, and below it a card holding <paramref name="content"/>, as tall as the content.</summary>
+    private static void AddSection(TableLayoutPanel layout, string title, Control content, bool first = false)
+    {
+        layout.Controls.Add(new Label { Text = title, AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, first ? 0 : 20, 0, 6) });
+        var card = new LayerPanel { Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, Padding = new Padding(16, 12, 16, 12), Margin = new Padding(0) };
+        content.Dock = DockStyle.Top;
+        card.Controls.Add(content);
+        card.Height = content.PreferredSize.Height + card.Padding.Vertical;
+        layout.Controls.Add(card);
+    }
+
+    /// <summary>Controls one below the other, for a card.</summary>
+    private static FlowLayoutPanel Stack(params Control[] controls)
+    {
+        var stack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+        stack.Controls.AddRange(controls);
+        return stack;
     }
 
     private void BuildGeneralPage()
     {
         var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
-        var folderTitle = new Label { Text = "Snapshot folder", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
-        ThemeManager.SetRole(folderTitle, ThemeRole.Heading);
-        layout.Controls.Add(folderTitle);
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        ThemeManager.SetRole(layout, ThemeRole.Surface);
 
         var folderRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
         _folder.Text = _paths.SnapshotDirectory(_settings);
@@ -138,14 +150,10 @@ internal sealed class PreferencesForm : ThemedDialog
         reset.Click += (_, _) => _folder.Text = _paths.DataDirectory;
         _folder.Margin = new Padding(0, 4, 0, 0);
         folderRow.Controls.AddRange([_folder, browse, reset]);
-        layout.Controls.Add(folderRow);
         var folderHint = new Label { Text = "New snapshots are saved here, and the main window lists the snapshots in it.", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
         ThemeManager.SetRole(folderHint, ThemeRole.Secondary);
-        layout.Controls.Add(folderHint);
+        AddSection(layout, "Snapshot folder", Stack(folderRow, folderHint), first: true);
 
-        var themeTitle = new Label { Text = "Theme", AutoSize = true, Margin = new Padding(0, 24, 0, 6) };
-        ThemeManager.SetRole(themeTitle, ThemeRole.Heading);
-        layout.Controls.Add(themeTitle);
         // A picture above each choice (F5); clicking the picture chooses it too.
         var themes = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0), WrapContents = false };
         var previews = new List<ThemePreview>();
@@ -161,7 +169,7 @@ internal sealed class PreferencesForm : ThemedDialog
             themes.Controls.Add(column);
         }
 
-        layout.Controls.Add(themes);
+        AddSection(layout, "Theme", themes);
         (ThemeManager.Preference switch
         {
             ThemePreference.Light => _themeLight,
@@ -199,19 +207,15 @@ internal sealed class PreferencesForm : ThemedDialog
         }
 
         // Lists (grid lines, zebra striping): shown at once in open windows, like the theme.
-        var listsTitle = new Label { Text = "Lists", AutoSize = true, Margin = new Padding(0, 24, 0, 6) };
-        ThemeManager.SetRole(listsTitle, ThemeRole.Heading);
-        layout.Controls.Add(listsTitle);
         var lists = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0), WrapContents = false };
         _gridLines.Checked = ThemeManager.GridLines;
         _zebra.Checked = ThemeManager.ZebraStripes;
         _gridLines.Margin = new Padding(2, 0, 24, 0);
         _zebra.Margin = new Padding(0);
         lists.Controls.AddRange([_gridLines, _zebra]);
-        layout.Controls.Add(lists);
         var listsHint = new Label { Text = "For the snapshot list in the main window and the comparison window.", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
         ThemeManager.SetRole(listsHint, ThemeRole.Secondary);
-        layout.Controls.Add(listsHint);
+        AddSection(layout, "Lists", Stack(lists, listsHint));
         _gridLines.CheckedChanged += (_, _) => ThemeManager.SetListStyle(_gridLines.Checked, _zebra.Checked);
         _zebra.CheckedChanged += (_, _) => ThemeManager.SetListStyle(_gridLines.Checked, _zebra.Checked);
 
@@ -224,6 +228,9 @@ internal sealed class PreferencesForm : ThemedDialog
     /// <summary>"Use zebra striping" (tests).</summary>
     internal CheckBox ZebraBox => _zebra;
 
+    /// <summary>The Local list / Remote list tabs (tests).</summary>
+    internal SelectorBar RuleListTabs => _ruleLists;
+
     /// <summary>The remote list's location (tests).</summary>
     internal TextBox RemoteLocationBox => _remoteLocation;
 
@@ -234,8 +241,7 @@ internal sealed class PreferencesForm : ThemedDialog
     {
         // The local list always applies; the remote one too unless unticked (F22).
         var top = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
-        var title = new Label { Text = "Lists in use", AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
-        ThemeManager.SetRole(title, ThemeRole.Heading);
+        var title = new Label { Text = "Lists in use", AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, 0, 0, 6) };
         top.Controls.Add(title);
         var always = new Label { Text = "The local list below (SysStateTracer.ignore.txt beside the program) is always used.", AutoSize = true, MaximumSize = new Size(860, 0), Margin = new Padding(0, 0, 0, 6) };
         top.Controls.Add(always);
@@ -256,7 +262,7 @@ internal sealed class PreferencesForm : ThemedDialog
             Text = "Rules from both lists apply. When the remote list cannot be read, the local list is used alone. \"Add to Global Ignore list\" in the comparison window adds to the local list.",
             AutoSize = true,
             MaximumSize = new Size(860, 0),
-            Margin = new Padding(0, 6, 0, 16),
+            Margin = new Padding(0, 6, 0, 8),
         };
         ThemeManager.SetRole(fallback, ThemeRole.Secondary);
         top.Controls.Add(fallback);
@@ -265,13 +271,8 @@ internal sealed class PreferencesForm : ThemedDialog
         _remoteLocation.Enabled = _remote.Checked;
 
         // Local / Remote, like browser tabs (issue #7); each list keeps its own scroll position.
-        var listTabs = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 6) };
-        _localTab.Margin = new Padding(0, 0, 8, 0);
-        _remoteTab.Margin = new Padding(0);
-        listTabs.Controls.AddRange([_localTab, _remoteTab]);
-        _localTab.Click += (_, _) => ShowRuleList(remote: false);
-        _remoteTab.Click += (_, _) => ShowRuleList(remote: true);
-        top.Controls.Add(listTabs);
+        _ruleLists.SelectedIndexChanged += (_, _) => ShowRuleList(remote: _ruleLists.SelectedIndex == 1);
+        top.Controls.Add(_ruleLists);
 
         foreach (var list in new[] { _rules, _remoteRules })
         {
@@ -280,7 +281,7 @@ internal sealed class PreferencesForm : ThemedDialog
             list.ItemColor = (item, _) => item.Tag is string ? ThemeManager.Current.Deleted : null;
         }
 
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(0, 8, 0, 0), WrapContents = true };
+        var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(0, 8, 0, 4), WrapContents = true };
         var addRule = new ThemedButton { Text = "Add rule…", Width = 100 };
         var addFolder = new ThemedButton { Text = "Add folder…", Width = 110 };
         var addKey = new ThemedButton { Text = "Add registry key…", Width = 140 };
@@ -315,13 +316,20 @@ internal sealed class PreferencesForm : ThemedDialog
             }
         };
 
-        var rulesHolder = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None };
-        rulesHolder.Controls.Add(_rules);
-        rulesHolder.Controls.Add(_remoteRules);
+        // The two lists on a layer card, as in the main window.
+        var rulesHolder = new LayerPanel { Dock = DockStyle.Fill };
+        var inside = new LayerFill { Dock = DockStyle.Fill };
+        inside.Controls.Add(_rules);
+        inside.Controls.Add(_remoteRules);
+        rulesHolder.Controls.Add(inside);
         _ignorePage.Controls.Add(rulesHolder);
         _ignorePage.Controls.Add(buttons);
         _ignorePage.Controls.Add(top);
         rulesHolder.BringToFront();
+        foreach (var surface in new Control[] { top, remoteRow, buttons })
+        {
+            ThemeManager.SetRole(surface, ThemeRole.Surface);
+        }
         FillRules();
     }
 
@@ -339,7 +347,7 @@ internal sealed class PreferencesForm : ThemedDialog
     }
 
     /// <summary>Shows the rule lines of the local file (comments and blank lines are kept in the file but not listed).</summary>
-    private void FillRules() => _localTab.Text = $"Local list ({Fill(_rules, _localLines, IgnoreRuleSource.Local)} rules)";
+    private void FillRules() => _ruleLists.SetItem(0, $"Local list ({Fill(_rules, _localLines, IgnoreRuleSource.Local)} rules)");
 
     /// <summary>Lists the rule lines of <paramref name="lines"/>; each item's name is its line index. Returns the count.</summary>
     private static int Fill(ThemedListView list, IReadOnlyList<string> lines, IgnoreRuleSource source)
@@ -379,10 +387,7 @@ internal sealed class PreferencesForm : ThemedDialog
     {
         _rules.Visible = !remote;
         _remoteRules.Visible = remote;
-        _localTab.Primary = !remote;
-        _remoteTab.Primary = remote;
-        _localTab.Invalidate();
-        _remoteTab.Invalidate();
+        _ruleLists.SelectedIndex = remote ? 1 : 0;
         _editRule.Enabled = !remote;
         _removeRule.Enabled = !remote;
         if (remote && _remoteRead is null)
@@ -593,7 +598,7 @@ internal sealed class PreferencesForm : ThemedDialog
         _check.Enabled = false;
         _remoteResult.Text = "Reading…";
         _remoteResult.ForeColor = ThemeManager.Current.SecondaryText;
-        _remoteTab.Text = "Remote list (reading…)";
+        _ruleLists.SetItem(1, "Remote list (reading…)");
         RemoteIgnoreFetch? fetch = null;
         try
         {
@@ -635,7 +640,7 @@ internal sealed class PreferencesForm : ThemedDialog
         _check.Enabled = true;
         if (fetch is null)
         {
-            _remoteTab.Text = "Remote list";
+            _ruleLists.SetItem(1, "Remote list");
             return;
         }
 
@@ -646,14 +651,14 @@ internal sealed class PreferencesForm : ThemedDialog
             var invalid = _remoteRules.Items.Cast<ListViewItem>().Count(i => i.Tag is string);
             _remoteResult.Text = $"OK: {count - invalid} rules" + (invalid > 0 ? $", {invalid} lines not valid" : string.Empty) + $". {fetch.Message}";
             _remoteResult.ForeColor = ThemeManager.Current.New;
-            _remoteTab.Text = $"Remote list ({count} rules)";
+            _ruleLists.SetItem(1, $"Remote list ({count} rules)");
         }
         else
         {
             Fill(_remoteRules, [], IgnoreRuleSource.Remote);
             _remoteResult.Text = fetch.Message + " Only the local list would be used.";
             _remoteResult.ForeColor = ThemeManager.Current.Deleted;
-            _remoteTab.Text = "Remote list (not read)";
+            _ruleLists.SetItem(1, "Remote list (not read)");
         }
     }
 

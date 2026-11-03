@@ -30,6 +30,14 @@ internal class ThemedDialog : Form
             Padding = new Padding(0, 16, 0, 0),
             WrapContents = false,
         };
+        // Windows 11 dialog footer: the buttons on the Mica tint, across the whole window, below a thin line.
+        ThemeManager.SetRole(Buttons, ThemeRole.Surface);
+        Buttons.Paint += (_, e) =>
+        {
+            using var pen = new Pen(ThemeManager.Current.Border);
+            e.Graphics.DrawLine(pen, 0, 0, Buttons.Width, 0);
+        };
+        ResizeRedraw = true;
         Controls.Add(Buttons);
     }
 
@@ -58,6 +66,21 @@ internal class ThemedDialog : Form
     {
         ThemeManager.Attach(this);
         base.OnLoad(e);
+    }
+
+    /// <summary>The footer's tint and line in the window's padding, either side of and below the button row.</summary>
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        base.OnPaintBackground(e);
+        if (Buttons.Visible && Buttons.Controls.Count > 0)
+        {
+            var p = ThemeManager.Current;
+            var top = Buttons.Top;
+            using var brush = new SolidBrush(p.Surface);
+            using var pen = new Pen(p.Border);
+            e.Graphics.FillRectangle(brush, 0, top, ClientSize.Width, ClientSize.Height - top);
+            e.Graphics.DrawLine(pen, 0, top, ClientSize.Width, top);
+        }
     }
 
     /// <summary>
