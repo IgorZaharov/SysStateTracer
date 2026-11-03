@@ -43,6 +43,45 @@ internal sealed class ComparisonTreeModel(ComparisonData data) : ITreeGridModel
         return item.IsCategory ? Data.CategoryText(item.Area) : Data.DisplayName(item) + Data.CountText(item);
     }
 
+    /// <summary>
+    /// Drawn: the name, then the counts as badges, "+20 ~1 −1" in the change colours after a category and
+    /// "6" or "14 items" in secondary text after a folder or key. <see cref="Text"/> keeps the words for tests.
+    /// </summary>
+    public (string Name, IReadOnlyList<GridBadge> Badges) Label(long id, int column)
+    {
+        var item = ItemOf(id);
+        if (item.IsCategory)
+        {
+            var counts = Data.Counts(item.Area);
+            var p = ThemeManager.Current;
+            List<GridBadge> badges = [];
+            if (counts.New > 0)
+            {
+                badges.Add(new GridBadge(string.Create(CultureInfo.CurrentCulture, $"+{counts.New:N0}"), p.New));
+            }
+
+            if (counts.Modified > 0)
+            {
+                badges.Add(new GridBadge(string.Create(CultureInfo.CurrentCulture, $"~{counts.Modified:N0}"), p.Modified));
+            }
+
+            if (counts.Deleted > 0)
+            {
+                badges.Add(new GridBadge(string.Create(CultureInfo.CurrentCulture, $"−{counts.Deleted:N0}"), p.Deleted));
+            }
+
+            if (badges.Count == 0)
+            {
+                badges.Add(new GridBadge("no changes"));
+            }
+
+            return (ComparisonData.CategoryName(item.Area), badges);
+        }
+
+        var count = Data.CountText(item).Trim().TrimStart('(').TrimEnd(')');
+        return (Data.DisplayName(item), count.Length > 0 ? [new GridBadge(count)] : []);
+    }
+
     public string? ToolTip(long id, int column) => Data.Path(ItemOf(id));
 
     public GridRowStyle Style(long id)

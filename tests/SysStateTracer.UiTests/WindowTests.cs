@@ -19,11 +19,11 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             using var app = new TestApp();
             ThemeManager.SetPalette(Palette.Light);
             using var form = Ui.Show(new MainForm(app.Paths, app.Settings));
-            Assert.Equal(Palette.Light.Background, form.BackColor);
+            Assert.Equal(Palette.Light.Surface, form.BackColor); // the window body in Mica's tint, the list on the lighter layer
 
             ThemeManager.SetPalette(Palette.Dark);
             Ui.Pump();
-            Assert.Equal(Palette.Dark.Background, form.BackColor);
+            Assert.Equal(Palette.Dark.Surface, form.BackColor);
             Assert.Equal(Palette.Dark.Background, form.List.BackColor);
 
             ThemeManager.SetPalette(Palette.Light);

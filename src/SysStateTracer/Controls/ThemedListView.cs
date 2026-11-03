@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SysStateTracer.Theming;
 
 namespace SysStateTracer.Controls;
@@ -13,6 +14,8 @@ internal sealed class ThemedListView : ListView, IThemed
 {
     private Palette _palette = ThemeManager.Current;
     private int _dropTarget = -1;
+    private int _hover = -1;
+    private ImageList? _rowHeight;
 
     public ThemedListView()
     {
@@ -85,11 +88,78 @@ internal sealed class ThemedListView : ListView, IThemed
 
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == 0x204E /* WM_REFLECT | WM_NOTIFY */ && CustomDrawStage(m.LParam) is { } draw)
+        {
+            base.WndProc(ref m);
+            if (draw.DrawStage == 0x10001 /* CDDS_ITEMPREPAINT */)
+            {
+                m.Result |= 0x10; // CDRF_NOTIFYPOSTPAINT
+            }
+            else if (draw.DrawStage == 0x10002 /* CDDS_ITEMPOSTPAINT */)
+            {
+                RepaintRow(draw);
+            }
+
+            return;
+        }
+
         base.WndProc(ref m);
         if (m.Msg == 0x000F /* WM_PAINT */)
         {
             PaintEmptyArea();
         }
+    }
+
+    /// <summary>The list's own custom-draw notification for a row, or null for any other notification.</summary>
+    private NmCustomDraw? CustomDrawStage(nint lParam)
+    {
+        var header = Marshal.PtrToStructure<NmHdr>(lParam);
+        return header.Code == -12 /* NM_CUSTOMDRAW */ && header.HwndFrom == Handle
+            ? Marshal.PtrToStructure<NmCustomDraw>(lParam)
+            : null;
+    }
+
+    /// <summary>
+    /// The Explorer list theme draws its own translucent selection over the selected row after <see cref="OnDrawItem"/>,
+    /// whatever the custom-draw flags say. The row is drawn again once Windows is done with it, so only the
+    /// Windows 11 rounded selection shows.
+    /// </summary>
+    private void RepaintRow(NmCustomDraw draw)
+    {
+        var index = (int)draw.ItemSpec;
+        if (index < 0 || index >= Items.Count || draw.Hdc == 0)
+        {
+            return;
+        }
+
+        var item = Items[index];
+        if (!item.Selected && index != _dropTarget)
+        {
+            return;
+        }
+
+        using var g = Graphics.FromHdc(draw.Hdc);
+        DrawRow(g, item, index, GetItemRect(index, ItemBoundsPortion.Entire));
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NmHdr
+    {
+        public nint HwndFrom;
+        public nuint IdFrom;
+        public int Code;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NmCustomDraw
+    {
+        public NmHdr Header;
+        public uint DrawStage;
+        public nint Hdc;
+        public Rectangle Rect;
+        public nuint ItemSpec;
+        public uint ItemState;
+        public nint ItemParam;
     }
 
     /// <summary>The list's theme draws column lines below the last row; that area is cleared to the background.</summary>
@@ -132,7 +202,63 @@ internal sealed class ThemedListView : ListView, IThemed
     {
         base.OnHandleCreated(e);
         NativeUi.SetExplorerTheme(Handle, _palette.IsDark);
+        SetRowHeight();
         FillLastColumn();
+    }
+
+    protected override void OnFontChanged(EventArgs e)
+    {
+        base.OnFontChanged(e);
+        SetRowHeight();
+    }
+
+    /// <summary>Windows 11 row height (the text plus 16 px at 96 DPI): a details list takes it from its small image list.</summary>
+    private void SetRowHeight()
+    {
+        if (!IsHandleCreated)
+        {
+            return;
+        }
+
+        var old = _rowHeight;
+        _rowHeight = new ImageList { ImageSize = new Size(1, Math.Min(256, Font.Height + LogicalToDeviceUnits(16))) };
+        SmallImageList = _rowHeight;
+        old?.Dispose();
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        SetHover(GetItemAt(e.X, e.Y)?.Index ?? -1);
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        SetHover(-1);
+    }
+
+    private void SetHover(int index)
+    {
+        if (index == _hover)
+        {
+            return;
+        }
+
+        var old = _hover;
+        _hover = index;
+        InvalidateRow(old);
+        InvalidateRow(index);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _rowHeight?.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 
     protected override void OnResize(EventArgs e)
@@ -201,28 +327,61 @@ internal sealed class ThemedListView : ListView, IThemed
         g.SmoothingMode = mode;
     }
 
-    protected override void OnDrawItem(DrawListViewItemEventArgs e)
+    protected override void OnDrawItem(DrawListViewItemEventArgs e) => DrawRow(e.Graphics, e.Item, e.ItemIndex, e.Bounds);
+
+    private void DrawRow(Graphics g, ListViewItem row, int index, Rectangle bounds)
     {
         var p = _palette;
-        var back = e.ItemIndex == _dropTarget ? p.DropTarget
-            : e.Item.Selected ? (Focused ? p.Selection : p.SelectionInactive)
-            : ThemeManager.ZebraStripes && e.ItemIndex % 2 == 1 ? p.Stripe
-            : p.Background;
+        var back = ThemeManager.ZebraStripes && index % 2 == 1 ? p.Stripe : p.Background;
         using (var brush = new SolidBrush(back))
         {
-            e.Graphics.FillRectangle(brush, e.Bounds);
+            g.FillRectangle(brush, bounds);
         }
 
-        var x = e.Bounds.Left;
+        // Windows 11 list rows: a rounded fill inset from the edges, and an accent bar on selected rows.
+        Color? fill = index == _dropTarget ? p.DropTarget
+            : row.Selected ? (Focused ? p.Selection : p.SelectionInactive)
+            : index == _hover ? p.Hover
+            : null;
+        if (fill is { } f)
+        {
+            var inset = LogicalToDeviceUnits(4);
+            var item = new Rectangle(bounds.Left + inset, bounds.Top + 1, bounds.Width - (2 * inset) - 1, bounds.Height - 3);
+            var smoothing = g.SmoothingMode;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using (var path = ThemedButton.Rounded(item, 4))
+            using (var brush = new SolidBrush(f))
+            {
+                g.FillPath(brush, path);
+            }
+
+            if (row.Selected)
+            {
+                var bar = LogicalToDeviceUnits(16);
+                using var pill = ThemedButton.Rounded(new Rectangle(item.Left, bounds.Top + ((bounds.Height - bar) / 2), LogicalToDeviceUnits(3), bar), 1);
+                using var accent = new SolidBrush(p.Accent);
+                g.FillPath(accent, pill);
+            }
+
+            g.SmoothingMode = smoothing;
+        }
+
+        var x = bounds.Left;
         for (var column = 0; column < Columns.Count; column++)
         {
             var width = Columns[column].Width;
-            if (column < e.Item.SubItems.Count)
+            if (column < row.SubItems.Count)
             {
-                var color = ItemColor?.Invoke(e.Item, column) ?? _palette.Text;
-                var bounds = Rectangle.Inflate(new Rectangle(x, e.Bounds.Top, width, e.Bounds.Height), -6, 0);
+                var color = ItemColor?.Invoke(row, column) ?? _palette.Text;
+                var cell = Rectangle.Inflate(new Rectangle(x, bounds.Top, width, bounds.Height), -6, 0);
+                if (column == 0)
+                {
+                    // Room for the selection bar before the first column's text.
+                    cell = Rectangle.FromLTRB(cell.Left + LogicalToDeviceUnits(8), cell.Top, cell.Right, cell.Bottom);
+                }
+
                 var align = Columns[column].TextAlign == HorizontalAlignment.Right ? TextFormatFlags.Right : TextFormatFlags.Left;
-                TextRenderer.DrawText(e.Graphics, e.Item.SubItems[column].Text, Font, bounds, color, align | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+                TextRenderer.DrawText(g, row.SubItems[column].Text, Font, cell, color, align | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
             }
 
             x += width;
@@ -231,13 +390,13 @@ internal sealed class ThemedListView : ListView, IThemed
         if (ThemeManager.GridLines)
         {
             using var pen = new Pen(p.GridLine);
-            var bottom = e.Bounds.Bottom - 1;
-            e.Graphics.DrawLine(pen, e.Bounds.Left, bottom, e.Bounds.Right, bottom);
-            var line = e.Bounds.Left;
+            var bottom = bounds.Bottom - 1;
+            g.DrawLine(pen, bounds.Left, bottom, bounds.Right, bottom);
+            var line = bounds.Left;
             for (var column = 0; column < Columns.Count - 1; column++)
             {
                 line += Columns[column].Width;
-                e.Graphics.DrawLine(pen, line - 1, e.Bounds.Top, line - 1, bottom);
+                g.DrawLine(pen, line - 1, bounds.Top, line - 1, bottom);
             }
         }
     }

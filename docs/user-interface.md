@@ -11,9 +11,13 @@ taller than 580 pixels (F14, at 100 % display scaling).
 ## Main window (W1)
 
 - **Standard user (F9):** the program starts without a UAC prompt, with the rights of the user who starts it.
-  Without administrator rights a yellow bar says what is missing and offers **Restart as administrator**.
+  Without administrator rights a warning bar says what is missing and offers **Restart as administrator**; its close
+  button hides it until the next start.
 
-- **Sidebar:** + New Snapshot, Delete Snapshot, Preferences, Help/About; Exit at the bottom. Hover shows the name.
+- **Look (Windows 11):** Mica in the title bar on Windows 11; the window body in Mica's colours, the list on a
+  lighter card; rounded selection with a blue bar at the row's left end. The other windows share these colours.
+- **Command bar:** **New snapshot**, **Compare** (the two selected snapshots, or the selected one with one picked from
+  a menu), Rename, Delete, Properties; Preferences and Help at the right end. Close the window to exit.
 - **List:** Name, Created, Computer, Duration, Size, read from the snapshot headers only (100 snapshots list in
   well under half a second). Click a column header to sort by it, again to reverse; an arrow shows which (F16).
   Dates, durations and sizes start with the newest, longest or largest. The default is newest first, and the choice
@@ -49,11 +53,12 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
 - **Top bar:** snapshot 1 · ⇄ Swap · snapshot 2 · Refresh. Each name has **OLDER** or **NEWER** before it, by
   creation time (issue #6). Swap is instant: new ↔ deleted, the captions move with the snapshots; the open folders
   and the selection stay.
-- **Left — Show all / Show only changes**, remembered between sessions. Show only changes lists what changed and the
+- **Left — Show all / Only changes** tabs, remembered between sessions. Only changes lists what changed and the
   folders and keys leading to it; Show all also lists what is the same in both snapshots (read from the snapshots
   only for what is opened, so the comparison stays as fast; replaces 1.0's Show unchanged, issue #4).
 - **Left — the tree:** File system, Registry and Services with their counts, then drives, folders, hives and keys;
-  no files or values. Dotted lines join each row to its parent; + / − boxes open and close. New folders and keys are
+  no files or values, in larger text. Arrows open and close them; the categories show their changes as **+20 ~1 −1**
+  in the change colours, folders and keys their counts in grey. New folders and keys are
   green, modified orange, deleted red; one that is the same itself but holds changes is blue; unchanged ones are in
   normal text. A folder or key shows how many changes it holds; a new or deleted one how many items it held, and
   opens like any other (its contents come from the snapshot that has it; F10, F11).

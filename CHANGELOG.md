@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Windows 11 look
+- **Mica** in the title bar on Windows 11; the window body in Mica's colours, with lists and trees on a lighter card. Text in Segoe UI Variable at the Windows 11 sizes (Segoe UI on Windows 10).
+- Buttons, list rows and selection as in Windows 11: rounded, a soft blue selection with a blue bar at the row's left end, a light fill under the mouse.
+- **Main window:** a command bar replaces the sidebar: New snapshot, **Compare** (new: the two selected snapshots, or the selected one with one picked from a menu), Rename, Delete, Properties; Preferences and Help at the right end. Exit is gone: close the window. The administrator warning is a Windows 11 warning bar with a close button.
+- **Comparison window:** **Show all / Only changes** tabs; the tree opens with arrows instead of dotted lines and + / − boxes, in larger text, with the changes of File system, Registry and Services as **+20 ~1 −1** in their colours; the selected folder as a path bar (C:\ › Program Files › Contoso); OLDER / NEWER as small tags.
+
 ## [1.2.1]
 
 ### Fixed

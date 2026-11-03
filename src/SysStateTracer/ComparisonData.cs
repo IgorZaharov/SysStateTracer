@@ -490,15 +490,18 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
         _ => "Services",
     };
 
+    /// <summary>New, modified and deleted items of one area.</summary>
+    public DiffCounts Counts(DiffArea area) => area switch
+    {
+        DiffArea.FileSystem => Diff.FileSystemCounts,
+        DiffArea.Registry => Diff.RegistryCounts,
+        _ => Diff.ServicesCounts,
+    };
+
     /// <summary>"File system  (3 new, 1 modified, 0 deleted)".</summary>
     public string CategoryText(DiffArea area)
     {
-        var counts = area switch
-        {
-            DiffArea.FileSystem => Diff.FileSystemCounts,
-            DiffArea.Registry => Diff.RegistryCounts,
-            _ => Diff.ServicesCounts,
-        };
+        var counts = Counts(area);
         var name = CategoryName(area);
         return counts.Total == 0
             ? $"{name}  (no changes)"

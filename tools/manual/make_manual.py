@@ -329,7 +329,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(p("2.1&nbsp;&nbsp;The main window", "h2"))
     story += screens.figure("w1-main-light", "The main window: the snapshots in the snapshot folder, newest first.")
     story += bullets([
-        "The sidebar: <b>+</b> New Snapshot, <b>Delete</b>, <b>Preferences</b>, <b>Help</b>; Exit at the bottom. Hover over an icon to see its name.",
+        "The command bar: <b>New snapshot</b>, <b>Compare</b>, <b>Rename</b>, <b>Delete</b>, <b>Properties</b>; "
+        "<b>Preferences</b> and <b>Help</b> at the right end. Compare opens the two selected snapshots, or offers the "
+        "others for one selected snapshot.",
         "The list shows each snapshot's name, when it was taken, on which computer, how long it took and its file size. "
         "Click a column header to sort by it, and again to reverse the order; newest first is the default. "
         "Snapshots copied into the folder appear at once. Every window opens at the size and place it was last closed.",
@@ -373,10 +375,10 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(Spacer(1, 6))
     story += bullets([
         "<b>Left</b>: File system, Registry and Services, with how much changed in each, then drives, folders, hives "
-        "and keys, joined by dotted lines; click <b>+</b> to open one. A folder or key shows how many changes are inside "
+        "and keys; click the arrow before one to open it. A folder or key shows how many changes are inside "
         "it; a new or deleted folder shows how many items it held. The legend at the bottom explains the colours.",
         "<b>Show all</b> also lists folders, files, keys and values that are the same in both snapshots, in normal "
-        "text; <b>Show only changes</b> lists only what changed and the folders and keys leading to it. The choice is "
+        "text; <b>Only changes</b> lists only what changed and the folders and keys leading to it. The choice is "
         "remembered.",
         "<b>Right</b>: the files of the selected folder, the values of the selected key, or every service. Click a column "
         "heading to sort by it, again to turn the order round. Values that differ are highlighted. <b>Include "

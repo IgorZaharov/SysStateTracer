@@ -104,7 +104,11 @@ internal static class ThemeManager
 
         Changed += OnChanged;
         form.FormClosed += (_, _) => Changed -= OnChanged;
-        form.HandleCreated += (_, _) => NativeUi.SetDarkTitleBar(form.Handle, Current.IsDark);
+        form.HandleCreated += (_, _) =>
+        {
+            NativeUi.SetDarkTitleBar(form.Handle, Current.IsDark);
+            NativeUi.SetMica(form.Handle);
+        };
         Apply(form);
     }
 
@@ -288,26 +292,55 @@ internal static class ThemeManager
     }
 }
 
-/// <summary>Fonts of plan §11.4, created once.</summary>
+/// <summary>
+/// Fonts of plan §11.4, created once: the Windows 11 type ramp (body 14 px, title 20 px) in Segoe UI Variable,
+/// or Segoe UI where it is missing (Windows 10). "Bold" is semibold, as Windows 11 uses it.
+/// </summary>
 internal static class UiFonts
 {
-    public static Font Normal { get; } = new("Segoe UI", 9F);
+    private static readonly HashSet<string> Installed = InstalledFamilies();
 
-    public static Font Bold { get; } = new("Segoe UI", 9F, FontStyle.Bold);
+    public static Font Normal { get; } = new(Pick("Segoe UI Variable Text", "Segoe UI"), 10.5F);
 
-    public static Font Heading { get; } = new("Segoe UI Semibold", 11F);
+    public static Font Bold { get; } = new(Pick("Segoe UI Variable Text Semibold", "Segoe UI Semibold"), 10.5F);
 
-    public static Font Strikeout { get; } = new("Segoe UI", 9F, FontStyle.Strikeout);
+    public static Font Heading { get; } = new(Pick("Segoe UI Variable Display Semib", "Segoe UI Semibold"), 15F);
+
+    public static Font Strikeout { get; } = new(Normal.FontFamily, 10.5F, FontStyle.Strikeout);
+
+    /// <summary>The comparison window's folder and key tree (15 px), a step larger than body text.</summary>
+    public static Font Tree { get; } = new(Normal.FontFamily, 11.25F);
+
+    /// <summary>Captions: secondary text, counts, the status bar (12 px).</summary>
+    public static Font Caption { get; } = new(Pick("Segoe UI Variable Small", "Segoe UI"), 9F);
+
+    /// <summary>Semibold caption: OLDER / NEWER tags, change counts.</summary>
+    public static Font CaptionBold { get; } = new(Pick("Segoe UI Variable Small Semibol", "Segoe UI Semibold"), 9F);
 
     /// <summary>Segoe Fluent Icons on Windows 11, Segoe MDL2 Assets on Windows 10: same code points.</summary>
-    public static string GlyphFamily { get; } = PickGlyphFamily();
+    public static string GlyphFamily { get; } = Pick("Segoe Fluent Icons", "Segoe MDL2 Assets");
 
     public static Font Glyph(float size) => new(GlyphFamily, size);
 
-    private static string PickGlyphFamily()
+    /// <summary>The same face as <paramref name="font"/> in semibold (or bold where there is no semibold).</summary>
+    public static Font SemiboldOf(Font font)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+        var family = font.FontFamily.Name switch
+        {
+            "Segoe UI Variable Text" => "Segoe UI Variable Text Semibold",
+            "Segoe UI" => "Segoe UI Semibold",
+            _ => null,
+        };
+        return family is not null && Installed.Contains(family) ? new Font(family, font.Size) : new Font(font, FontStyle.Bold);
+    }
+
+    private static string Pick(string preferred, string fallback) => Installed.Contains(preferred) ? preferred : fallback;
+
+    private static HashSet<string> InstalledFamilies()
     {
         using var installed = new System.Drawing.Text.InstalledFontCollection();
-        return installed.Families.Any(f => f.Name == "Segoe Fluent Icons") ? "Segoe Fluent Icons" : "Segoe MDL2 Assets";
+        return installed.Families.Select(f => f.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }
 

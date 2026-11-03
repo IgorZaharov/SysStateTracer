@@ -28,27 +28,26 @@ internal sealed class ComparisonForm : Form
     private readonly AppSettings _settings;
     private readonly string _leftPath;
     private readonly string _rightPath;
-    private readonly VirtualTreeGrid _tree = new() { Dock = DockStyle.Fill, ShowHeader = false, TreeLines = true, UseListStyle = false, StretchLastColumn = true };
+    private readonly VirtualTreeGrid _tree = new() { Dock = DockStyle.Fill, ShowHeader = false, UseListStyle = false, StretchLastColumn = true, Font = UiFonts.Tree, RowPadding = 7 };
     private readonly VirtualTreeGrid _list = new() { Dock = DockStyle.Fill, Flat = true, StretchLastColumn = true };
     private readonly DetailsPanel _details = new() { Dock = DockStyle.Fill };
     private readonly ColorLegend _legend = new() { Dock = DockStyle.Right };
     private readonly ThemedSplitContainer _split = new() { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, FixedPanel = FixedPanel.Panel1 };
     private readonly ThemedSplitContainer _rightSplit = new() { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, FixedPanel = FixedPanel.Panel2 };
-    private readonly RadioButton _showAll = new() { Text = "Show all", AutoSize = true };
-    private readonly RadioButton _showChanges = new() { Text = "Show only changes", AutoSize = true };
+    private readonly SelectorBar _modes = new() { Dock = DockStyle.Top };
     private readonly CheckBox _includeSubfolders = new() { Text = "Include subfolders", AutoSize = true, Anchor = AnchorStyles.Right };
-    private readonly Label _listTitle = new() { AutoSize = true, Font = UiFonts.Bold, Anchor = AnchorStyles.Left };
-    private readonly Label _listSummary = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-    private readonly Label _leftAge = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, 0, 6, 0) };
+    private readonly PathBar _listTitle = new() { Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom };
+    private readonly Label _listSummary = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Font = UiFonts.Caption };
+    private readonly TagLabel _leftAge = new() { Margin = new Padding(0, 2, 8, 0) };
     private readonly Label _leftName = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0) };
-    private readonly Label _leftDate = new() { AutoSize = true };
-    private readonly Label _rightAge = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0, 0, 6, 0) };
+    private readonly Label _leftDate = new() { AutoSize = true, Font = UiFonts.Caption, Margin = new Padding(0, 2, 0, 0) };
+    private readonly TagLabel _rightAge = new() { Margin = new Padding(0, 2, 8, 0) };
     private readonly Label _rightName = new() { AutoSize = true, Font = UiFonts.Bold, Margin = new Padding(0) };
-    private readonly Label _rightDate = new() { AutoSize = true };
+    private readonly Label _rightDate = new() { AutoSize = true, Font = UiFonts.Caption, Margin = new Padding(0, 2, 0, 0) };
     private readonly ThemedButton _swap = new() { Text = "Swap", Glyph = Glyphs.Swap, Width = 96 };
     private readonly ThemedButton _refresh = new() { Text = "Refresh", Glyph = Glyphs.Refresh, Width = 104, Anchor = AnchorStyles.Top | AnchorStyles.Right };
     private readonly ThemedProgressBar _progress = new() { Dock = DockStyle.Top, Height = 4 };
-    private readonly Label _status = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly Label _status = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Font = UiFonts.Caption };
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _jump = new("Jump to");
     private readonly ToolStripMenuItem _mark = new("Mark as non-important");
@@ -122,18 +121,8 @@ internal sealed class ComparisonForm : Form
     /// <summary>Show all (true) or Show only changes (false); remembered in the settings.</summary>
     internal bool ShowAll
     {
-        get => _showAll.Checked;
-        set
-        {
-            if (value)
-            {
-                _showAll.Checked = true;
-            }
-            else
-            {
-                _showChanges.Checked = true;
-            }
-        }
+        get => _modes.SelectedIndex == 0;
+        set => _modes.SelectedIndex = value ? 0 : 1;
     }
 
     /// <summary>Include subfolders; remembered in the settings.</summary>
@@ -190,7 +179,7 @@ internal sealed class ComparisonForm : Form
     }
 
     /// <summary>"OLDER  name": the caption and the snapshot name on one line (issue #6).</summary>
-    private static FlowLayoutPanel NameRow(Label age, Label name)
+    private static FlowLayoutPanel NameRow(Control age, Label name)
     {
         var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
         ThemeManager.SetRole(row, ThemeRole.Surface);
@@ -224,7 +213,7 @@ internal sealed class ComparisonForm : Form
     private void BuildLayout()
     {
         // Top bar: snapshot 1 · ⇄ · snapshot 2 · Refresh.
-        var bar = new Panel { Dock = DockStyle.Top, Height = 64, Padding = new Padding(16, 10, 16, 10) };
+        var bar = new Panel { Dock = DockStyle.Top, Height = 68, Padding = new Padding(20, 10, 16, 10) };
         ThemeManager.SetRole(bar, ThemeRole.Surface);
         var left = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Location = new Point(16, 10) };
         ThemeManager.SetRole(left, ThemeRole.Surface);
@@ -236,8 +225,6 @@ internal sealed class ComparisonForm : Form
         right.Controls.Add(_rightDate);
         ThemeManager.SetRole(_leftDate, ThemeRole.Secondary);
         ThemeManager.SetRole(_rightDate, ThemeRole.Secondary);
-        ThemeManager.SetRole(_leftAge, ThemeRole.Secondary);
-        ThemeManager.SetRole(_rightAge, ThemeRole.Secondary);
         bar.Controls.Add(left);
         bar.Controls.Add(_swap);
         bar.Controls.Add(right);
@@ -255,29 +242,17 @@ internal sealed class ComparisonForm : Form
         _refresh.Click += async (_, _) => await LoadAsync(reloadFiles: true);
 
         var progressHolder = new Panel { Dock = DockStyle.Top, Height = 4 };
+        ThemeManager.SetRole(progressHolder, ThemeRole.Surface);
         progressHolder.Controls.Add(_progress);
 
-        // Left: Show all / Show only changes, then the tree.
-        var modes = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(10, 8, 10, 6) };
-        _showAll.Margin = new Padding(0, 0, 20, 0);
-        _showChanges.Margin = new Padding(0);
-        modes.Controls.Add(_showAll);
-        modes.Controls.Add(_showChanges);
-        (_settings.ComparisonShowAll ? _showAll : _showChanges).Checked = true;
-        _showAll.CheckedChanged += (_, _) =>
-        {
-            if (_showAll.Checked)
-            {
-                OnShowAllChanged();
-            }
-        };
-        _showChanges.CheckedChanged += (_, _) =>
-        {
-            if (_showChanges.Checked)
-            {
-                OnShowAllChanged();
-            }
-        };
+        // Left: Show all / Only changes as a Windows 11 selector bar, then the tree.
+        var modes = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8, 4, 8, 0) };
+        _modes.Items.Add("Show all");
+        _modes.Items.Add("Only changes");
+        _modes.AccessibleName = "Which items the tree shows";
+        _modes.SelectedIndex = _settings.ComparisonShowAll ? 0 : 1;
+        _modes.SelectedIndexChanged += (_, _) => OnShowAllChanged();
+        modes.Controls.Add(_modes);
 
         _tree.Columns.Add(new GridColumn("Name", 300));
         _tree.SelectionChanged += (_, _) => OnTreeSelectionChanged();
@@ -292,14 +267,17 @@ internal sealed class ComparisonForm : Form
         _split.Panel1.Controls.Add(modes);
 
         // Right: the selected folder and Include subfolders, the list, the details.
-        var listBar = new TableLayoutPanel { Dock = DockStyle.Top, Height = 34, ColumnCount = 3, RowCount = 1, Padding = new Padding(12, 0, 12, 0) };
-        listBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var listBar = new TableLayoutPanel { Dock = DockStyle.Top, Height = 44, ColumnCount = 3, RowCount = 1, Padding = new Padding(16, 0, 12, 0) };
+        listBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
         listBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         listBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         listBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _listTitle.Margin = new Padding(0, 0, 12, 0);
-        _listTitle.MaximumSize = new Size(520, 0);
-        _listTitle.AutoEllipsis = true;
+        _listTitle.Dock = DockStyle.Fill;
+        _listTitle.TextChanged += (_, _) =>
+            listBar.ColumnStyles[0].Width = Math.Min(_listTitle.PreferredPathWidth + _listTitle.Margin.Horizontal + 4, Math.Max(160, (listBar.Width * 3) / 5));
+        listBar.Resize += (_, _) =>
+            listBar.ColumnStyles[0].Width = Math.Min(_listTitle.PreferredPathWidth + _listTitle.Margin.Horizontal + 4, Math.Max(160, (listBar.Width * 3) / 5));
         ThemeManager.SetRole(_listSummary, ThemeRole.Secondary);
         listBar.Controls.Add(_listTitle, 0, 0);
         listBar.Controls.Add(_listSummary, 1, 0);
@@ -338,16 +316,24 @@ internal sealed class ComparisonForm : Form
         _split.Panel2.Controls.Add(_rightSplit);
 
         // Status bar: the selected item's path and the list's state, then the colour legend.
-        var footer = new Panel { Dock = DockStyle.Bottom, Height = 28, Padding = new Padding(16, 0, 16, 2) };
+        var footer = new Panel { Dock = DockStyle.Bottom, Height = 36, Padding = new Padding(24, 8, 20, 8) };
+        ThemeManager.SetRole(footer, ThemeRole.Surface);
         ThemeManager.SetRole(_status, ThemeRole.Secondary);
         footer.Controls.Add(_status);
         footer.Controls.Add(_legend);
-        footer.Controls.Add(new Separator { Dock = DockStyle.Top });
 
-        Controls.Add(_split);
+        // Both panes on one layer card, inset from the window edges (Windows 11 layout).
+        var holder = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 0, 16, 0) };
+        ThemeManager.SetRole(holder, ThemeRole.Surface);
+        var card = new LayerPanel { Dock = DockStyle.Fill };
+        card.Controls.Add(_split);
+        holder.Controls.Add(card);
+
+        Controls.Add(holder);
         Controls.Add(footer);
         Controls.Add(progressHolder);
         Controls.Add(bar);
+        ThemeManager.SetRole(this, ThemeRole.Surface);
     }
 
     private void BuildMenu()
@@ -536,7 +522,7 @@ internal sealed class ComparisonForm : Form
         _rightName.Text = _diff.Right.Meta.Name;
         _rightDate.Text = Stamp(_diff.Right.Meta);
         Text = $"Comparison: {_diff.Left.Meta.Name} ⇄ {_diff.Right.Meta.Name}";
-        _data = new ComparisonData(_diff, _marks, _currentSid, _showAll.Checked);
+        _data = new ComparisonData(_diff, _marks, _currentSid, ShowAll);
         var model = new ComparisonTreeModel(_data);
         _building = true;
         try
@@ -570,7 +556,7 @@ internal sealed class ComparisonForm : Form
 
     private void OnShowAllChanged()
     {
-        _settings.ComparisonShowAll = _showAll.Checked;
+        _settings.ComparisonShowAll = ShowAll;
         SaveSettings();
         if (_diff is null || _loading)
         {

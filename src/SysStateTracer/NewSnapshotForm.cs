@@ -180,6 +180,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
     private void BuildLayout()
     {
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8 };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // the window's width, never a long label's
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // name
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // folder / problem
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // scope heading

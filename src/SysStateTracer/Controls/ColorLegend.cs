@@ -13,7 +13,7 @@ internal sealed class ColorLegend : Control, IThemed
     public ColorLegend()
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Font = UiFonts.Normal;
+        Font = UiFonts.Caption;
         TabStop = false;
         Width = PreferredWidth();
     }
@@ -31,7 +31,7 @@ internal sealed class ColorLegend : Control, IThemed
     public void ApplyTheme(Palette palette)
     {
         _palette = palette;
-        BackColor = palette.Background;
+        BackColor = palette.Surface;
         Invalidate();
     }
 
@@ -50,7 +50,7 @@ internal sealed class ColorLegend : Control, IThemed
     {
         var g = e.Graphics;
         var p = _palette;
-        g.Clear(p.Background);
+        g.Clear(p.Surface);
         const TextFormatFlags flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         var x = 2;
         var height = Height;
@@ -72,7 +72,7 @@ internal sealed class ColorLegend : Control, IThemed
 
             if (entry.Sign.Length > 0)
             {
-                TextRenderer.DrawText(g, entry.Sign, UiFonts.Bold, new Rectangle(x, 0, 12, height), color, flags);
+                TextRenderer.DrawText(g, entry.Sign, UiFonts.CaptionBold, new Rectangle(x, 0, 12, height), color, flags);
                 x += 12;
             }
 

@@ -10,8 +10,9 @@ using SysStateTracer.Theming;
 namespace SysStateTracer;
 
 /// <summary>
-/// W1 Main window (plan §10.1, Steps 43–45): sidebar, snapshot list read from file headers, sort order,
-/// folder watcher, delete / rename / properties, keyboard shortcuts, and drag-and-drop compare.
+/// W1 Main window (plan §10.1, Steps 43–45): command bar, snapshot list read from file headers, sort order,
+/// folder watcher, compare / delete / rename / properties, keyboard shortcuts, and drag-and-drop compare.
+/// Windows 11 layout: the commands on the window's Mica tint, the list on a layer card.
 /// </summary>
 internal sealed class MainForm : Form
 {
@@ -20,22 +21,24 @@ internal sealed class MainForm : Form
     private readonly AppPaths _paths;
     private readonly AppSettings _settings;
     private readonly ThemedListView _list = new() { Dock = DockStyle.Fill, MultiSelect = true, AllowDrop = true, ShowItemToolTips = true };
-    private readonly Panel _warning = new() { Dock = DockStyle.Top, Height = 40, Padding = new Padding(16, 5, 16, 5), Visible = false };
-    private readonly Label _warningText = new()
+    private readonly Panel _warning = new() { Dock = DockStyle.Top, Height = 60, Padding = new Padding(20, 0, 20, 12), Visible = false };
+    private readonly InfoBar _warningBar = new()
     {
         Dock = DockStyle.Fill,
-        AutoSize = false,
-        TextAlign = ContentAlignment.MiddleLeft,
-        Text = "Not running as administrator: snapshots miss the folders and registry keys that need administrator rights, and whole drives are read more slowly.",
+        Title = "Not running as administrator",
+        Message = "Snapshots miss the folders and registry keys that need administrator rights, and whole drives are read more slowly.",
     };
-    private readonly ThemedButton _elevate = new() { Text = "Restart as administrator", Glyph = Glyphs.Shield, Dock = DockStyle.Right, Width = 200 };
-    private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+    private readonly ThemedButton _elevate = new() { Text = "Restart as administrator", Glyph = Glyphs.Shield };
+    private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, Font = UiFonts.Caption };
+    private readonly Label _hint = new() { AutoSize = true, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleRight, Font = UiFonts.Caption, Text = "Drag one snapshot onto another to compare them" };
     private readonly Label _empty = new() { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Visible = false };
-    private readonly SideBarButton _new = new(Glyphs.Add, "New Snapshot (Ctrl+N)");
-    private readonly SideBarButton _delete = new(Glyphs.Delete, "Delete Snapshot (Del)");
-    private readonly SideBarButton _preferences = new(Glyphs.Settings, "Preferences");
-    private readonly SideBarButton _help = new(Glyphs.Help, "Help / About (F1)");
-    private readonly SideBarButton _exit = new(Glyphs.Exit, "Exit");
+    private readonly ThemedButton _new = new() { Text = "New snapshot", Glyph = Glyphs.Add, Primary = true };
+    private readonly ThemedButton _compare = new() { Text = "Compare", Glyph = Glyphs.Compare };
+    private readonly ThemedButton _renameButton = new() { Text = "Rename", Glyph = Glyphs.Rename, Subtle = true };
+    private readonly ThemedButton _delete = new() { Text = "Delete", Glyph = Glyphs.Delete, Subtle = true };
+    private readonly ThemedButton _propertiesButton = new() { Text = "Properties", Glyph = Glyphs.Info, Subtle = true };
+    private readonly ThemedButton _preferences = new() { Text = string.Empty, Glyph = Glyphs.Settings, Subtle = true, AccessibleName = "Preferences" };
+    private readonly ThemedButton _help = new() { Text = string.Empty, Glyph = Glyphs.Help, Subtle = true, AccessibleName = "Help / About" };
     private readonly ThemedToolTip _toolTip = new();
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _compareWith = new("Compare with");
@@ -70,8 +73,10 @@ internal sealed class MainForm : Form
 
         BuildLayout();
         BuildMenu();
-        _warning.Controls.Add(_warningText);
-        _warning.Controls.Add(_elevate);
+        _warning.Controls.Add(_warningBar);
+        ThemeManager.SetRole(_warning, ThemeRole.Surface);
+        _warningBar.AddAction(_elevate);
+        _warningBar.Closed += (_, _) => _warning.Visible = false;
         _elevate.Click += (_, _) =>
         {
             if (Elevation.RestartAsAdministrator(this))
@@ -82,23 +87,13 @@ internal sealed class MainForm : Form
         _warning.Visible = !(elevated ?? Core.Interop.ProcessPrivileges.IsElevated);
         ResumeLayout(performLayout: true);
 
+        ThemeManager.SetRole(this, ThemeRole.Surface);
         ThemeManager.Attach(this);
-        ColorWarning();
-        ThemeManager.Changed += OnThemeChanged;
         _reloadTimer.Tick += (_, _) =>
         {
             _reloadTimer.Stop();
             Reload();
         };
-    }
-
-    private void OnThemeChanged(object? sender, EventArgs e) => ThemeManager.Post(this, ColorWarning);
-
-    private void ColorWarning()
-    {
-        var p = ThemeManager.Current;
-        _warningText.ForeColor = p.Modified;
-        _warning.BackColor = Palette.Blend(p.Modified, p.Background, p.IsDark ? 0.85 : 0.9);
     }
 
     /// <summary>Folder the list shows (Preferences, or the program folder).</summary>
@@ -118,7 +113,6 @@ internal sealed class MainForm : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
-        ThemeManager.Changed -= OnThemeChanged;
         _watcher?.Dispose();
         base.OnFormClosed(e);
     }
@@ -220,7 +214,7 @@ internal sealed class MainForm : Form
         }
 
         _empty.Visible = _snapshots.Count == 0 && _unreadable.Count == 0;
-        _empty.Text = $"No snapshots yet in{Environment.NewLine}{SnapshotFolder}{Environment.NewLine}{Environment.NewLine}Click + to take the first one.";
+        _empty.Text = $"No snapshots yet in{Environment.NewLine}{SnapshotFolder}{Environment.NewLine}{Environment.NewLine}Click New snapshot to take the first one.";
         UpdateStatus();
         UpdateCommands();
     }
@@ -290,36 +284,50 @@ internal sealed class MainForm : Form
 
     private void BuildLayout()
     {
-        // Sidebar: actions top to bottom, Exit pinned at the bottom (plan §10.1).
-        var sidebar = new Panel { Dock = DockStyle.Left, Width = 48, Padding = new Padding(0, 4, 0, 4) };
-        ThemeManager.SetRole(sidebar, ThemeRole.Surface);
-        var top = new FlowLayoutPanel { Dock = DockStyle.Top, FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
-        ThemeManager.SetRole(top, ThemeRole.Surface);
-        foreach (var button in new[] { _new, _delete, _preferences, _help })
+        // Command bar on the Mica tint: title, the snapshot commands, then Preferences and Help at the right end
+        // (Windows 11 keeps a left pane for moving between pages; this window has one page, so its commands go on top).
+        var header = new Panel { Dock = DockStyle.Top, Height = 56, Padding = new Padding(20, 12, 16, 12) };
+        ThemeManager.SetRole(header, ThemeRole.Surface);
+        var title = new Label { Text = "Snapshots", AutoSize = true, Dock = DockStyle.Left, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(0, 0, 16, 0) };
+        ThemeManager.SetRole(title, ThemeRole.Heading);
+        var commands = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoSize = false, Padding = new Padding(0), Margin = new Padding(0) };
+        ThemeManager.SetRole(commands, ThemeRole.Surface);
+        var tools = new FlowLayoutPanel { Dock = DockStyle.Right, WrapContents = false, AutoSize = true, Padding = new Padding(0), Margin = new Padding(0) };
+        ThemeManager.SetRole(tools, ThemeRole.Surface);
+        foreach (var button in new[] { _new, _compare, _renameButton, _delete, _propertiesButton })
         {
-            top.Controls.Add(button);
-            _toolTip.SetToolTip(button, button.Text);
+            button.MinimumSize = new Size(32, 32);
+            button.Width = button.PreferredButtonWidth();
+            button.Margin = new Padding(0, 0, 8, 0);
+            commands.Controls.Add(button);
         }
 
-        _exit.Dock = DockStyle.Bottom;
-        _toolTip.SetToolTip(_exit, _exit.Text);
-        var exitHolder = new Panel { Dock = DockStyle.Bottom, Height = 44, Padding = new Padding(4, 0, 4, 4) };
-        ThemeManager.SetRole(exitHolder, ThemeRole.Surface);
-        exitHolder.Controls.Add(_exit);
-        sidebar.Controls.Add(top);
-        sidebar.Controls.Add(exitHolder);
+        foreach (var button in new[] { _preferences, _help })
+        {
+            button.MinimumSize = new Size(32, 32);
+            button.Size = new Size(32, 32);
+            button.Margin = new Padding(4, 0, 0, 0);
+            tools.Controls.Add(button);
+        }
+
+        _toolTip.SetToolTip(_new, "New snapshot (Ctrl+N)");
+        _toolTip.SetToolTip(_compare, "Compare the two selected snapshots, or the selected one with another");
+        _toolTip.SetToolTip(_renameButton, "Rename (F2)");
+        _toolTip.SetToolTip(_delete, "Delete (Del)");
+        _toolTip.SetToolTip(_propertiesButton, "Properties (Enter)");
+        _toolTip.SetToolTip(_preferences, "Preferences");
+        _toolTip.SetToolTip(_help, "Help / About (F1)");
+        header.Controls.Add(commands);
+        header.Controls.Add(tools);
+        header.Controls.Add(title);
 
         _new.Click += (_, _) => NewSnapshot();
+        _compare.Click += (_, _) => CompareSelected();
+        _renameButton.Click += (_, _) => RenameSelected();
         _delete.Click += (_, _) => DeleteSelected();
+        _propertiesButton.Click += (_, _) => ShowProperties();
         _preferences.Click += (_, _) => ShowPreferences();
         _help.Click += (_, _) => ShowAbout();
-        _exit.Click += (_, _) => Close();
-
-        // Header: title. The list is sorted by clicking its column headers (F16).
-        var header = new Panel { Dock = DockStyle.Top, Height = 52, Padding = new Padding(16, 12, 16, 8) };
-        var title = new Label { Text = "Snapshots", AutoSize = true, Location = new Point(16, 14) };
-        ThemeManager.SetRole(title, ThemeRole.Heading);
-        header.Controls.Add(title);
 
         // List.
         _list.Columns.Add("Name", 300);
@@ -343,24 +351,55 @@ internal sealed class MainForm : Form
         _list.DragDrop += OnDragDrop;
         _list.DragLeave += (_, _) => _list.DropTargetIndex = -1;
 
-        var listHolder = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 0, 16, 0) };
-        listHolder.Controls.Add(_list);
-        listHolder.Controls.Add(_empty);
+        // The list on a layer card, inset from the window edges.
+        var listHolder = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 0) };
+        ThemeManager.SetRole(listHolder, ThemeRole.Surface);
+        var card = new LayerPanel { Dock = DockStyle.Fill };
+        var inside = new LayerFill { Dock = DockStyle.Fill };
+        inside.Controls.Add(_list);
+        inside.Controls.Add(_empty);
         _empty.Dock = DockStyle.Fill;
         _empty.BringToFront();
         ThemeManager.SetRole(_empty, ThemeRole.Secondary);
+        card.Controls.Add(inside);
+        listHolder.Controls.Add(card);
 
-        var footer = new Panel { Dock = DockStyle.Bottom, Height = 30, Padding = new Padding(16, 0, 16, 4) };
+        var footer = new Panel { Dock = DockStyle.Bottom, Height = 36, Padding = new Padding(24, 8, 24, 8) };
+        ThemeManager.SetRole(footer, ThemeRole.Surface);
         ThemeManager.SetRole(_status, ThemeRole.Secondary);
+        ThemeManager.SetRole(_hint, ThemeRole.Secondary);
         footer.Controls.Add(_status);
-        var line = new Separator { Dock = DockStyle.Top };
-        footer.Controls.Add(line);
+        footer.Controls.Add(_hint);
 
         Controls.Add(listHolder);
         Controls.Add(footer);
         Controls.Add(_warning);
         Controls.Add(header);
-        Controls.Add(sidebar);
+    }
+
+    /// <summary>Compare: the two selected snapshots, or the selected one with one picked from a menu.</summary>
+    private void CompareSelected()
+    {
+        var selected = SelectedSnapshots();
+        if (selected.Count == 2)
+        {
+            Compare(selected[0], selected[1]);
+            return;
+        }
+
+        if (selected.Count == 1)
+        {
+            FillCompareWith();
+            var menu = new ContextMenuStrip();
+            foreach (var item in _compareWith.DropDownItems.Cast<ToolStripItem>().ToList())
+            {
+                menu.Items.Add(item);
+            }
+
+            ThemeManager.ApplyMenu(menu, ThemeManager.Current);
+            menu.Closed += (_, _) => BeginInvoke(menu.Dispose);
+            menu.Show(_compare, new Point(0, _compare.Height));
+        }
     }
 
     private void BuildMenu()
@@ -429,7 +468,12 @@ internal sealed class MainForm : Form
 
     private void UpdateCommands()
     {
-        _delete.Enabled = _list.SelectedItems.Count > 0;
+        var count = _list.SelectedItems.Count;
+        var snapshots = SelectedSnapshots().Count;
+        _delete.Enabled = count > 0;
+        _renameButton.Enabled = snapshots == 1 && count == 1;
+        _propertiesButton.Enabled = count == 1;
+        _compare.Enabled = snapshots == count && (snapshots == 2 || (snapshots == 1 && _snapshots.Count > 1));
     }
 
     private void UpdateStatus()

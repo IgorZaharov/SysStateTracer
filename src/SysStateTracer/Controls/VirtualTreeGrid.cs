@@ -9,6 +9,9 @@ namespace SysStateTracer.Controls;
 /// </summary>
 internal readonly record struct GridRowStyle(Color? TextColor, bool Strikeout, bool Dim, bool Bold, string? Icon = null, Color? IconColor = null);
 
+/// <summary>A short caption after a row's name in the tree column: a count, or "+20" in a change colour (null = secondary text).</summary>
+internal readonly record struct GridBadge(string Text, Color? Color = null);
+
 /// <summary>What <see cref="VirtualTreeGrid"/> shows: a tree of row ids with text per column, read on demand.</summary>
 internal interface ITreeGridModel
 {
@@ -27,6 +30,12 @@ internal interface ITreeGridModel
 
     /// <summary>True for a cell whose value differs between the snapshots: drawn on a highlight.</summary>
     bool IsChangedCell(long id, int column) => false;
+
+    /// <summary>
+    /// What the tree column draws: the name and the badges after it. By default the whole <see cref="Text"/>
+    /// and no badges; <see cref="Text"/> stays the row's full text for searching and tests.
+    /// </summary>
+    (string Name, IReadOnlyList<GridBadge> Badges) Label(long id, int column) => (Text(id, column), []);
 }
 
 /// <summary>A grid column: header, width, alignment.</summary>
@@ -53,7 +62,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     private const int WmHScroll = 0x0114;
     private const int SbHorz = 0;
     private const int SbVert = 1;
-    private const int Indent = 18;
+    private const int Indent = 20;
     private const int IconWidth = 16;
 
     private readonly List<long> _rows = [];
@@ -62,7 +71,10 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
     private readonly HashSet<long> _selected = [];
     private readonly ThemedToolTip _toolTip = new() { ShowAlways = false };
     private readonly Font _glyphFont = UiFonts.Glyph(8F);
-    private readonly Font _iconFont = UiFonts.Glyph(10F);
+    private readonly Font _iconFont = UiFonts.Glyph(11F);
+    private Font? _boldFont;
+    private Font? _strikeoutFont;
+    private int _hover = -1;
     private Palette _palette = ThemeManager.Current;
     private ITreeGridModel? _model;
     private int _top;
@@ -83,7 +95,6 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable | ControlStyles.ResizeRedraw, true);
         TabStop = true;
         Font = UiFonts.Normal;
-        RowHeight = 22;
     }
 
     /// <summary>Raised when the selection changes.</summary>
@@ -118,7 +129,15 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
     public List<GridColumn> Columns { get; } = [];
 
-    public int RowHeight { get; set; }
+    /// <summary>Space above and below the text of a row, in pixels at 96 DPI (the row is the font's height plus this).</summary>
+    public int RowPadding { get; set; } = 12;
+
+    /// <summary>Follows the font and the display scaling.</summary>
+    public int RowHeight => Font.Height + LogicalToDeviceUnits(RowPadding);
+
+    private Font BoldFont => _boldFont ??= UiFonts.SemiboldOf(Font);
+
+    private Font StrikeoutFont => _strikeoutFont ??= new Font(Font, FontStyle.Strikeout);
 
     /// <summary>The column with the tree (indent, expander, icon); 0 unless a narrow column comes before it.</summary>
     public int TreeColumn { get; set; }
@@ -454,14 +473,48 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         }
 
         Cursor = e.Y < HeaderHeight && ColumnEdgeAt(e.X) >= 0 ? Cursors.VSplit : Cursors.Default;
+        SetHover(RowAt(e.Y));
         UpdateToolTip(e.Location);
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
+        SetHover(-1);
         _toolTip.Hide(this);
         _toolTipCell = (-1, -1);
+    }
+
+    protected override void OnFontChanged(EventArgs e)
+    {
+        _boldFont?.Dispose();
+        _boldFont = null;
+        _strikeoutFont?.Dispose();
+        _strikeoutFont = null;
+        base.OnFontChanged(e);
+        UpdateScrollBars();
+        Invalidate();
+    }
+
+    /// <summary>The row under the mouse gets the subtle hover fill.</summary>
+    private void SetHover(int row)
+    {
+        if (row == _hover)
+        {
+            return;
+        }
+
+        InvalidateRow(_hover);
+        _hover = row;
+        InvalidateRow(_hover);
+    }
+
+    private void InvalidateRow(int row)
+    {
+        if (row >= _top && row < _top + VisibleRowCount + 1)
+        {
+            Invalidate(new Rectangle(0, HeaderHeight + ((row - _top) * RowHeight), ClientSize.Width, RowHeight));
+        }
     }
 
     protected override void OnMouseDoubleClick(MouseEventArgs e)
@@ -515,6 +568,8 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             _toolTip.Dispose();
             _glyphFont.Dispose();
             _iconFont.Dispose();
+            _boldFont?.Dispose();
+            _strikeoutFont?.Dispose();
         }
 
         base.Dispose(disposing);
@@ -953,7 +1008,9 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
         // Rows on screen only.
         var last = Math.Min(_rows.Count, _top + VisibleRowCount + 1);
         using var selected = new SolidBrush(Focused ? p.Selection : p.SelectionInactive);
-        using var focusPen = new Pen(p.Accent) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot };
+        using var hover = new SolidBrush(p.Hover);
+        using var accent = new SolidBrush(p.Accent);
+        using var focusPen = new Pen(Palette.Blend(p.Text, p.Background, 0.25), 1.5f);
         using var stripe = new SolidBrush(p.Stripe);
         using var gridPen = new Pen(p.GridLine);
         using var linePen = new Pen(Palette.Blend(p.SecondaryText, p.Background, 0.35)) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot };
@@ -968,13 +1025,33 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             var id = _rows[row];
             var y = HeaderHeight + ((row - _top) * RowHeight);
             var rect = new Rectangle(0, y, ClientSize.Width, RowHeight);
-            if (_selected.Contains(id))
-            {
-                g.FillRectangle(selected, rect);
-            }
-            else if (zebra && row % 2 == 1)
+
+            // Windows 11 list rows: a rounded fill inset from the edges, and an accent bar on selected rows.
+            var inset = LogicalToDeviceUnits(4);
+            var item = new Rectangle(inset, y + 1, ClientSize.Width - (2 * inset) - 1, RowHeight - 3);
+            var isSelected = _selected.Contains(id);
+            if (zebra && row % 2 == 1)
             {
                 g.FillRectangle(stripe, rect);
+            }
+
+            if (isSelected || row == _hover)
+            {
+                var smoothing = g.SmoothingMode;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var path = ThemedButton.Rounded(item, 4))
+                {
+                    g.FillPath(isSelected ? selected : hover, path);
+                }
+
+                if (isSelected)
+                {
+                    var bar = LogicalToDeviceUnits(16);
+                    using var pill = ThemedButton.Rounded(new Rectangle(item.Left, y + ((RowHeight - bar) / 2), LogicalToDeviceUnits(3), bar), 1);
+                    g.FillPath(accent, pill);
+                }
+
+                g.SmoothingMode = smoothing;
             }
 
             if (gridLines)
@@ -988,9 +1065,13 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                 }
             }
 
-            if (row == _focus && Focused)
+            if (row == _focus && Focused && ShowFocusCues)
             {
-                g.DrawRectangle(focusPen, rect.X, rect.Y, rect.Width - 1, rect.Height - 1);
+                var smoothing = g.SmoothingMode;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using var path = ThemedButton.Rounded(item, 4);
+                g.DrawPath(focusPen, path);
+                g.SmoothingMode = smoothing;
             }
 
             var style = _model!.Style(id);
@@ -1000,13 +1081,19 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                 color = Palette.Blend(color, p.Background, 0.5);
             }
 
-            var font = style.Strikeout ? UiFonts.Strikeout : style.Bold ? UiFonts.Bold : Font;
+            var font = style.Strikeout ? StrikeoutFont : style.Bold ? BoldFont : Font;
             var x = -_left;
             for (var c = 0; c < Columns.Count; c++)
             {
                 var column = Columns[c];
                 var width = ColumnWidth(c);
                 var cell = new Rectangle(x + 6, y, width - 12, RowHeight);
+                if (c == 0 && c != TreeColumn)
+                {
+                    // Room for the selection bar before the first column's text (the change sign in the list).
+                    var bar = LogicalToDeviceUnits(8);
+                    cell = new Rectangle(cell.Left + bar, y, Math.Max(0, cell.Width - bar), RowHeight);
+                }
                 if (c == TreeColumn)
                 {
                     var indent = 4 + (_depth[row] * Indent);
@@ -1044,21 +1131,32 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
 
                 if (cell.Right > 0 && cell.Left < ClientSize.Width && cell.Width > 0)
                 {
-                    var text = _model.Text(id, c);
+                    var (text, badges) = c == TreeColumn ? _model.Label(id, c) : (_model.Text(id, c), (IReadOnlyList<GridBadge>)[]);
                     if (text.Length > 0)
                     {
                         var flags = column.Align == HorizontalAlignment.Right ? flagsRight : flagsLeft;
                         if (_model.IsChangedCell(id, c))
                         {
-                            // The value that differs between the snapshots, on a highlight.
+                            // The value that differs between the snapshots, on a rounded highlight.
                             var size = TextRenderer.MeasureText(g, text, font, new Size(cell.Width, RowHeight), flags);
-                            var w = Math.Min(cell.Width, size.Width) + 8;
-                            var left = column.Align == HorizontalAlignment.Right ? cell.Right - w + 4 : cell.Left - 4;
-                            g.FillRectangle(chip, left, y + 3, w, RowHeight - 6);
+                            var w = Math.Min(cell.Width, size.Width) + 12;
+                            var left = column.Align == HorizontalAlignment.Right ? cell.Right - w + 6 : cell.Left - 6;
+                            var smoothing = g.SmoothingMode;
+                            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                            using (var path = ThemedButton.Rounded(new Rectangle(left, y + 5, w, RowHeight - 11), 4))
+                            {
+                                g.FillPath(chip, path);
+                            }
+
+                            g.SmoothingMode = smoothing;
                         }
 
                         // New, modified and deleted colours go through every column (F27).
                         TextRenderer.DrawText(g, text, font, cell, color, flags);
+                        if (badges.Count > 0)
+                        {
+                            DrawBadges(g, badges, cell, text, font, flags, style.Dim);
+                        }
                     }
                 }
 
@@ -1102,6 +1200,30 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
             {
                 g.DrawLine(border, hx - 1, 5, hx - 1, HeaderHeight - 6);
             }
+        }
+    }
+
+    /// <summary>Badges after the name: counts in secondary text, change counts semibold in their colours.</summary>
+    private void DrawBadges(Graphics g, IReadOnlyList<GridBadge> badges, Rectangle cell, string text, Font font, TextFormatFlags flags, bool dim)
+    {
+        var x = cell.Left + TextRenderer.MeasureText(g, text, font, new Size(cell.Width, RowHeight), flags).Width + LogicalToDeviceUnits(8);
+        foreach (var badge in badges)
+        {
+            if (x >= cell.Right)
+            {
+                return;
+            }
+
+            var badgeFont = badge.Color is null ? UiFonts.Caption : UiFonts.CaptionBold;
+            var color = badge.Color ?? _palette.SecondaryText;
+            if (dim)
+            {
+                color = Palette.Blend(color, _palette.Background, 0.5);
+            }
+
+            var box = new Rectangle(x, cell.Top, cell.Right - x, cell.Height);
+            TextRenderer.DrawText(g, badge.Text, badgeFont, box, color, flags);
+            x += TextRenderer.MeasureText(g, badge.Text, badgeFont, box.Size, flags).Width + LogicalToDeviceUnits(6);
         }
     }
 
