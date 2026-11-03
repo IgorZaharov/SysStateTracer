@@ -166,6 +166,7 @@ internal sealed class ComparisonForm : Form
     {
         ThemeManager.Changed -= OnThemeChanged;
         base.OnFormClosed(e);
+        MemoryRelease.Schedule(); // issue #9: the snapshots and the comparison are garbage now
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

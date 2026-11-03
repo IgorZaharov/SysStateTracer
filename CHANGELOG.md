@@ -14,6 +14,7 @@
 - Global Ignore list: **Local list** and **Remote list** tabs below the settings (issue #7). The Remote list tab shows the shared remote list's rules, read-only; it is read when the tab is first opened and again with **Check now**. Each tab keeps its scroll position. The buttons still add to the local list.
 
 ### Fixed
+- **Memory** is given back to Windows a moment after a comparison window or New Snapshot closes (issue #9). The garbage collector kept what the closed window had used: with snapshots of a million files and 200,000 registry values, the working set stayed at about 400 MB after the window closed; now it drops to about 110 MB.
 - Copy to .\Files could update its progress from a background thread (the same fix New Snapshot got in 1.1.0).
 - Lists could fail to repaint while their rows were being replaced.
 - `Restore-Files.ps1` no longer tries to copy a restore script from an earlier export to the system drive.

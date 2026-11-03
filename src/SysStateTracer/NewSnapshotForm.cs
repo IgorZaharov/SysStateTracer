@@ -150,6 +150,12 @@ internal sealed class NewSnapshotForm : ThemedDialog
         base.OnFormClosing(e);
     }
 
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        base.OnFormClosed(e);
+        MemoryRelease.Schedule(); // issue #9: the scan's file tables, trees and the previous snapshot are garbage now
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
