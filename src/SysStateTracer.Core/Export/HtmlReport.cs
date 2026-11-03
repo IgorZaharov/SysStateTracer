@@ -7,7 +7,7 @@ using SysStateTracer.Core.Ignore;
 namespace SysStateTracer.Core.Export;
 
 /// <summary>
-/// One self-contained HTML file with the comparison (plan Step 37, /compare-snap): a summary, then a
+/// One self-contained HTML file with the comparison (plan Step 37, /report): a summary, then a
 /// collapsible tree in the comparison window's colours. The tree is embedded as data and rendered only
 /// when a node is opened, so a report with 100,000 changes opens quickly. No external files or scripts.
 /// </summary>

@@ -241,6 +241,15 @@ public class ExportAndRevertTests
         Assert.Contains("2 files copied back", run.Output, StringComparison.Ordinal);
         Assert.Equal(original, File.ReadAllBytes(newFile));
         Assert.True(File.Exists(deep));
+
+        // /export /output: puts the script beside the Files folder (issue #8); it restores from Files.
+        File.Delete(newFile);
+        var beside = RestoreScript.Write(Path.Combine(output.Path, "Files"), scriptFolder: output.Path);
+        Assert.Equal(Path.Combine(output.Path, RestoreScript.FileName), beside);
+        var besideRun = RunPowerShell(beside);
+        Assert.True(besideRun.Code == 0, besideRun.Output);
+        Assert.Contains("copied back", besideRun.Output, StringComparison.Ordinal);
+        Assert.Equal(original, File.ReadAllBytes(newFile));
     }
 
     private static (int Code, string Output) RunPowerShell(string script, params string[] arguments)

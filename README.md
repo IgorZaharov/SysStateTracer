@@ -60,9 +60,9 @@ and the `Files` and `Backups` folders). If that folder cannot be written to, it 
 Everything also works from the command line, for scripts and scheduled tasks:
 
 ```bat
-SysStateTracer.exe /new-snap "Before Office 2024 install"
-SysStateTracer.exe /new-snap "After Office 2024 install"
-SysStateTracer.exe /compare-snap "Before Office 2024 install" "After Office 2024 install" "C:\Reports\Office 2024 install changes.html"
+SysStateTracer.exe /new "Before Office 2024 install"
+SysStateTracer.exe /new "After Office 2024 install"
+SysStateTracer.exe /report "Before Office 2024 install" "After Office 2024 install" "C:\Reports\Office 2024 install changes.html"
 SysStateTracer.exe /export "Before Office 2024 install" "After Office 2024 install"
 ```
 

@@ -7,7 +7,7 @@ using SysStateTracer.Core.Snapshots;
 
 namespace SysStateTracer.WindowsTests;
 
-/// <summary>Plan Step 40: /new-snap and /export on the live disk and registry (the other switches are in Core.Tests).</summary>
+/// <summary>Plan Step 40: /new and /export on the live disk and registry (the other switches are in Core.Tests).</summary>
 public class CommandLineTests
 {
     [Fact]
@@ -19,7 +19,7 @@ public class CommandLineTests
         data.CreateFile(@"docs\readme.txt", 10);
         test.Key.SetValue("v", 1);
 
-        Assert.Equal(0, app.Run("/new-snap"));
+        Assert.Equal(0, app.Run("/new"));
         var first = Assert.Single(new SnapshotCatalog(app.SnapshotFolder).List());
         Assert.Matches(@"^\d{8}_\d{2}-\d{2}-\d{2}_" + Environment.MachineName + "$", first.Name);
         Assert.Contains("Snapshot saved: " + first.Path, app.Text, StringComparison.Ordinal);
@@ -29,22 +29,22 @@ public class CommandLineTests
         Assert.DoesNotContain("Services", first.Meta.Scope);
         Assert.Equal(1, first.Meta.Counts.Files);
 
-        Assert.Equal(0, app.Run("/new-snap", "Before printer driver update"));
+        Assert.Equal(0, app.Run("/new", "Before printer driver update"));
         Assert.True(File.Exists(Path.Combine(app.SnapshotFolder, "Before printer driver update.stsnap")));
 
-        Assert.Equal(1, app.Run("/new-snap", "Before printer driver update"));
+        Assert.Equal(1, app.Run("/new", "Before printer driver update"));
 
         // A path puts the snapshot in that folder (F6).
         var byPath = Path.Combine(app.DataFolder, "other folder", "Taken by path.stsnap");
-        Assert.Equal(0, app.Run("/new-snap", byPath));
+        Assert.Equal(0, app.Run("/new", byPath));
         Assert.True(File.Exists(byPath));
 
-        Assert.Equal(1, app.Run("/new-snap", "bad|name"));
+        Assert.Equal(1, app.Run("/new", "bad|name"));
         Assert.Equal(2, new SnapshotCatalog(app.SnapshotFolder).List().Count);
         Assert.Single(new SnapshotCatalog(Path.Combine(app.DataFolder, "other folder")).List());
     }
 
-    /// <summary>/new-snap reads the Global Ignore list chosen in Preferences: with Remote, the remote rules apply.</summary>
+    /// <summary>/new reads the Global Ignore list chosen in Preferences: with Remote, the remote rules apply.</summary>
     [Fact]
     public void NewSnap_UsesTheChosenRemoteList()
     {
@@ -60,7 +60,7 @@ public class CommandLineTests
         app.Settings.IgnoreListSource = IgnoreListSource.Remote;
         app.Settings.IgnoreListRemoteLocation = remoteList;
 
-        Assert.Equal(0, app.Run("/new-snap", "With remote rules"));
+        Assert.Equal(0, app.Run("/new", "With remote rules"));
         Assert.Contains("Global Ignore list: local + remote, 2 rules", app.Text, StringComparison.Ordinal);
 
         var snapshot = Core.Storage.SnapshotReader.Load(Path.Combine(app.SnapshotFolder, "With remote rules.stsnap"));
@@ -85,7 +85,7 @@ public class CommandLineTests
         using var app = new CliApp(data.Path, test.HkcuPath);
         data.CreateFile(@"keep\same.txt", 5);
         test.Key.SetValue("changed", "old");
-        Assert.Equal(0, app.Run("/new-snap", "Before app install"));
+        Assert.Equal(0, app.Run("/new", "Before app install"));
 
         data.CreateFile(@"keep\new.txt", 7);
         data.CreateFile(@"keep\debug.tmp", 7);                 // ignored by a wildcard rule
@@ -101,7 +101,7 @@ public class CommandLineTests
             cache.SetValue("c", 1);
         }
 
-        Assert.Equal(0, app.Run("/new-snap", "After app install"));
+        Assert.Equal(0, app.Run("/new", "After app install"));
 
         var rules = string.Join(
             Environment.NewLine,
@@ -153,10 +153,10 @@ public class CommandLineTests
         using var test = new TestRegistryKey();
         using var data = new TestFolder();
         using var app = new CliApp(data.Path, test.HkcuPath);
-        Assert.Equal(0, app.Run("/new-snap", "Monday"));
+        Assert.Equal(0, app.Run("/new", "Monday"));
         var locked = data.CreateFile("in-use.db", 10);
         data.CreateFile("report.docx", 10);
-        Assert.Equal(0, app.Run("/new-snap", "Tuesday"));
+        Assert.Equal(0, app.Run("/new", "Tuesday"));
 
         using (new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
@@ -179,7 +179,7 @@ public class CommandLineTests
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
 
-        Assert.Equal(5, app.Run(cancel.Token, "/new-snap", "Never finished"));
+        Assert.Equal(5, app.Run(cancel.Token, "/new", "Never finished"));
         Assert.Empty(new SnapshotCatalog(app.SnapshotFolder).List());
     }
 

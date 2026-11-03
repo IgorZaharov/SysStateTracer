@@ -66,7 +66,7 @@ public sealed class AppSettings
     /// <summary>URL (http/https) or file path (also \\server\share\file.txt) of the remote Global Ignore list.</summary>
     public string IgnoreListRemoteLocation { get; set; } = RemoteIgnoreSource.DefaultLocation;
 
-    /// <summary>What New Snapshot (W3) and /new-snap read; saved from W3.</summary>
+    /// <summary>What New Snapshot (W3) and /new read; saved from W3.</summary>
     public SnapshotScope Scope { get; set; } = new();
 
     public static AppSettings CreateDefault() => new();

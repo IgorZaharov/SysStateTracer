@@ -124,7 +124,7 @@ jobs:
             Write-Host "::error title=CLI /?::exit $($help.Code); output: $(($help.Text -split "`r?`n" | Select-Object -First 5) -join ' | ')"
             $failed = $true
           }
-          $expected = @{ '/no-such-switch' = 1; '/rename-snap "only one name"' = 1; '/delete-snap "No such snapshot"' = 2; '/compare-snap' = 2 }
+          $expected = @{ '/no-such-switch' = 1; '/rename "only one name"' = 1; '/del "No such snapshot"' = 2; '/report' = 2 }
           foreach ($case in $expected.GetEnumerator()) {
             $r = Invoke-Cli $case.Key
             if ($r.Code -ne $case.Value) {

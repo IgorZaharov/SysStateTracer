@@ -23,8 +23,23 @@ public enum CliExitCode
     Cancelled = 5,
 }
 
-/// <summary>A parsed command line: the switch, snapshot names, and for /compare-snap the report path.</summary>
-public sealed record CliCommand(CliCommandKind Kind, IReadOnlyList<string> Names, string? ReportPath = null);
+/// <summary>
+/// A parsed command line: the switch, snapshot names, for /report the report path, and for /report and
+/// /export the filters and /output: (issue #8).
+/// </summary>
+public sealed record CliCommand(CliCommandKind Kind, IReadOnlyList<string> Names, string? ReportPath = null)
+{
+    public IReadOnlyList<string> Files { get; init; } = [];
+
+    public IReadOnlyList<string> Registry { get; init; } = [];
+
+    public IReadOnlyList<string> Services { get; init; } = [];
+
+    /// <summary>/output: as given: the .html report, or for /export a folder or a .reg file.</summary>
+    public string? OutputPath { get; init; }
+
+    public bool HasFilters => Files.Count + Registry.Count + Services.Count > 0;
+}
 
 /// <summary>Either a command or the reason the arguments are wrong.</summary>
 public sealed record CliParseResult(CliCommand? Command, string? Error)
@@ -34,7 +49,7 @@ public sealed record CliParseResult(CliCommand? Command, string? Error)
 
 /// <summary>
 /// Parses the switches of plan §10.9. Switches are case-insensitive and start with "/" or "-";
-/// one switch per call. For /compare-snap, an argument ending in .html is the report path (plan 2.11).
+/// one switch per call. For /report, an argument ending in .html is the report path (plan 2.11).
 /// </summary>
 public static class CliParser
 {
@@ -46,11 +61,17 @@ public static class CliParser
         ["h"] = CliCommandKind.Help,
         ["help"] = CliCommandKind.Help,
         ["-help"] = CliCommandKind.Help,
+        ["new"] = CliCommandKind.NewSnap,
+        ["del"] = CliCommandKind.DeleteSnap,
+        ["rename"] = CliCommandKind.RenameSnap,
+        ["report"] = CliCommandKind.CompareSnap,
+        ["export"] = CliCommandKind.Export,
+
+        // The names before 1.2.0, still accepted so existing scripts keep working.
         ["new-snap"] = CliCommandKind.NewSnap,
         ["delete-snap"] = CliCommandKind.DeleteSnap,
         ["rename-snap"] = CliCommandKind.RenameSnap,
         ["compare-snap"] = CliCommandKind.CompareSnap,
-        ["export"] = CliCommandKind.Export,
     };
 
     public static CliParseResult Parse(IReadOnlyList<string> args)
@@ -65,10 +86,60 @@ public static class CliParser
         {
             return CliParseResult.Fail(IsSwitchLike(args[0])
                 ? $"Unknown switch {args[0]}."
-                : $"Expected a switch such as /new-snap, not \"{args[0]}\".");
+                : $"Expected a switch such as /new, not \"{args[0]}\".");
         }
 
         var rest = args.Skip(1).ToList();
+        var options = rest.Where(IsOption).ToList();
+        rest = [.. rest.Where(a => !IsOption(a))];
+        var files = new List<string>();
+        var registry = new List<string>();
+        var services = new List<string>();
+        string? output = null;
+        foreach (var option in options)
+        {
+            var colon = option.IndexOf(':', StringComparison.Ordinal);
+            var key = option[..colon].TrimStart('/', '-');
+            var value = option[(colon + 1)..].Trim().Trim('"');
+            if (kind is not (CliCommandKind.CompareSnap or CliCommandKind.Export))
+            {
+                return CliParseResult.Fail($"{option[..(colon + 1)]} works only with /report and /export.");
+            }
+
+            if (value.Length == 0)
+            {
+                return CliParseResult.Fail($"{option[..(colon + 1)]} needs a value, e.g. {Example(key)}.");
+            }
+
+            switch (key.ToLowerInvariant())
+            {
+                case "files":
+                    files.AddRange(SplitList(value));
+                    break;
+                case "registry":
+                    registry.AddRange(SplitList(value));
+                    break;
+                case "services":
+                    services.AddRange(SplitList(value));
+                    break;
+                case "output":
+                    if (output is not null)
+                    {
+                        return CliParseResult.Fail("Give /output: once.");
+                    }
+
+                    output = value;
+                    break;
+                default:
+                    return CliParseResult.Fail($"Unknown option {option[..(colon + 1)]}; use /files:, /registry:, /services: or /output:.");
+            }
+        }
+
+        if (files.Concat(registry).Concat(services).Any(string.IsNullOrWhiteSpace))
+        {
+            return CliParseResult.Fail("A /files:, /registry: or /services: list has an empty entry (two commas in a row, or a comma at the end).");
+        }
+
         var extra = rest.FirstOrDefault(a => TryGetSwitch(a, out _));
         if (extra is not null)
         {
@@ -100,31 +171,78 @@ public static class CliParser
             {
                 var reports = rest.Where(a => a.EndsWith(HtmlExtension, StringComparison.OrdinalIgnoreCase)).ToList();
                 var names = rest.Where(a => !a.EndsWith(HtmlExtension, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (output is not null)
+                {
+                    if (!output.EndsWith(HtmlExtension, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return CliParseResult.Fail($"{name} writes an HTML report: /output: must end in .html, not \"{output}\".");
+                    }
+
+                    reports.Add(output);
+                }
+
                 if (reports.Count > 1)
                 {
                     return CliParseResult.Fail($"{name} writes one report; {reports.Count} .html paths were given.");
                 }
 
                 return names.Count is 0 or 2
-                    ? new CliParseResult(new CliCommand(kind, names, reports.FirstOrDefault()), null)
+                    ? new CliParseResult(new CliCommand(kind, names, reports.FirstOrDefault()) { Files = files, Registry = registry, Services = services, OutputPath = output }, null)
                     : CliParseResult.Fail($"{name} needs two snapshot names, or none for the newest two.");
             }
 
             default:
+                if (services.Count > 0)
+                {
+                    return CliParseResult.Fail($"{name} exports registry keys and files, not services: /services: works only with /report.");
+                }
+
+                if (output is not null && output.EndsWith(HtmlExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    return CliParseResult.Fail($"{name} writes a .reg file and copies files: /output: is a folder or a .reg file, not \"{output}\". Use /report for an HTML report.");
+                }
+
                 return rest.Count is 0 or 2
-                    ? new CliParseResult(new CliCommand(kind, rest), null)
+                    ? new CliParseResult(new CliCommand(kind, rest) { Files = files, Registry = registry, Services = services, OutputPath = output }, null)
                     : CliParseResult.Fail($"{name} needs two snapshot names, or none for the newest two.");
         }
     }
 
-    /// <summary>"/new-snap" for <see cref="CliCommandKind.NewSnap"/>.</summary>
+    /// <summary>
+    /// "/files:…", "-registry:…", "--output:…": a word and a colon after one or two dashes or a slash. A snapshot path
+    /// such as C:\a or /x/y has no colon right after a word, so it is never taken for an option.
+    /// </summary>
+    private static bool IsOption(string arg)
+    {
+        var start = arg.StartsWith("--", StringComparison.Ordinal) ? 2 : arg.Length > 0 && arg[0] is '/' or '-' ? 1 : 0;
+        if (start == 0)
+        {
+            return false;
+        }
+
+        var colon = arg.IndexOf(':', StringComparison.Ordinal);
+        return colon > start && arg[start..colon].All(c => char.IsAsciiLetter(c) || c == '-');
+    }
+
+    /// <summary>"HKCU","HKLM\Software" arrives as HKCU,HKLM\Software: split at commas, quotes removed.</summary>
+    private static IEnumerable<string> SplitList(string value) => value.Split(',').Select(v => v.Trim().Trim('"').Trim());
+
+    private static string Example(string key) => key.ToLowerInvariant() switch
+    {
+        "files" => "/files:\"C:\\Program Files\\App\"",
+        "registry" => "/registry:\"HKLM\\SOFTWARE\\App\"",
+        "services" => "/services:\"Spooler\"",
+        _ => "/output:\"C:\\Exports\"",
+    };
+
+    /// <summary>"/new" for <see cref="CliCommandKind.NewSnap"/>.</summary>
     public static string SwitchName(CliCommandKind kind) => kind switch
     {
         CliCommandKind.Help => "/?",
-        CliCommandKind.NewSnap => "/new-snap",
-        CliCommandKind.DeleteSnap => "/delete-snap",
-        CliCommandKind.RenameSnap => "/rename-snap",
-        CliCommandKind.CompareSnap => "/compare-snap",
+        CliCommandKind.NewSnap => "/new",
+        CliCommandKind.DeleteSnap => "/del",
+        CliCommandKind.RenameSnap => "/rename",
+        CliCommandKind.CompareSnap => "/report",
         _ => "/export",
     };
 

@@ -5,12 +5,18 @@
 ### Comparison window
 - **OLDER / NEWER** before each snapshot name, in the top bar and above the two columns of the details, by when the snapshots were taken. The captions move with the snapshots on Swap (issue #6).
 
+### Command line
+- **Shorter switch names:** `/new`, `/del`, `/rename`, `/report` (was `/compare-snap`) and `/export`. The earlier names still work.
+- **Filters** for `/report` and `/export` (issue #8): `/registry:"HKLM\SOFTWARE\App","HKCU\Software\App"`, `/files:"C:\Program Files\App","C:\ProgramData\App"` and, for reports, `/services:"Spooler"`. Several paths separated by commas, or the switch repeated; wildcards as in the Global Ignore list. Only what the filters name is compared and exported; each filter's matches are printed, with a warning when one matches nothing.
+- **`/output:`** for both: the report's `.html` path, or for `/export` a folder (created if needed) that gets the `.reg` file, `Restore-Files.ps1` and the copied files in `Files`; a `.reg` path names the .reg file, with the rest beside it. When the folder cannot be created or written to, the reason is printed before anything is read (exit code 4).
+
 ### Preferences
 - Global Ignore list: **Local list** and **Remote list** tabs below the settings (issue #7). The Remote list tab shows the shared remote list's rules, read-only; it is read when the tab is first opened and again with **Check now**. Each tab keeps its scroll position. The buttons still add to the local list.
 
 ### Fixed
 - Copy to .\Files could update its progress from a background thread (the same fix New Snapshot got in 1.1.0).
 - Lists could fail to repaint while their rows were being replaced.
+- `Restore-Files.ps1` no longer tries to copy a restore script from an earlier export to the system drive.
 
 ## [1.1.0] — 2026-10-29
 

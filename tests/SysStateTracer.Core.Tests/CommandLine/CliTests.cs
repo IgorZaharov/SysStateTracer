@@ -14,11 +14,17 @@ public class CliTests
     [InlineData("/?", CliCommandKind.Help)]
     [InlineData("-?", CliCommandKind.Help)]
     [InlineData("--help", CliCommandKind.Help)]
+    [InlineData("/new", CliCommandKind.NewSnap)]
+    [InlineData("/NEW", CliCommandKind.NewSnap)]
+    [InlineData("/del", CliCommandKind.DeleteSnap)]
+    [InlineData("/report", CliCommandKind.CompareSnap)]
+    [InlineData("/export", CliCommandKind.Export)]
+
+    // The names before 1.2.0 still work.
     [InlineData("/NEW-SNAP", CliCommandKind.NewSnap)]
     [InlineData("-new-snap", CliCommandKind.NewSnap)]
     [InlineData("/delete-snap", CliCommandKind.DeleteSnap)]
     [InlineData("/compare-snap", CliCommandKind.CompareSnap)]
-    [InlineData("/export", CliCommandKind.Export)]
     public void Parse_Switches(string arg, CliCommandKind kind)
     {
         var result = CliParser.Parse([arg]);
@@ -30,14 +36,16 @@ public class CliTests
     [Fact]
     public void Parse_Arguments()
     {
-        Assert.Equal(["Before install"], CliParser.Parse(["/new-snap", "Before install"]).Command!.Names);
-        Assert.Equal(["a", "b"], CliParser.Parse(["/rename-snap", "a", "b"]).Command!.Names);
+        Assert.Equal(["Before install"], CliParser.Parse(["/new", "Before install"]).Command!.Names);
+        Assert.Equal(["a", "b"], CliParser.Parse(["/rename", "a", "b"]).Command!.Names);
+        Assert.Equal(CliCommandKind.RenameSnap, CliParser.Parse(["-rename", "a", "b"]).Command!.Kind);
+        Assert.Equal(CliCommandKind.RenameSnap, CliParser.Parse(["/rename-snap", "a", "b"]).Command!.Kind); // the name before 1.2.0
 
-        var compare = CliParser.Parse(["/compare-snap", "before", @"C:\Reports\Office changes.HTML", "after"]).Command!;
+        var compare = CliParser.Parse(["/report", "before", @"C:\Reports\Office changes.HTML", "after"]).Command!;
         Assert.Equal(["before", "after"], compare.Names);
         Assert.Equal(@"C:\Reports\Office changes.HTML", compare.ReportPath);
 
-        var reportOnly = CliParser.Parse(["/compare-snap", "report.html"]).Command!;
+        var reportOnly = CliParser.Parse(["/report", "report.html"]).Command!;
         Assert.Empty(reportOnly.Names);
         Assert.Equal("report.html", reportOnly.ReportPath);
     }
@@ -46,16 +54,16 @@ public class CliTests
     [InlineData]
     [InlineData("before")]
     [InlineData("/unknown")]
-    [InlineData("/new-snap", "a", "b")]
-    [InlineData("/delete-snap", "a", "b")]
-    [InlineData("/rename-snap", "only-one")]
-    [InlineData("/rename-snap", "a", "b", "c")]
-    [InlineData("/compare-snap", "only-one")]
-    [InlineData("/compare-snap", "a", "b", "one.html", "two.html")]
+    [InlineData("/new", "a", "b")]
+    [InlineData("/del", "a", "b")]
+    [InlineData("/rename", "only-one")]
+    [InlineData("/rename", "a", "b", "c")]
+    [InlineData("/report", "only-one")]
+    [InlineData("/report", "a", "b", "one.html", "two.html")]
     [InlineData("/export", "only-one")]
     [InlineData("/export", "a", "b", "c")]
-    [InlineData("/new-snap", "/delete-snap")]
-    [InlineData("/new-snap", " ")]
+    [InlineData("/new", "/del")]
+    [InlineData("/new", " ")]
     public void Parse_WrongArguments(params string[] args)
     {
         var result = CliParser.Parse(args);
@@ -72,14 +80,14 @@ public class CliTests
 
         Assert.Equal(0, code);
         var text = env.Text;
-        foreach (var name in new[] { "/new-snap", "/delete-snap", "/rename-snap", "/compare-snap", "/export", "Exit codes:", "Examples:" })
+        foreach (var name in new[] { "/new", "/del", "/rename", "/report", "/export", "Exit codes:", "Examples:" })
         {
             Assert.Contains(name, text, StringComparison.Ordinal);
         }
 
         Assert.Contains(AppInfo.GitHubUrl, text, StringComparison.Ordinal);
         Assert.Contains(env.SnapshotFolder, text, StringComparison.Ordinal);
-        Assert.Contains("/new-snap \"Before Office 2024 install\"", text, StringComparison.Ordinal);
+        Assert.Contains("/new \"Before Office 2024 install\"", text, StringComparison.Ordinal);
         Assert.Contains("\"C:\\Reports\\Office 2024 install changes.html\"", text, StringComparison.Ordinal);
         Assert.All(
             text.Split(Environment.NewLine).Where(l => !l.Contains(env.SnapshotFolder, StringComparison.Ordinal) && !l.Contains(env.DataFolder, StringComparison.Ordinal)),
@@ -91,7 +99,7 @@ public class CliTests
     {
         using var env = new TestEnvironment();
 
-        Assert.Equal(1, env.Run("/rename-snap", "only-one"));
+        Assert.Equal(1, env.Run("/rename", "only-one"));
         Assert.Contains("/?", env.Text, StringComparison.Ordinal);
     }
 
@@ -103,19 +111,19 @@ public class CliTests
         env.AddSnapshot("second", day: 2);
         env.AddSnapshot("third", day: 3);
 
-        Assert.Equal(0, env.Run("/delete-snap", "first.stsnap"));
+        Assert.Equal(0, env.Run("/del", "first.stsnap"));
         Assert.False(File.Exists(env.PathOf("first")));
         Assert.Contains("\"first\"", env.Text, StringComparison.Ordinal);
 
         // Newest by the time stored in the snapshot, not the file time.
         File.SetLastWriteTimeUtc(env.PathOf("second"), DateTime.UtcNow.AddDays(1));
-        Assert.Equal(0, env.Run("/delete-snap"));
+        Assert.Equal(0, env.Run("/del"));
         Assert.False(File.Exists(env.PathOf("third")));
         Assert.True(File.Exists(env.PathOf("second")));
 
-        Assert.Equal(2, env.Run("/delete-snap", "never taken"));
-        Assert.Equal(0, env.Run("/delete-snap"));
-        Assert.Equal(2, env.Run("/delete-snap"));
+        Assert.Equal(2, env.Run("/del", "never taken"));
+        Assert.Equal(0, env.Run("/del"));
+        Assert.Equal(2, env.Run("/del"));
     }
 
     [Fact]
@@ -125,14 +133,14 @@ public class CliTests
         env.AddSnapshot("old name", day: 1);
         env.AddSnapshot("taken", day: 2);
 
-        Assert.Equal(0, env.Run("/rename-snap", "old name", "Office 2024 baseline"));
+        Assert.Equal(0, env.Run("/rename", "old name", "Office 2024 baseline"));
         Assert.True(File.Exists(env.PathOf("Office 2024 baseline")));
         Assert.False(File.Exists(env.PathOf("old name")));
 
-        Assert.Equal(0, env.Run("/rename-snap", "Office 2024 baseline", "OFFICE 2024 baseline"));
-        Assert.Equal(2, env.Run("/rename-snap", "missing", "x"));
-        Assert.Equal(1, env.Run("/rename-snap", "taken", "OFFICE 2024 baseline"));
-        Assert.Equal(1, env.Run("/rename-snap", "taken", "bad:name"));
+        Assert.Equal(0, env.Run("/rename", "Office 2024 baseline", "OFFICE 2024 baseline"));
+        Assert.Equal(2, env.Run("/rename", "missing", "x"));
+        Assert.Equal(1, env.Run("/rename", "taken", "OFFICE 2024 baseline"));
+        Assert.Equal(1, env.Run("/rename", "taken", "bad:name"));
         Assert.True(File.Exists(env.PathOf("taken")));
     }
 
@@ -146,19 +154,19 @@ public class CliTests
         var moved = Path.Combine(elsewhere, "moved.stsnap");
 
         // Renaming to a path moves the snapshot there.
-        Assert.Equal(0, env.Run("/rename-snap", "first.stsnap", moved));
+        Assert.Equal(0, env.Run("/rename", "first.stsnap", moved));
         Assert.True(File.Exists(moved));
         Assert.False(File.Exists(env.PathOf("first")));
 
         // One snapshot by path, the other by name with the extension.
-        Assert.Equal(0, env.Run("/compare-snap", moved, "second.stsnap", "by path.html"));
+        Assert.Equal(0, env.Run("/report", moved, "second.stsnap", "by path.html"));
         Assert.Contains("moved vs second", File.ReadAllText(Path.Combine(env.DataFolder, "by path.html")), StringComparison.Ordinal);
 
-        Assert.Equal(2, env.Run("/delete-snap", Path.Combine(elsewhere, "nothing.stsnap")));
+        Assert.Equal(2, env.Run("/del", Path.Combine(elsewhere, "nothing.stsnap")));
         Assert.Contains("No snapshot file", env.Text, StringComparison.Ordinal);
-        Assert.Equal(0, env.Run("/delete-snap", moved));
+        Assert.Equal(0, env.Run("/del", moved));
         Assert.False(File.Exists(moved));
-        Assert.Equal(1, env.Run("/rename-snap", "second", Path.Combine(elsewhere, "bad|name.stsnap")));
+        Assert.Equal(1, env.Run("/rename", "second", Path.Combine(elsewhere, "bad|name.stsnap")));
     }
 
     [Fact]
@@ -169,7 +177,7 @@ public class CliTests
         env.AddSnapshot("before", day: 2, notepadSize: 2);
         env.AddSnapshot("after", day: 3, notepadSize: 3, extraFile: true);
 
-        Assert.Equal(0, env.Run("/compare-snap"));
+        Assert.Equal(0, env.Run("/report"));
         var report = Path.Combine(env.DataFolder, "results.html");
         var html = File.ReadAllText(report);
         Assert.Contains("before vs after", html, StringComparison.Ordinal);
@@ -177,11 +185,11 @@ public class CliTests
 
         // Names in either order; an absolute report path is used as given.
         var custom = Path.Combine(env.DataFolder, "Reports", "Office changes.html");
-        Assert.Equal(0, env.Run("/compare-snap", "after", "oldest", custom));
+        Assert.Equal(0, env.Run("/report", "after", "oldest", custom));
         Assert.Contains("after vs oldest", File.ReadAllText(custom), StringComparison.Ordinal);
 
-        Assert.Equal(2, env.Run("/compare-snap", "after", "missing"));
-        Assert.Equal(1, env.Run("/compare-snap", "after", "after.stsnap"));
+        Assert.Equal(2, env.Run("/report", "after", "missing"));
+        Assert.Equal(1, env.Run("/report", "after", "after.stsnap"));
     }
 
     [Fact]
@@ -190,7 +198,7 @@ public class CliTests
         using var env = new TestEnvironment();
         env.AddSnapshot("only", day: 1);
 
-        Assert.Equal(2, env.Run("/compare-snap"));
+        Assert.Equal(2, env.Run("/report"));
         Assert.Equal(2, env.Run("/export"));
     }
 
@@ -201,7 +209,7 @@ public class CliTests
         env.AddSnapshot("before", day: 2);
         env.AddSnapshot("after", day: 3, extraFile: true);
 
-        Assert.Equal(0, env.Run("/compare-snap", "before", "after", "r.html"));
+        Assert.Equal(0, env.Run("/report", "before", "after", "r.html"));
         Assert.DoesNotContain("extra.dll", File.ReadAllText(Path.Combine(env.DataFolder, "r.html")), StringComparison.Ordinal);
         Assert.Contains("Global Ignore list: local only, 1 rules", env.Text, StringComparison.Ordinal);
     }
@@ -218,13 +226,13 @@ public class CliTests
         File.WriteAllBytes(future, bytes);
         File.WriteAllBytes(env.PathOf("cut off"), File.ReadAllBytes(env.PathOf("good"))[..100]);
 
-        Assert.Equal(4, env.Run("/compare-snap", "good", "from the future"));
+        Assert.Equal(4, env.Run("/report", "good", "from the future"));
         Assert.Contains("newer SysStateTracer", env.Text, StringComparison.Ordinal);
         Assert.Equal(4, env.Run("/export", "good", "cut off"));
         Assert.Contains("Error:", env.Text, StringComparison.Ordinal);
 
         // A damaged file can still be deleted by name.
-        Assert.Equal(0, env.Run("/delete-snap", "cut off"));
+        Assert.Equal(0, env.Run("/del", "cut off"));
         Assert.Contains("could not be read", env.Text, StringComparison.Ordinal);
     }
 

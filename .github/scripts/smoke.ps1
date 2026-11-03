@@ -42,8 +42,8 @@ try {
     New-ItemProperty $key -Name 'Version' -Value '1.0' -PropertyType String -Force | Out-Null
     Set-Content (Join-Path $data 'readme.txt') 'one'
 
-    $first = Invoke-Cli '/new-snap "Before app install"'
-    Check ($first.Code -eq 0) "first /new-snap exit $($first.Code): $($first.Text)"
+    $first = Invoke-Cli '/new "Before app install"'
+    Check ($first.Code -eq 0) "first /new exit $($first.Code): $($first.Text)"
 
     New-Item -ItemType Directory (Join-Path $data 'App') | Out-Null
     Set-Content (Join-Path $data 'App\app.exe') 'binary'
@@ -51,11 +51,11 @@ try {
     New-ItemProperty $key -Name 'Version' -Value '2.0' -PropertyType String -Force | Out-Null
     New-ItemProperty $key -Name 'Installed' -Value 1 -PropertyType DWord -Force | Out-Null
 
-    $second = Invoke-Cli '/new-snap "After app install"'
-    Check ($second.Code -eq 0) "second /new-snap exit $($second.Code): $($second.Text)"
+    $second = Invoke-Cli '/new "After app install"'
+    Check ($second.Code -eq 0) "second /new exit $($second.Code): $($second.Text)"
 
-    $compare = Invoke-Cli '/compare-snap "Before app install" "After app install" "Install changes.html"'
-    Check ($compare.Code -eq 0) "/compare-snap exit $($compare.Code): $($compare.Text)"
+    $compare = Invoke-Cli '/report "Before app install" "After app install" "Install changes.html"'
+    Check ($compare.Code -eq 0) "/report exit $($compare.Code): $($compare.Text)"
     $report = Join-Path $app 'Install changes.html'
     Check (Test-Path $report) 'report not written'
     if (Test-Path $report) {
@@ -86,9 +86,9 @@ try {
     Check (Test-Path (Join-Path $app "Files\$relative\readme.txt")) 'modified file not copied to Files'
     Check (Test-Path (Join-Path $app 'Files\Restore-Files.ps1')) 'Restore-Files.ps1 not written'
 
-    $rename = Invoke-Cli '/rename-snap "After app install" "App installed"'
-    Check ($rename.Code -eq 0) "/rename-snap exit $($rename.Code)"
-    $delete = Invoke-Cli '/delete-snap'
+    $rename = Invoke-Cli '/rename "After app install" "App installed"'
+    Check ($rename.Code -eq 0) "/rename exit $($rename.Code)"
+    $delete = Invoke-Cli '/delete-snap'  # the name before 1.2.0 (now /del) still works
     Check ($delete.Code -eq 0 -and $delete.Text -match 'App installed') "/delete-snap did not delete the newest: $($delete.Text)"
 
     # Microsoft Defender, when the runner has it.

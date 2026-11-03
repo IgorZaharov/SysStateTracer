@@ -1,6 +1,6 @@
 # Exports and actions
 
-What the comparison window and `/compare-snap` / `/export` can produce from a comparison. All of it is in
+What the comparison window and `/report` / `/export` can produce from a comparison. All of it is in
 `SysStateTracer.Core` (`Export/`, `Actions/`) and is covered by tests; the windows (Phase I) and the command
 line (Phase H) only call it.
 

@@ -36,7 +36,7 @@ public sealed class SkippedCollector
     }
 }
 
-/// <summary>Where the snapshot work currently is; shown in the New Snapshot window and by /new-snap.</summary>
+/// <summary>Where the snapshot work currently is; shown in the New Snapshot window and by /new.</summary>
 public enum SnapshotPhase
 {
     Starting,

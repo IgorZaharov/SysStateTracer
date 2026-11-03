@@ -111,7 +111,7 @@ GitHub issues (created 29 Oct 2026, all open, no comments yet):
 | --- | --- | --- | --- |
 | 6 | Feature | Comparison window, bottom (details) pane: an **OLDER / NEWER** caption before each snapshot name, by creation time. | **Implemented on `main` (Unreleased)**, in the details headers and the top bar; captions follow Swap. Waiting for the owner to try it and close the issue. |
 | 7 | Feature | Preferences → Global Ignore list: view the **remote list's rules read-only**. Rename "Local list" to a Local / Remote selector (like browser tabs), remember the scroll position per tab; buttons keep adding to the local list; "Check now" also refreshes the Remote tab. | **Implemented on `main` (Unreleased).** Two `ThemedListView`s (each keeps its scroll); the remote one is read on first open and on Check now, even when the remote list is unticked; Edit/Remove disabled there; adding switches to the Local tab. Waiting for the owner to try it and close the issue. |
-| 8 | Feature | `/export` and `/compare-snap`: **filters** (`/registry:"HKCU","HKLM\Software"`, `/files:"C:\Program Files\Test"`) and **`--output:`** location; same syntax for both; verbose output and error handling; examples in About and the manual. | Switch syntax is "TBD" in the issue: agree it with the owner first. `CliRunner`, `CliHelp`, `docs/command-line.md`, `make_manual.py`, `CommandLineTests`. Export already takes node lists (`DiffActions.Nodes`). |
+| 8 | Feature | `/export` and `/compare-snap`: **filters** (`/registry:"HKCU","HKLM\Software"`, `/files:"C:\Program Files\Test"`) and **`--output:`** location; same syntax for both; verbose output and error handling; examples in About and the manual. | **Implemented on `main` (Unreleased).** Syntax agreed 3 Nov 2026: `/registry:` `/files:` `/services:` (report only) `/output:`; comma lists or repeated switch; ignore-rule syntax (HKCU = every user); areas without a filter are left out; `/export /output:` folder gets .reg + Restore-Files.ps1 + `Files`. Switches renamed `/new` `/del` `/rename` `/report` `/export`, old names kept as aliases. `DiffFilter` builds a filtered `DiffResult`. Waiting for the owner to try it and close the issue. |
 | 9 | Bug | **Memory**: ~79 MB at start, ~500 MB after a few snapshots and comparisons, not released. Test: idle → compare two snapshots → close window → check again. | Not investigated yet. Candidates: comparison windows or their snapshots/`DiffResult` kept alive (event handlers such as `ThemeManager.Changed`, `WindowLayout`; `MainForm` itself keeps only `SnapshotInfo` metadata), the snapshot cache and previous snapshot loaded for incremental scans, the MFT index kept in `_preloadedTables` if a scan fails, large arrays on the LOH that the GC returns to Windows late (try `GC.Collect` with `GCSettings.LargeObjectHeapCompactionMode` after a window closes; no GC settings are set in the projects today, so `GCConserveMemory`, workstation non-concurrent GC or a `GCHeapHardLimit` are options to measure), and the NameTable growth. Measure first (dotnet-counters / a memory test in UiTests). |
 
 Other known loose ends (not filed as issues):
@@ -186,9 +186,8 @@ Tooling notes (from the cloud chat sandbox; may not apply in Claude Code on the 
 1. Try 1.1.0 on real snapshots with the owner (Show all on `C:\`, Include subfolders, HKU) and fix what is slow.
 2. Issue **#9** memory: reproduce with a measurement, find what stays referenced after the comparison window
    closes, fix, add a regression test if practical.
-3. Issue **#6** OLDER / NEWER captions (small, quick win).
-4. Issue **#7** remote list tab in Preferences.
-5. Issue **#8** command-line filters and `--output`: agree the switch syntax with the owner, then implement with
-   tests, help text, About, manual.
+3. Issue **#6**: done (Unreleased); owner to try it.
+4. Issue **#7**: done (Unreleased); owner to try it.
+5. Issue **#8**: done (Unreleased); owner to try it.
 6. Housekeeping: zip Unblock screenshot, GitHub Actions versions.
 7. Release 1.2.0 (rc first if the memory or comparison changes are large).

@@ -12,30 +12,45 @@ public static class RestoreScript
 {
     public const string FileName = "Restore-Files.ps1";
 
-    /// <summary>Writes the script into <paramref name="filesFolder"/>; returns its path.</summary>
-    public static string Write(string filesFolder, char? systemDrive = null)
+    /// <summary>
+    /// Writes the script into <paramref name="filesFolder"/>, or into <paramref name="scriptFolder"/> when given
+    /// (/export /output:, issue #8): it then restores from <paramref name="filesFolder"/>, a folder below it.
+    /// Returns its path.
+    /// </summary>
+    public static string Write(string filesFolder, char? systemDrive = null, string? scriptFolder = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filesFolder);
         Directory.CreateDirectory(filesFolder);
-        var path = Path.Combine(filesFolder, FileName);
+        var folder = scriptFolder ?? filesFolder;
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, FileName);
+        var subfolder = scriptFolder is null ? null : Path.GetRelativePath(scriptFolder, filesFolder);
 
         // UTF-8 with a byte order mark, so Windows PowerShell 5.1 reads non-ASCII paths correctly.
-        File.WriteAllText(path, Text(systemDrive ?? Path.GetPathRoot(Environment.SystemDirectory)![0]), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        File.WriteAllText(path, Text(systemDrive ?? Path.GetPathRoot(Environment.SystemDirectory)![0], subfolder), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
         return path;
     }
 
-    public static string Text(char systemDrive)
+    /// <summary>The script; with <paramref name="subfolder"/> ("Files") it restores from that folder beside it.</summary>
+    public static string Text(char systemDrive, string? subfolder = null)
     {
         var drive = char.ToUpperInvariant(systemDrive);
+        var place = subfolder is null ? "this folder" : $"the {subfolder} folder beside this script";
+        var root = subfolder is null
+            ? "$root = $PSScriptRoot.TrimEnd('\\')"
+            : $$"""
+                $root = Join-Path $PSScriptRoot.TrimEnd('\') '{{subfolder.Replace("'", "''", StringComparison.Ordinal)}}'
+                if (-not (Test-Path -LiteralPath $root)) { Write-Warning "$root does not exist."; exit 1 }
+                """;
         return $$"""
             <#
             .SYNOPSIS
-                Copies the files in this folder back to the places SysStateTracer copied them from.
+                Copies the files in {{place}} back to the places SysStateTracer copied them from.
 
             .DESCRIPTION
                 Written by SysStateTracer next to the files it copies (/export, or "Copy to .\Files" in the
                 comparison window). The folders keep the original structure:
-                  - files from the system drive are directly in this folder:
+                  - files from the system drive are directly in {{place}}:
                       ProgramData\App\settings.ini  ->  {{drive}}:\ProgramData\App\settings.ini
                   - files from other drives are under _D, _E, ...:
                       _D\Data\report.xlsx            ->  D:\Data\report.xlsx
@@ -43,7 +58,7 @@ public static class RestoreScript
                 Run it from PowerShell opened with "Run as administrator" to restore files in protected folders.
 
             .PARAMETER SystemDrive
-                The drive the files directly in this folder came from ({{drive}}: when this script was written).
+                The drive the files directly in {{place}} came from ({{drive}}: when this script was written).
 
             .EXAMPLE
                 .\Restore-Files.ps1 -WhatIf
@@ -59,13 +74,14 @@ public static class RestoreScript
             )
 
             $ErrorActionPreference = 'Stop'
-            $root = $PSScriptRoot.TrimEnd('\')
+            {{root}}
             $copied = 0
             $failed = 0
 
             foreach ($file in Get-ChildItem -LiteralPath $root -Recurse -File -Force) {
                 if ($file.FullName -eq $PSCommandPath) { continue }
                 $relative = $file.FullName.Substring($root.Length + 1)
+                if ($relative -eq '{{FileName}}') { continue }  # a restore script from an earlier export
                 $parts = $relative.Split([char]'\', 2)
                 if ($parts.Count -eq 2 -and $parts[0] -match '^_([A-Za-z])$') {
                     $target = '{0}:\{1}' -f $Matches[1].ToUpperInvariant(), $parts[1]

@@ -37,7 +37,7 @@ reasons.
   Sub-folders and sub-keys load when expanded. Items in the Global Ignore list are unchecked and marked
   "(ignored)"; to include one, remove its rule in Preferences. Without administrator rights, folders and keys
   your user cannot read are greyed out as "(no access)", with a link to restart as administrator. Unchecking a folder or key inside an included
-  drive or hive leaves it out of this and later snapshots. The scope is remembered and also used by `/new-snap`.
+  drive or hive leaves it out of this and later snapshots. The scope is remembered and also used by `/new`.
 - **Full rescan:** reads everything again instead of reusing unchanged parts of the previous snapshot.
 - **Start / Stop:** progress bar, elapsed time ticking every second, current phase and path, items per second.
   Stop saves nothing; closing the window while it runs asks first.

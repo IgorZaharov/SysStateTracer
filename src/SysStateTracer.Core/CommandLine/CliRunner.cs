@@ -90,8 +90,8 @@ public static class CliRunner
                     CliCommandKind.NewSnap => NewSnap(command.Names.FirstOrDefault()),
                     CliCommandKind.DeleteSnap => DeleteSnap(command.Names.FirstOrDefault()),
                     CliCommandKind.RenameSnap => RenameSnap(command.Names[0], command.Names[1]),
-                    CliCommandKind.CompareSnap => CompareSnap(command.Names, command.ReportPath),
-                    _ => ExportSnap(command.Names),
+                    CliCommandKind.CompareSnap => CompareSnap(command),
+                    _ => ExportSnap(command),
                 };
             }
             catch (OperationCanceledException)
@@ -246,47 +246,110 @@ public static class CliRunner
             return CliExitCode.Success;
         }
 
-        private CliExitCode CompareSnap(IReadOnlyList<string> names, string? reportPath)
+        private CliExitCode CompareSnap(CliCommand command)
         {
-            var (code, diff) = LoadAndCompare(names);
+            if (!TryFilter(command, out var filter))
+            {
+                return CliExitCode.BadArguments;
+            }
+
+            var report = Path.GetFullPath(command.ReportPath ?? ReportDefaultName, Paths.DataDirectory);
+            if (!TryPrepareFolder(Path.GetDirectoryName(report)!, "report"))
+            {
+                return CliExitCode.ReadWriteError;
+            }
+
+            var (code, diff) = LoadAndCompare(command.Names);
             if (diff is null)
             {
                 return code;
             }
 
-            var report = Path.GetFullPath(reportPath ?? ReportDefaultName, Paths.DataDirectory);
+            diff = ApplyFilter(diff, filter);
             HtmlReport.Write(diff, report);
             Say($"Report written: {report}");
             return CliExitCode.Success;
         }
 
-        private CliExitCode ExportSnap(IReadOnlyList<string> names)
+        private CliExitCode ExportSnap(CliCommand command)
         {
-            var (code, diff) = LoadAndCompare(names);
+            if (!TryFilter(command, out var filter))
+            {
+                return CliExitCode.BadArguments;
+            }
+
+            // Where it goes (issue #8): /output: is a folder, or the .reg file with Files beside it; the restore
+            // script then sits beside the .reg file. Without /output: as before, the program folder and .\Files.
+            string outputFolder, filesFolder;
+            string? regPath = null, scriptFolder = null;
+            if (command.OutputPath is { } output)
+            {
+                var full = Path.GetFullPath(output, Paths.DataDirectory);
+                if (full.EndsWith(".reg", StringComparison.OrdinalIgnoreCase))
+                {
+                    regPath = full;
+                    outputFolder = Path.GetDirectoryName(full)!;
+                }
+                else
+                {
+                    outputFolder = full;
+                }
+
+                filesFolder = Path.Combine(outputFolder, "Files");
+                scriptFolder = outputFolder;
+                if (!TryPrepareFolder(outputFolder, "output"))
+                {
+                    return CliExitCode.ReadWriteError;
+                }
+
+                Say($"Output folder: {outputFolder}");
+            }
+            else
+            {
+                outputFolder = Paths.DataDirectory;
+                filesFolder = Paths.FilesDirectory;
+            }
+
+            var (code, diff) = LoadAndCompare(command.Names);
             if (diff is null)
             {
                 return code;
             }
 
+            diff = ApplyFilter(diff, filter);
+
             // Registry: new and modified keys and values, from the newer snapshot.
-            var (regFile, notStored) = DiffExport.Registry(diff, diff.Registry.Roots());
-            if (regFile.KeyCount == 0)
+            if (filter is null || filter.Has(IgnoreTarget.Registry))
             {
-                Say("Registry: nothing new or modified to export.");
+                var (regFile, notStored) = DiffExport.Registry(diff, diff.Registry.Roots());
+                if (regFile.KeyCount == 0)
+                {
+                    Say("Registry: nothing new or modified to export.");
+                }
+                else
+                {
+                    regPath ??= Path.Combine(outputFolder, SafeFileName($"Export_{diff.Left.Meta.Name}_vs_{diff.Right.Meta.Name}.reg"));
+                    regFile.Save(regPath);
+                    Say(string.Create(CultureInfo.InvariantCulture, $"Registry: {regFile.KeyCount:N0} keys, {regFile.ValueCount:N0} values written to {regPath}"));
+                }
+
+                foreach (var value in notStored)
+                {
+                    Say($"  Not exported (larger than 1 MB, its data is not in the snapshot): {value}");
+                }
             }
             else
             {
-                var regPath = Path.Combine(Paths.DataDirectory, SafeFileName($"Export_{diff.Left.Meta.Name}_vs_{diff.Right.Meta.Name}.reg"));
-                regFile.Save(regPath);
-                Say(string.Create(CultureInfo.InvariantCulture, $"Registry: {regFile.KeyCount:N0} keys, {regFile.ValueCount:N0} values written to {regPath}"));
+                Say("Registry: not exported (no /registry: filter).");
             }
 
-            foreach (var value in notStored)
+            // Files: new and modified files, copied from the disk to the Files folder.
+            if (filter is not null && !filter.Has(IgnoreTarget.FileSystem))
             {
-                Say($"  Not exported (larger than 1 MB, its data is not in the snapshot): {value}");
+                Say("Files: not copied (no /files: filter).");
+                return CliExitCode.Success;
             }
 
-            // Files: new and modified files, copied from the disk to .\Files.
             var files = DiffExport.Files(diff, diff.FileSystem.Roots());
             if (files.Count == 0)
             {
@@ -295,12 +358,12 @@ public static class CliRunner
             }
 
             var totalBytes = files.Sum(f => f.Size);
-            Say(string.Create(CultureInfo.InvariantCulture, $"Files: copying {files.Count:N0} files ({ItemFormat.Size(totalBytes)}) to {Paths.FilesDirectory}"));
-            var report = FileCopier.Copy(files, Paths.FilesDirectory, new CopyPrinter(this, env.ProgressInterval), cancellationToken);
+            Say(string.Create(CultureInfo.InvariantCulture, $"Files: copying {files.Count:N0} files ({ItemFormat.Size(totalBytes)}) to {filesFolder}"));
+            var report = FileCopier.Copy(files, filesFolder, new CopyPrinter(this, env.ProgressInterval), cancellationToken);
             Say(string.Create(CultureInfo.InvariantCulture, $"Files: {report.Copied:N0} copied ({ItemFormat.Size(report.BytesCopied)}), {report.Skipped.Count:N0} skipped."));
             if (report.Copied > 0)
             {
-                var script = RestoreScript.Write(Paths.FilesDirectory);
+                var script = RestoreScript.Write(filesFolder, scriptFolder: scriptFolder);
                 Say($"Restore script: {script} copies the files back to their places (try it with -WhatIf first).");
             }
 
@@ -326,6 +389,117 @@ public static class CliRunner
             }
 
             return CliExitCode.Success;
+        }
+
+        /// <summary>Reads /files:, /registry: and /services: (issue #8); null filter when none was given.</summary>
+        private bool TryFilter(CliCommand command, out DiffFilter? filter)
+        {
+            filter = null;
+            if (!command.HasFilters)
+            {
+                return true;
+            }
+
+            if (!DiffFilter.TryCreate(command.Files, command.Registry, command.Services, out var parsed, out var error))
+            {
+                Error(error);
+                return false;
+            }
+
+            filter = parsed;
+            Say("Filters (only these are compared" + (command.Kind == CliCommandKind.Export ? " and exported" : string.Empty) + "):");
+            foreach (var entry in parsed.Entries)
+            {
+                var shown = entry.Target == IgnoreTarget.Registry && !string.Equals(entry.Text, entry.Rule.Pattern, StringComparison.OrdinalIgnoreCase)
+                    ? $"{entry.Text}  (matched as {entry.Rule.Pattern})"
+                    : entry.Text;
+                Say($"  {Label(entry.Target),-13}{shown}");
+            }
+
+            return true;
+        }
+
+        /// <summary>Creates <paramref name="folder"/> if needed and checks it can be written to; says why not.</summary>
+        private bool TryPrepareFolder(string folder, string what)
+        {
+            if (File.Exists(folder))
+            {
+                Error($"The {what} folder {folder} is a file. Give a folder, or a path that does not exist yet.");
+                return false;
+            }
+
+            var existed = Directory.Exists(folder);
+            try
+            {
+                Directory.CreateDirectory(folder);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                Error($"The {what} folder {folder} could not be created: {FriendlyErrors.Describe(ex)}");
+                return false;
+            }
+
+            if (!AppPaths.IsDirectoryWritable(folder))
+            {
+                Error($"The {what} folder {folder} cannot be written to. Choose another folder, or run from a console opened with \"Run as administrator\".");
+                return false;
+            }
+
+            if (!existed)
+            {
+                Say($"Created the {what} folder {folder}");
+            }
+
+            return true;
+        }
+
+        /// <summary>Keeps only what the filters name and says what each one matched.</summary>
+        private DiffResult ApplyFilter(DiffResult diff, DiffFilter? filter)
+        {
+            if (filter is null)
+            {
+                return diff;
+            }
+
+            var filtered = filter.Apply(diff, cancellationToken);
+            Say("After the filters:");
+            foreach (var entry in filter.Entries)
+            {
+                Say(string.Create(CultureInfo.InvariantCulture, $"  {Label(entry.Target),-13}{entry.Text}: {entry.Matched:N0} changes"));
+                if (entry.Matched == 0)
+                {
+                    Say($"    Warning: nothing new, modified or deleted matches {entry.Text}. Check the path; it is matched as {entry.Rule.Pattern}.");
+                }
+                else if (entry.WidenedToNewOrDeleted)
+                {
+                    Say($"    Note: {entry.Text} is inside a folder or key that is new or deleted as a whole; all of that folder or key is included.");
+                }
+            }
+
+            PrintCounts(filtered);
+            return filtered;
+        }
+
+        private static string Label(IgnoreTarget target) => target switch
+        {
+            IgnoreTarget.FileSystem => "File system:",
+            IgnoreTarget.Registry => "Registry:",
+            _ => "Services:",
+        };
+
+        private void PrintCounts(DiffResult diff)
+        {
+            // Counts of a swapped result are from the left side's point of view; print them older → newer.
+            var leftIsOlder = !diff.FileSystem.IsSwapped;
+            Counts("File system", leftIsOlder ? diff.FileSystemCounts : Flip(diff.FileSystemCounts));
+            Counts("Registry", leftIsOlder ? diff.RegistryCounts : Flip(diff.RegistryCounts));
+            Counts("Services", leftIsOlder ? diff.ServicesCounts : Flip(diff.ServicesCounts));
+
+            void Counts(string label, DiffCounts counts) => Say(string.Create(
+                CultureInfo.InvariantCulture,
+                $"  {label + ":",-13}{counts.New,10:N0} new{counts.Modified,10:N0} modified{counts.Deleted,10:N0} deleted"));
+
+            static DiffCounts Flip(DiffCounts c) => c with { New = c.Deleted, Deleted = c.New };
         }
 
         /// <summary>True when the argument is a path ("C:\\Test\\a.stsnap", "Test\\a", "a/b") rather than a name.</summary>
@@ -433,17 +607,8 @@ public static class CliRunner
                 ? SnapshotComparer.Compare(left, right, ignore.List.Matcher, cancellationToken)
                 : SnapshotComparer.Compare(right, left, ignore.List.Matcher, cancellationToken).Swap();
             Say(string.Create(CultureInfo.InvariantCulture, $"Compared in {watch.Elapsed.TotalSeconds:0.0} s; changes from \"{diff.Older.Meta.Name}\" to \"{diff.Newer.Meta.Name}\":"));
-            Counts("File system", leftIsOlder ? diff.FileSystemCounts : Flip(diff.FileSystemCounts));
-            Counts("Registry", leftIsOlder ? diff.RegistryCounts : Flip(diff.RegistryCounts));
-            Counts("Services", leftIsOlder ? diff.ServicesCounts : Flip(diff.ServicesCounts));
+            PrintCounts(diff);
             return (CliExitCode.Success, diff);
-
-            void Counts(string label, DiffCounts counts) => Say(string.Create(
-                CultureInfo.InvariantCulture,
-                $"  {label + ":",-13}{counts.New,10:N0} new{counts.Modified,10:N0} modified{counts.Deleted,10:N0} deleted"));
-
-            // Counts of a swapped result are from the left side's point of view; print them older → newer.
-            static DiffCounts Flip(DiffCounts c) => c with { New = c.Deleted, Deleted = c.New };
         }
 
         private IgnoreListState LoadIgnoreList()

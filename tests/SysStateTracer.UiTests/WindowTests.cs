@@ -362,7 +362,7 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             using var form = Ui.Show(new AboutForm(app.Paths, app.Settings));
             var all = Controls(form).ToList();
             Assert.Contains(all, c => c is LinkLabel link && link.Text == Core.AppInfo.GitHubUrl);
-            Assert.Contains(all, c => c is TextBox box && box.Text.Contains("/compare-snap", StringComparison.Ordinal));
+            Assert.Contains(all, c => c is TextBox box && box.Text.Contains("/report", StringComparison.Ordinal));
             form.Close();
         });
     }

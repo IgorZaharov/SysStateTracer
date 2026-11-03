@@ -62,7 +62,7 @@ public sealed class SnapshotRequest
     };
 
     /// <summary>
-    /// A request for the saved scope (W3, /new-snap); fixed drives are looked up now when the scope has none.
+    /// A request for the saved scope (W3, /new); fixed drives are looked up now when the scope has none.
     /// Items unchecked in W3 (<see cref="Config.SnapshotScope.Excluded"/>) are added to the Global Ignore rules.
     /// </summary>
     public static SnapshotRequest ForScope(

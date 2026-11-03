@@ -21,19 +21,32 @@ public static class CliHelp
         text.Append(nl);
         text.Append("Switches:").Append(nl);
         Item(text, "/?", "Shows this help.");
-        Item(text, "/new-snap [\"name\"]", "Takes a snapshot with the scope saved in the New Snapshot window.",
+        Item(text, "/new [\"name\"]", "Takes a snapshot with the scope saved in the New Snapshot window.",
             "Without a name: YYYYMMDD_HH-MM-SS_COMPUTERNAME, e.g. " + Snapshots.SnapshotNaming.DefaultName(new DateTime(2026, 10, 27, 14, 30, 0), "OFFICE-PC") + ".");
-        Item(text, "/delete-snap [\"name\"]", "Deletes the snapshot; without a name, the newest one.", "Prints which snapshot was deleted.");
-        Item(text, "/rename-snap \"old name\" \"new name\"", "Renames a snapshot. Both names are required.");
-        Item(text, "/compare-snap [\"name1\" \"name2\"] [\"report.html\"]",
+        Item(text, "/del [\"name\"]", "Deletes the snapshot; without a name, the newest one.", "Prints which snapshot was deleted.");
+        Item(text, "/rename \"old name\" \"new name\"", "Renames a snapshot. Both names are required.");
+        Item(text, "/report [\"name1\" \"name2\"] [filters] [/output:\"report.html\"]",
             "Compares two snapshots and writes a self-contained HTML report.",
             "Without names: the newest two. Without a report path: results.html.",
             "A relative report path is placed in the program folder.");
-        Item(text, "/export [\"name1\" \"name2\"]",
+        Item(text, "/export [\"name1\" \"name2\"] [filters] [/output:\"folder\" or \"file.reg\"]",
             "Exports what is new or modified in the newer snapshot:",
             "registry keys and values to Export_<name1>_vs_<name2>.reg, and files to the Files folder",
             "(keeping their folders), with Restore-Files.ps1 there to copy them back to their places.",
-            "Without names: the newest two.");
+            "Without names: the newest two.",
+            "/output: a folder (created if needed) gets the .reg file, Restore-Files.ps1 and the Files",
+            "folder; a path ending in .reg names the .reg file, with the rest beside it.");
+        text.Append(nl);
+        text.Append("Filters for /report and /export: only what they name is compared and exported.").Append(nl);
+        Item(text, "/registry:\"key\",\"key\"", "Registry keys and everything below them, e.g. \"HKLM\\SOFTWARE\\App\",\"HKCU\\Software\\App\".",
+            "HKCU means every user (HKU\\*).");
+        Item(text, "/files:\"folder\",\"folder\"", "Folders or files and everything below them, e.g. \"C:\\Program Files\\App\".");
+        Item(text, "/services:\"name\",\"name\"", "Services by key name, e.g. \"Spooler\" (/report only).");
+        text.Append("  Separate several with commas, or repeat the switch (for a path that contains a comma). * and ? work").Append(nl);
+        text.Append("  as in the Global Ignore list. With filters, an area without one is left out: /registry: alone exports").Append(nl);
+        text.Append("  only a .reg file. A filter that matches nothing gives a warning.").Append(nl);
+        text.Append(nl);
+        text.Append("The switch names before 1.2.0 still work: /new-snap, /delete-snap, /rename-snap and /compare-snap.").Append(nl);
         text.Append(nl);
         text.Append("A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of").Append(nl);
         text.Append("a .stsnap file anywhere. Put names and paths with spaces in quotes.").Append(nl);
@@ -52,26 +65,38 @@ public static class CliHelp
         text.Append(nl);
         text.Append("Examples:").Append(nl);
         Example(text, "Snapshot before and after installing an application:");
-        Example(text, "  SysStateTracer.exe /new-snap \"Before Office 2024 install\"");
-        Example(text, "  SysStateTracer.exe /new-snap \"After Office 2024 install\"");
+        Example(text, "  SysStateTracer.exe /new \"Before Office 2024 install\"");
+        Example(text, "  SysStateTracer.exe /new \"After Office 2024 install\"");
         Example(text, "Compare them and save the report in a reports folder:");
-        Example(text, "  SysStateTracer.exe /compare-snap \"Before Office 2024 install\" \"After Office 2024 install\" \"C:\\Reports\\Office 2024 install changes.html\"");
+        Example(text, "  SysStateTracer.exe /report \"Before Office 2024 install\" \"After Office 2024 install\" \"C:\\Reports\\Office 2024 install changes.html\"");
         Example(text, "Export the new registry values and files the installation added:");
         Example(text, "  SysStateTracer.exe /export \"Before Office 2024 install\" \"After Office 2024 install\"");
         Example(text, "  (gives Export_Before Office 2024 install_vs_After Office 2024 install.reg and Files\\Program Files\\...)");
+        Example(text, "Export only the application's registry keys and folders into C:\\Exports\\Office (created if needed):");
+        Example(text, "  SysStateTracer.exe /export \"Before Office 2024 install\" \"After Office 2024 install\" ^");
+        Example(text, "    /registry:\"HKLM\\SOFTWARE\\Microsoft\\Office\",\"HKCU\\Software\\Microsoft\\Office\" ^");
+        Example(text, "    /files:\"C:\\Program Files\\Microsoft Office\",\"C:\\ProgramData\\Microsoft\\Office\" /output:\"C:\\Exports\\Office\"");
+        Example(text, "  (gives C:\\Exports\\Office\\Export_...reg, Restore-Files.ps1 and Files\\Program Files\\Microsoft Office\\...)");
+        Example(text, "Only the registry, into a .reg file of its own name:");
+        Example(text, "  SysStateTracer.exe /export \"Before Office 2024 install\" \"After Office 2024 install\" ^");
+        Example(text, "    /registry:\"HKLM\\SOFTWARE\\Microsoft\\Office\" /output:\"C:\\Exports\\Office.reg\"");
+        Example(text, "A report of the application's folders, keys and services only:");
+        Example(text, "  SysStateTracer.exe /report \"Before Office 2024 install\" \"After Office 2024 install\" ^");
+        Example(text, "    /files:\"C:\\Program Files\\Microsoft Office\" /registry:\"HKLM\\SOFTWARE\\Microsoft\\Office\" ^");
+        Example(text, "    /services:\"ClickToRunSvc\" /output:\"C:\\Reports\\Office.html\"");
         Example(text, "Snapshot files in another folder, given by path:");
-        Example(text, "  SysStateTracer.exe /new-snap \"D:\\Snapshots\\Print server before patch.stsnap\"");
-        Example(text, "  SysStateTracer.exe /compare-snap \"D:\\Snapshots\\Print server before patch.stsnap\" \"After Office 2024 install.stsnap\"");
+        Example(text, "  SysStateTracer.exe /new \"D:\\Snapshots\\Print server before patch.stsnap\"");
+        Example(text, "  SysStateTracer.exe /report \"D:\\Snapshots\\Print server before patch.stsnap\" \"After Office 2024 install.stsnap\"");
         Example(text, "Compare the newest two snapshots into results.html:");
-        Example(text, "  SysStateTracer.exe /compare-snap");
+        Example(text, "  SysStateTracer.exe /report");
         Example(text, "Keep a snapshot as a baseline under a clearer name, and delete one that is no longer needed:");
-        Example(text, "  SysStateTracer.exe /rename-snap \"After Office 2024 install\" \"Office 2024 baseline\"");
-        Example(text, "  SysStateTracer.exe /delete-snap \"Before Office 2024 install\"");
+        Example(text, "  SysStateTracer.exe /rename \"After Office 2024 install\" \"Office 2024 baseline\"");
+        Example(text, "  SysStateTracer.exe /del \"Before Office 2024 install\"");
         Example(text, "Nightly snapshot from a batch file, named with the date and time (waits for it and checks the exit code):");
-        Example(text, "  start \"\" /wait SysStateTracer.exe /new-snap");
+        Example(text, "  start \"\" /wait SysStateTracer.exe /new");
         Example(text, "  if errorlevel 1 echo Snapshot failed with code %ERRORLEVEL%");
         Example(text, "From PowerShell, waiting for it and reading the exit code:");
-        Example(text, "  $p = Start-Process SysStateTracer.exe '/new-snap \"Before driver update\"' -Wait -PassThru; $p.ExitCode");
+        Example(text, "  $p = Start-Process SysStateTracer.exe '/new \"Before driver update\"' -Wait -PassThru; $p.ExitCode");
         text.Append(nl);
         text.Append("Everything printed is also written to SysStateTracer.log.").Append(nl);
         text.Append("Documentation and source: ").Append(AppInfo.GitHubUrl).Append(nl);

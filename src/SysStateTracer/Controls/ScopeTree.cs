@@ -132,7 +132,7 @@ internal sealed class ScopeTree : TreeView, IThemed
             AddNode(_fileSystem.Nodes, new ScopeItem(ScopeKind.Volume, volume.RootPath), $"{volume.RootPath}  {label} · {volume.FileSystem}{size}", StartState(included, volume.RootPath, IgnoreTarget.FileSystem), lazy: true);
         }
 
-        // Folders saved as roots of their own (e.g. by editing the settings for /new-snap) stay as such.
+        // Folders saved as roots of their own (e.g. by editing the settings for /new) stay as such.
         foreach (var folder in scope.FileSystemRoots ?? [])
         {
             if (!volumes.Any(v => string.Equals(v.RootPath.TrimEnd('\\'), folder.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))

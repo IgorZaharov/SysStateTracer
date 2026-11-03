@@ -448,13 +448,33 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(table([
         ["Switch", "What it does"],
         ["<font face=\"Mono\">/?</font>", "Shows the help: every switch, the folders in use, exit codes and examples."],
-        ["<font face=\"Mono\">/new-snap [\"name\"]</font>", "Takes a snapshot with the choice saved in the New Snapshot window. Without a name, it is named by date, time and computer."],
-        ["<font face=\"Mono\">/delete-snap [\"name\"]</font>", "Deletes the snapshot; without a name, the newest one. Prints which one it deleted."],
-        ["<font face=\"Mono\">/rename-snap \"old\" \"new\"</font>", "Renames a snapshot. A path as the new name moves it to that folder."],
-        ["<font face=\"Mono\">/compare-snap [\"name1\" \"name2\"] [\"report.html\"]</font>", "Compares two snapshots (the newest two without names) and writes a self-contained HTML report (results.html by default)."],
-        ["<font face=\"Mono\">/export [\"name1\" \"name2\"]</font>", "Writes the new and modified registry keys and values to Export_&lt;name1&gt;_vs_&lt;name2&gt;.reg and copies the new and modified files to the Files folder, with Restore-Files.ps1."],
+        ["<font face=\"Mono\">/new [\"name\"]</font>", "Takes a snapshot with the choice saved in the New Snapshot window. Without a name, it is named by date, time and computer."],
+        ["<font face=\"Mono\">/del [\"name\"]</font>", "Deletes the snapshot; without a name, the newest one. Prints which one it deleted."],
+        ["<font face=\"Mono\">/rename \"old\" \"new\"</font>", "Renames a snapshot. A path as the new name moves it to that folder."],
+        ["<font face=\"Mono\">/report [\"name1\" \"name2\"] [filters] [/output:\"report.html\"]</font>", "Compares two snapshots (the newest two without names) and writes a self-contained HTML report (results.html by default)."],
+        ["<font face=\"Mono\">/export [\"name1\" \"name2\"] [filters] [/output:\"folder\"]</font>", "Writes the new and modified registry keys and values to Export_&lt;name1&gt;_vs_&lt;name2&gt;.reg and copies the new and modified files to the Files folder, with Restore-Files.ps1."],
     ], [62 * mm, CONTENT_W - 62 * mm]))
     story.append(Spacer(1, 6))
+    story.append(p(
+        "The switch names before version 1.2.0 still work: /new-snap, /delete-snap, /rename-snap and /compare-snap."))
+    story.append(p("Filters and the output folder", "h2"))
+    story.append(table([
+        ["Switch", "What it takes"],
+        ["<font face=\"Mono\">/registry:\"HKLM\\SOFTWARE\\App\",\"HKCU\\Software\\App\"</font>", "Registry keys, each with everything below it. HKCU means every user."],
+        ["<font face=\"Mono\">/files:\"C:\\Program Files\\App\",\"C:\\ProgramData\\App\"</font>", "Folders or files, each with everything below it."],
+        ["<font face=\"Mono\">/services:\"Spooler\"</font>", "Services by key name; for /report only."],
+        ["<font face=\"Mono\">/output:\"C:\\Exports\\App\"</font>", "/report: the .html report. /export: a folder, created if needed, or a .reg file."],
+    ], [80 * mm, CONTENT_W - 80 * mm]))
+    story.append(Spacer(1, 6))
+    story += bullets([
+        "With filters, only what they name is compared and exported; an area without a filter is left out, so "
+        "<font face=\"Mono\">/registry:</font> alone exports only a .reg file. Separate several paths with commas, or "
+        "repeat the switch. * and ? work as in the Global Ignore list.",
+        "SysStateTracer prints the filters and what each one matched; a filter that matches nothing gives a warning.",
+        "<font face=\"Mono\">/export … /output:\"C:\\test\"</font> creates C:\\test and puts the .reg file and "
+        "Restore-Files.ps1 in it, and the copied files in C:\\test\\Files. If the folder cannot be created or written "
+        "to, it says why and stops before reading the snapshots (exit code 4).",
+    ])
     story += bullets([
         "A snapshot is named by its file name, with or without .stsnap, in the snapshot folder — or by the path of a "
         ".stsnap file anywhere, such as <font face=\"Mono\">\"D:\\Snapshots\\Before patch.stsnap\"</font>. Put names "
@@ -468,8 +488,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(table([
         ["Code", "Meaning"],
         ["0", "Success"],
-        ["1", "Wrong arguments: unknown switch, wrong number of names, a name that cannot be used or is taken"],
-        ["2", "Snapshot not found, or fewer than two snapshots for /compare-snap and /export"],
+        ["1", "Wrong arguments: unknown switch or option, wrong number of names, a name that cannot be used or is taken, a filter or /output: that is not valid"],
+        ["2", "Snapshot not found, or fewer than two snapshots for /report and /export"],
         ["4", "A file could not be read or written (also a damaged or newer-format snapshot)"],
         ["5", "Cancelled with Ctrl+C"],
     ], [18 * mm, CONTENT_W - 18 * mm]))
