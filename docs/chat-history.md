@@ -109,20 +109,19 @@ GitHub issues (created 29 Oct 2026, all open, no comments yet):
 
 | # | Type | What is asked | Notes for the implementer |
 | --- | --- | --- | --- |
-| 6 | Feature | Comparison window, bottom (details) pane: an **OLDER / NEWER** caption before each snapshot name, by creation time. | **Implemented on `main` (Unreleased)**, in the details headers and the top bar; captions follow Swap. Waiting for the owner to try it and close the issue. |
-| 7 | Feature | Preferences → Global Ignore list: view the **remote list's rules read-only**. Rename "Local list" to a Local / Remote selector (like browser tabs), remember the scroll position per tab; buttons keep adding to the local list; "Check now" also refreshes the Remote tab. | **Implemented on `main` (Unreleased).** Two `ThemedListView`s (each keeps its scroll); the remote one is read on first open and on Check now, even when the remote list is unticked; Edit/Remove disabled there; adding switches to the Local tab. Waiting for the owner to try it and close the issue. |
-| 8 | Feature | `/export` and `/compare-snap`: **filters** (`/registry:"HKCU","HKLM\Software"`, `/files:"C:\Program Files\Test"`) and **`--output:`** location; same syntax for both; verbose output and error handling; examples in About and the manual. | **Implemented on `main` (Unreleased).** Syntax agreed 3 Nov 2026: `/registry:` `/files:` `/services:` (report only) `/output:`; comma lists or repeated switch; ignore-rule syntax (HKCU = every user); areas without a filter are left out; `/export /output:` folder gets .reg + Restore-Files.ps1 + `Files`. Switches renamed `/new` `/del` `/rename` `/report` `/export`, old names kept as aliases. `DiffFilter` builds a filtered `DiffResult`. Waiting for the owner to try it and close the issue. |
-| 9 | Bug | **Memory**: ~79 MB at start, ~500 MB after a few snapshots and comparisons, not released. Test: idle → compare two snapshots → close window → check again. | **Implemented on `main` (Unreleased).** `UiTests/MemoryTests` showed the closed `ComparisonForm`, its `DiffResult` and both snapshots are collected (nothing keeps them alive); the memory stayed because no GC runs while the program is idle and the GC keeps freed memory committed. `MemoryRelease.Schedule()`, 2 s after the last comparison window or New Snapshot closed, runs a forced then aggressive compacting collection and logs the result. Large test (1M files, 200k values): GC committed 309 → 17 MB, working set 407 → 112 MB. Waiting for the owner to try it and close the issue. |
+| 6 | Feature | Comparison window, bottom (details) pane: an **OLDER / NEWER** caption before each snapshot name, by creation time. | **Released in v1.2.0**, in the details headers and the top bar; captions follow Swap. Waiting for the owner to try it and close the issue. |
+| 7 | Feature | Preferences → Global Ignore list: view the **remote list's rules read-only**. Rename "Local list" to a Local / Remote selector (like browser tabs), remember the scroll position per tab; buttons keep adding to the local list; "Check now" also refreshes the Remote tab. | **Released in v1.2.0.** Two `ThemedListView`s (each keeps its scroll); the remote one is read on first open and on Check now, even when the remote list is unticked; Edit/Remove disabled there; adding switches to the Local tab. Waiting for the owner to try it and close the issue. |
+| 8 | Feature | `/export` and `/compare-snap`: **filters** (`/registry:"HKCU","HKLM\Software"`, `/files:"C:\Program Files\Test"`) and **`--output:`** location; same syntax for both; verbose output and error handling; examples in About and the manual. | **Released in v1.2.0.** Syntax agreed 3 Nov 2026: `/registry:` `/files:` `/services:` (report only) `/output:`; comma lists or repeated switch; ignore-rule syntax (HKCU = every user); areas without a filter are left out; `/export /output:` folder gets .reg + Restore-Files.ps1 + `Files`. Switches renamed `/new` `/del` `/rename` `/report` `/export`, old names kept as aliases. `DiffFilter` builds a filtered `DiffResult`. Waiting for the owner to try it and close the issue. |
+| 9 | Bug | **Memory**: ~79 MB at start, ~500 MB after a few snapshots and comparisons, not released. Test: idle → compare two snapshots → close window → check again. | **Released in v1.2.0.** `UiTests/MemoryTests` showed the closed `ComparisonForm`, its `DiffResult` and both snapshots are collected (nothing keeps them alive); the memory stayed because no GC runs while the program is idle and the GC keeps freed memory committed. `MemoryRelease.Schedule()`, 2 s after the last comparison window or New Snapshot closed, runs a forced then aggressive compacting collection and logs the result. Large test (1M files, 200k values): GC committed 309 → 17 MB, working set 407 → 112 MB. Waiting for the owner to try it and close the issue. |
 
 Other known loose ends (not filed as issues):
 
 - The 1.1.0 two-pane comparison window was tested on test data only; the owner has not yet tried **Show all on a
   whole C:\\** or **Include subfolders on a large folder** on real snapshots.
-- README/manual "Unblock" screenshot (`docs/images/unblock.png`) shows the exe's Properties, not the zip's (same
-  dialog; the owner may send a new one).
-- `CopyProgressForm` thread guard: done (Unreleased), same `InvokeRequired` pattern as `NewSnapshotForm`.
-- CI warns that `actions/checkout@v4`, `setup-dotnet@v4`, `upload-artifact@v4` target Node 20 (deprecated);
-  move to newer major versions when available.
+- README/manual "Unblock" screenshot (`docs/images/unblock.png`): the zip's Properties, sent by the owner 3 Nov 2026.
+- `CopyProgressForm` thread guard: done in v1.2.0, same `InvokeRequired` pattern as `NewSnapshotForm`.
+- GitHub Actions moved off Node 20 (3 Nov 2026): `checkout@v7`, `setup-dotnet@v6`, `upload-artifact@v7`,
+  `download-artifact@v8`.
 - Old links to `releases/latest/download/SysStateTracer.exe` return 404. They are only in the README of the `v1.0.0`
   tag (the 1.0.0 manual has no download links); everything current links to `releases/latest/download/SysStateTracer.zip`.
   The owner chose (3 Nov 2026) to keep releases zip-only rather than attach the bare exe again; v1.0.0 still has its exe.
@@ -184,9 +183,9 @@ Tooling notes (from the cloud chat sandbox; may not apply in Claude Code on the 
 ## 7. Next steps (suggested order)
 
 1. Try 1.1.0 on real snapshots with the owner (Show all on `C:\`, Include subfolders, HKU) and fix what is slow.
-2. Issue **#9**: done (Unreleased); owner to try it.
-3. Issue **#6**: done (Unreleased); owner to try it.
-4. Issue **#7**: done (Unreleased); owner to try it.
-5. Issue **#8**: done (Unreleased); owner to try it.
-6. Housekeeping: zip Unblock screenshot, GitHub Actions versions.
-7. Release 1.2.0 (rc first if the memory or comparison changes are large).
+2. Issue **#9**: done in v1.2.0; owner to try it.
+3. Issue **#6**: done in v1.2.0; owner to try it.
+4. Issue **#7**: done in v1.2.0; owner to try it.
+5. Issue **#8**: done in v1.2.0; owner to try it.
+6. Housekeeping (Unblock screenshot, GitHub Actions versions): done 3 Nov 2026.
+7. 1.2.0 released 3 Nov 2026; the owner tries it and closes issues #6–#9.

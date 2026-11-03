@@ -25,12 +25,12 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0   # full history, so the version carries the commit hash
 
       - name: Set up .NET SDK (from global.json)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -77,7 +77,7 @@ jobs:
         run: .github/scripts/run.ps1 dotnet publish src/SysStateTracer/SysStateTracer.csproj -c Release -o publish
 
       - name: Upload SysStateTracer.exe
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SysStateTracer-${{ github.sha }}
           path: publish/
@@ -161,7 +161,7 @@ jobs:
           Write-Host "::notice title=Manual::Manual.pdf built ($([math]::Round((Get-Item Manual.pdf).Length / 1MB, 1)) MB) and put on the ui-preview pre-release"
 
       - name: Upload Manual.pdf
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Manual-${{ github.sha }}
           path: Manual.pdf
@@ -191,7 +191,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: TestResults/
@@ -207,12 +207,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           sparse-checkout: .github
 
       - name: Download SysStateTracer.exe
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: SysStateTracer-${{ github.sha }}
           path: exe
