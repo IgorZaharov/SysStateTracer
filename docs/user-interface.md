@@ -92,7 +92,7 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
   highlighted; a value too long for one line (a Path variable) goes on up to three, broken between folders, and a longer one
   scrolls (a scroll bar beside it; mouse wheel, click or drag); values are shown whole up to 32,768 characters; each column is headed OLDER or NEWER and the snapshot name (issue #6). Its full path is in the status
   bar (F19).
-- **Tab** moves from the tree to the list, **Shift+Tab** back.
+- The keyboard starts in the tree when the window opens. **Tab** moves from the tree to the list, **Shift+Tab** back.
 - **Status bar:** path, marks, Global Ignore list, and the colour legend: + New, ~ Modified, − Deleted, Changes
   inside, Unchanged, Changed value.
 - **Environment variables** are compared only when both snapshots have them (snapshots taken before 1.3 have none);

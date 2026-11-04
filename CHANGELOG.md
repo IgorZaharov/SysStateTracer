@@ -19,6 +19,7 @@
 - **Preferences** opens tall enough to show the whole General page (the Lists setting was cut off at the bottom), also when it was closed smaller, but never taller than the screen; on a small screen the page scrolls (request 44).
 
 ### Windows 11 look
+- **Comparison starts in the tree:** the keyboard focus is in the left pane when the window opens, so Tab goes from there to the list.
 - **Folders first:** Help / About and `/?` list the snapshot and data folders right after the version, before the switches.
 - **Narrow main window:** the command buttons from the right end show only their icon instead of being cut off (Properties was clipped).
 - **Sharper icons:** folder and key icons in the comparison tree and its legend are drawn as smoothed shapes; drawn as text, their upright sides could disappear (at 125 % display scaling, for example).

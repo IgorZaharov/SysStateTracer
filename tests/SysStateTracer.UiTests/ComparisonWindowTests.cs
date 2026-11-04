@@ -247,8 +247,9 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             var fs = ComparisonTreeModel.CategoryId(DiffArea.FileSystem);
             string[] Visible() => [.. grid.VisibleIds.Where(id => id >= 0).Select(id => tree.Data.Path(tree.ItemOf(id)))];
 
-            // Tab goes from the tree straight to the list, Shift+Tab back.
-            Assert.True(grid.Focus());
+            // The keyboard starts in the tree; Tab goes from it straight to the list, Shift+Tab back.
+            Ui.Pump();
+            Assert.True(grid.Focused, $"the tree should have the focus when the window opens, not {form.ActiveControl?.GetType().Name}");
             Assert.True(form.TabBetweenPanes(back: false));
             Assert.True(form.List.Focused, "Tab from the tree did not reach the list");
             Assert.True(form.TabBetweenPanes(back: true));

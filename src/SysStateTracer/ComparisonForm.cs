@@ -155,7 +155,13 @@ internal sealed class ComparisonForm : Form
             Log.Warning("The comparison window's panes could not be sized", ex);
         }
 
+        // The keyboard starts in the left pane, the tree; Tab then goes to the list.
+        ActiveControl = _tree;
         await LoadAsync(reloadFiles: true);
+        if (!IsDisposed && !_list.ContainsFocus)
+        {
+            ActiveControl = _tree;
+        }
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)
