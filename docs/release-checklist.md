@@ -36,7 +36,7 @@ Use the release candidate (`v1.0.0-rc.N` pre-release) and tick each row.
    **Actions → release → Run workflow** and enter the version (`1.0.0`, `1.0.0-rc.1`); the tag is then created on
    the latest commit of `main`.
 3. The `release` workflow builds, tests, checks the version the exe reports, and creates the GitHub release with
-   `SysStateTracer.zip` (the exe inside), `SysStateTracer.zip.sha256`, `Manual.pdf` and the notes from the
-   changelog (with the SHA-256 of the zip and of the exe). Since 1.1.0 the exe is not published on its own: browsers
-   warn less about a zip, and only the zip needs Unblock before extracting.
+   `SysStateTracer.exe`, `SysStateTracer.exe.sha256`, `Manual.pdf` and the notes from the changelog (with the
+   exe's SHA-256). Since 1.2.2 the exe is published on its own again (1.1.0–1.2.1 had it inside
+   `SysStateTracer.zip`); users unblock it in its Properties before the first start.
 4. If Microsoft Defender ever flags a release, submit the exe to Microsoft as a false positive.

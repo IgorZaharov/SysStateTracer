@@ -11,7 +11,7 @@ Confirmed by the project owner on 27 Oct 2026 (plan Step 1).
 | D5 | Non-important marks | Kept only while the comparison window is open; not saved. |
 | D6 | Repository | https://github.com/igorzakharovdev-design/SysStateTracer |
 | D7 | Elevation | ~~Manifest requests administrator rights at every launch.~~ Replaced by F9 (28 Oct 2026). |
-| D8 | Code signing | Releases are unsigned; each release publishes the exe's SHA-256. |
+| D8 | Code signing | Releases are unsigned; each release publishes the exe's SHA-256. Download: the bare `SysStateTracer.exe` up to 1.0.0, inside `SysStateTracer.zip` from 1.1.0 to 1.2.1, and the bare exe again from 1.2.2 (owner, 5 Nov 2026: the links lead straight to the exe). |
 | D9 | Default scope | All fixed drives, HKLM without SAM/SECURITY, HKU, Win32 services; kernel drivers off. |
 | D10 | Cold file-system scan | Whole NTFS drives are read from the master file table (one sequential read of the table instead of one or more reads per folder). Folder listing remains for other file systems, single-folder roots, and whenever the table cannot be read. Confirmed 27 Oct 2026; see [benchmarks.md](benchmarks.md). |
 | D11 | Name | The project is named **SysStateTracer** (renamed from SysSnapUtil on 27 Oct 2026): `SysStateTracer.exe`, repository https://github.com/igorzakharovdev-design/SysStateTracer, snapshot files `.stsnap` with the signature "STSNAP". The repository starts from one fresh commit. |

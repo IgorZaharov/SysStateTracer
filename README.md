@@ -7,13 +7,13 @@ snapshots to show what was created, modified or deleted in between — for examp
 
 (Inspired by SysTracer from Blue Project Software which is highly regarded and worth checking out too if you like this software)
 
-[![Download SysStateTracer.zip](https://img.shields.io/badge/Download-SysStateTracer.zip-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.zip)
+[![Download SysStateTracer.exe](https://img.shields.io/badge/Download-SysStateTracer.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe)
 [![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/Manual.pdf)
 [![Latest version](https://img.shields.io/github/v/release/igorzakharovdev-design/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest)
 
-**Before extracting:** the exe is not code-signed, so Windows blocks files from a downloaded zip. Right-click
-`SysStateTracer.zip` → **Properties**, (1) tick **Unblock** at the bottom of the General tab, and (2) click **OK**.
-Then right-click the zip → **Extract All**, and start `SysStateTracer.exe` from the extracted folder.
+**Before the first start:** the exe is not code-signed, so Windows blocks a downloaded exe. Put
+`SysStateTracer.exe` in a folder you can write to (it keeps its files beside itself), right-click it →
+**Properties**, (1) tick **Unblock** at the bottom of the General tab, and (2) click **OK**. Then double-click it.
 
 <img src="docs/images/unblock.png" alt="Properties of the downloaded file with Unblock ticked" width="360">
 
@@ -23,10 +23,10 @@ Then right-click the zip → **Extract All**, and start `SysStateTracer.exe` fro
 
 Direct links to the latest version — click to download, no GitHub account needed:
 
-- **[SysStateTracer.zip](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.zip)** — the program: `SysStateTracer.exe`, one file for Windows 10 and 11 x64, nothing to install. Unblock the zip, then extract it (see above).
+- **[SysStateTracer.exe](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe)** — the program: one file for Windows 10 and 11 x64, nothing to install. Unblock it before the first start (see above).
 - **[Manual.pdf](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/Manual.pdf)** — the user manual, with screenshots.
-- [SysStateTracer.zip.sha256](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.zip.sha256) — the zip's SHA-256; check it in PowerShell with
-  `(Get-FileHash .\SysStateTracer.zip).Hash`. The release notes also list the exe's own SHA-256.
+- [SysStateTracer.exe.sha256](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe.sha256) — the exe's SHA-256; check it in PowerShell with
+  `(Get-FileHash .\SysStateTracer.exe).Hash`. The release notes list it too.
 
 Please, report any bugs or issues to the document here:
 - **[BUGS/ISSUES](https://github.com/igorzakharovdev-design/SysStateTracer/issues)**

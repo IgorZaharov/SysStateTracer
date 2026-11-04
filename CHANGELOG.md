@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.2.2] — 2026-11-05
+
+### Download
+- The download is **`SysStateTracer.exe`** itself again, not a zip: the links in the README, the manual and the release lead straight to it (with `SysStateTracer.exe.sha256` and `Manual.pdf`). Before the first start, right-click the exe → **Properties**, tick **Unblock**, click **OK**.
+- `SysStateTracer.exe` is no longer stored compressed inside itself (from 1.2.1-rc.1), so it does not look like a packed program to antivirus software: browsers could block the download of 1.2.0 with **"Virus detected"**, a false positive. The exe is 118 MB instead of 52 MB, and starts slightly faster.
+
 ### New home on GitHub
 - The project moved to **https://github.com/igorzakharovdev-design/SysStateTracer** (the old repository no longer exists). Help / About, `/?`, the manual and the README link there.
 - **Global Ignore list:** the default Remote list is now read from the new repository. Settings that still hold the old default are moved to the new one when SysStateTracer starts; a location you typed yourself is kept. Versions up to 1.2.x can no longer reach the old list and use the Local one; update, or paste the new address into Preferences there (their **Default** button still gives the old one).
@@ -34,11 +40,6 @@
 - **Comparison window:** **Show all / Only changes** tabs; the tree opens with arrows instead of dotted lines and + / − boxes, in larger text, with the changes of File system, Registry and Services as **+20 ~1 −1** in their colours; the selected folder as a path bar (C:\ › Program Files › Contoso); OLDER / NEWER as small tags.
 - **New Snapshot, Snapshot Properties, Preferences:** the window body in Mica's colours with the content on cards: the scope tree, each group of Properties, each Preferences setting and the Global Ignore list. Preferences' **General / Global Ignore list** and **Local list / Remote list** are tabs as in the comparison window. Without administrator rights New Snapshot shows the same warning bar as the main window, with **Restart as administrator** (it was a link). New Snapshot now also comes back where it was closed, not only at its size.
 - **Every dialog:** the buttons sit in a footer below a thin line, as in Windows 11 dialogs. The Properties scroll bar is dark in the dark theme.
-
-## [1.2.1]
-
-### Fixed
-- Browsers could block the download of 1.2.0 with **"Virus detected"**, a false positive. `SysStateTracer.exe` is no longer stored compressed inside itself, so it does not look like a packed program to antivirus software. The exe is now 118 MB instead of 52 MB; the download (`SysStateTracer.zip`, 47 MB) is the same size, and the program starts slightly faster.
 
 ## [1.2.0] — 2026-11-03
 

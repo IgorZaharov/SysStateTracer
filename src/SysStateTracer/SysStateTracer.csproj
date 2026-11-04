@@ -26,7 +26,7 @@
   <PropertyGroup>
     <PublishSingleFile>true</PublishSingleFile>
     <!-- false on purpose: a compressed bundle looks like a packed exe, which antivirus machine-learning rules
-         flag ("Virus detected" on 1.2.0). The release zip compresses the exe anyway. -->
+         flag ("Virus detected" on 1.2.0). The download is larger for it (118 MB instead of 52 MB). -->
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <!-- false on purpose: any native DLL that would need extracting to %TEMP% shows up
          beside the exe instead, and the CI single-file check fails (plan Step 5) -->

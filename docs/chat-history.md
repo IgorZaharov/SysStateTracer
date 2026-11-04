@@ -72,15 +72,15 @@ Where things are:
   an STA thread, screenshots), `tests/SysStateTracer.Benchmarks`. About 400 tests.
 - CI (`.github/workflows`): `build.yml` on every push to `main` (build, tests, publish, smoke test on clean
   Windows Server 2022/2025 runners, screenshots + Manual.pdf to `ui-preview`); `release.yml` (manual dispatch with
-  a version → tag, release with `SysStateTracer.zip`, `.zip.sha256`, `Manual.pdf`, notes from `CHANGELOG.md`);
-  `repackage.yml` (move an old release's exe into a zip, rewrite its notes); `benchmark.yml`.
+  a version → tag, release with `SysStateTracer.exe`, `.exe.sha256`, `Manual.pdf`, notes from `CHANGELOG.md`);
+  `repackage.yml` (old: moved a release's exe into a zip, for 1.1.0–1.2.1); `benchmark.yml`.
 - Manual: `tools/manual/make_manual.py` (ReportLab) builds `Manual.pdf` from the CI screenshots and the `/?` text.
 
 ## 3. Key decisions (full log: `docs/decisions.md`)
 
 - **D1** .NET 10 self-contained single file; Windows 10 22H2 and Windows 11 are the test targets.
-- **D8** Unsigned; every release publishes SHA-256 checksums. **Since 1.1.0 the download is
-  `SysStateTracer.zip`** (fewer browser warnings; only the zip needs Unblock, then Extract All). No bare exe.
+- **D8** Unsigned; every release publishes SHA-256 checksums. **Since 1.2.2 the download is the bare
+  `SysStateTracer.exe`** again (owner, 5 Nov 2026); 1.1.0–1.2.1 were zip-only.
 - **D10** Whole NTFS drives from the MFT; listing elsewhere. Incremental via the USN journal.
 - **F9** No UAC prompt at start; standard users work; "Restart as administrator" for complete snapshots;
   snapshots record which rights they were taken with.
@@ -129,7 +129,10 @@ Other known loose ends (not filed as issues):
   signing for open-source projects from GitHub Actions) and report false positives at microsoft.com/wdsi/filesubmission.
 - Old links to `releases/latest/download/SysStateTracer.exe` return 404. They are only in the README of the `v1.0.0`
   tag (the 1.0.0 manual has no download links); everything current links to `releases/latest/download/SysStateTracer.zip`.
-  The owner chose (3 Nov 2026) to keep releases zip-only rather than attach the bare exe again; v1.0.0 still has its exe.
+  The owner chose (3 Nov 2026) to keep releases zip-only, then (5 Nov 2026) to publish the bare exe again from 1.2.2:
+  README and manual link to `releases/latest/download/SysStateTracer.exe`.
+- **Repository moved** (5 Nov 2026): IgorZaharov/SysStateTracer no longer exists; the project is now
+  igorzakharovdev-design/SysStateTracer. Releases before 1.2.2 and issues #6–#9 did not move (tags did).
 
 ## 6. Conventions we agreed on
 

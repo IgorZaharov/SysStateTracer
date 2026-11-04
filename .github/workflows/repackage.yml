@@ -1,7 +1,7 @@
 name: repackage
 
-# Moves an existing release's SysStateTracer.exe into SysStateTracer.zip (as the release workflow publishes
-# since 1.1.0): the exe is checked against its published SHA-256, zipped unchanged and uploaded with the
+# Moves an existing release's SysStateTracer.exe into SysStateTracer.zip (as the release workflow published
+# from 1.1.0 to 1.2.1; since 1.2.2 releases have the bare exe again, so this is not needed for them): the exe is checked against its published SHA-256, zipped unchanged and uploaded with the
 # zip's SHA-256; the bare exe and its checksum are then removed, and the notes' "## Download" section is
 # rewritten for the zip. A release that has the zip already only gets its notes rewritten. Optionally
 # Manual.pdf is replaced by the one CI last built (the "ui-preview" pre-release).
