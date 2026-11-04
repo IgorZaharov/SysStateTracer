@@ -118,7 +118,7 @@ Other known loose ends (not filed as issues):
 
 - The 1.1.0 two-pane comparison window was tested on test data only; the owner has not yet tried **Show all on a
   whole C:\\** or **Include subfolders on a large folder** on real snapshots.
-- README/manual "Unblock" screenshot (`docs/images/unblock.png`): the zip's Properties, sent by the owner 3 Nov 2026.
+- README/manual "Unblock" screenshot (`docs/images/unblock.png`): the exe's Properties, sent by the owner 5 Nov 2026 (the zip's before).
 - `CopyProgressForm` thread guard: done in v1.2.0, same `InvokeRequired` pattern as `NewSnapshotForm`.
 - GitHub Actions moved off Node 20 (3 Nov 2026): `checkout@v7`, `setup-dotnet@v6`, `upload-artifact@v7`,
   `download-artifact@v8`.
