@@ -17,8 +17,8 @@ Where things are:
 
 | What | Where |
 | --- | --- |
-| Repository | https://github.com/IgorZaharov/SysStateTracer (`main` only, no branches) |
-| Releases | https://github.com/IgorZaharov/SysStateTracer/releases (latest: v1.1.0) |
+| Repository | https://github.com/igorzakharovdev-design/SysStateTracer (`main` only, no branches) |
+| Releases | https://github.com/igorzakharovdev-design/SysStateTracer/releases (latest: v1.1.0) |
 | Screenshots of every window, light and dark, and the latest Manual.pdf | `ui-preview` pre-release, updated by CI on every push |
 | Benchmark tool for real PCs | `bench` pre-release (`SysStateTracer.Bench.exe`, see `docs/benchmarks.md`) |
 | Original architecture & build plan (§ numbers and "Steps" in code comments refer to it) | claude.ai document "SysStateTracer — Architecture & Build Plan" (https://claude.ai/artifact/HhpT4srQLj3DJhvRbMbhWL); the decisions it led to are in `docs/decisions.md` |
@@ -174,11 +174,11 @@ Code:
 Tooling notes (from the cloud chat sandbox; may not apply in Claude Code on the owner's PC):
 
 - CI was the compiler (no local .NET SDK in the sandbox). Wait for CI by commit:
-  `gh api "repos/IgorZaharov/SysStateTracer/actions/runs?head_sha=<full sha>"`; read failures from
-  `gh api repos/IgorZaharov/SysStateTracer/check-runs/<job id>/annotations` (test-report lines and crash stacks
+  `gh api "repos/igorzakharovdev-design/SysStateTracer/actions/runs?head_sha=<full sha>"`; read failures from
+  `gh api repos/igorzakharovdev-design/SysStateTracer/check-runs/<job id>/annotations` (test-report lines and crash stacks
   are annotated).
-- Dispatch a release: `gh api -X POST repos/IgorZaharov/SysStateTracer/actions/workflows/release.yml/dispatches -f ref=main -f 'inputs[version]=1.2.0'`.
-- Download release or `ui-preview` assets: `gh api -H "Accept: application/octet-stream" repos/IgorZaharov/SysStateTracer/releases/assets/<id> > file`.
+- Dispatch a release: `gh api -X POST repos/igorzakharovdev-design/SysStateTracer/actions/workflows/release.yml/dispatches -f ref=main -f 'inputs[version]=1.2.0'`.
+- Download release or `ui-preview` assets: `gh api -H "Accept: application/octet-stream" repos/igorzakharovdev-design/SysStateTracer/releases/assets/<id> > file`.
 - The sandbox could not upload release assets or edit releases (hence `repackage.yml`); with a normal `gh` login
   `gh release upload/edit` work directly.
 - With the .NET 10 SDK on Windows: `dotnet build SysStateTracer.slnx -c Release` and

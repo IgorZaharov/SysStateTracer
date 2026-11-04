@@ -106,4 +106,18 @@ public class SettingsStoreTests
         Assert.Equal(IgnoreListSource.Local, settings.IgnoreListSource);
         Assert.Equal(RemoteIgnoreSource.DefaultLocation, settings.IgnoreListRemoteLocation);
     }
+
+    [Fact]
+    public void Load_FormerDefaultRemoteLocation_MovesToNewRepository()
+    {
+        using var dir = new TempDirectory();
+        var path = dir.File(AppPaths.ConfigFileName);
+        File.WriteAllText(path, $$"""{ "ignoreListRemoteLocation": "{{RemoteIgnoreSource.FormerDefaultLocation}}" }""");
+
+        var settings = SettingsStore.Load(path);
+
+        Assert.Equal(
+            "https://raw.githubusercontent.com/igorzakharovdev-design/SysStateTracer/main/ignore/SysStateTracer.ignore.txt",
+            settings.IgnoreListRemoteLocation);
+    }
 }

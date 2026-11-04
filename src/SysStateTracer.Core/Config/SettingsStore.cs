@@ -65,7 +65,8 @@ public static class SettingsStore
     // Missing or empty values in the file fall back to the defaults.
     private static AppSettings Normalize(AppSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.IgnoreListRemoteLocation))
+        if (string.IsNullOrWhiteSpace(settings.IgnoreListRemoteLocation)
+            || string.Equals(settings.IgnoreListRemoteLocation.Trim(), RemoteIgnoreSource.FormerDefaultLocation, StringComparison.OrdinalIgnoreCase))
         {
             settings.IgnoreListRemoteLocation = RemoteIgnoreSource.DefaultLocation;
         }

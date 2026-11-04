@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### New home on GitHub
+- The project moved to **https://github.com/igorzakharovdev-design/SysStateTracer** (the old repository no longer exists). Help / About, `/?`, the manual and the README link there.
+- **Global Ignore list:** the default Remote list is now read from the new repository. Settings that still hold the old default are moved to the new one when SysStateTracer starts; a location you typed yourself is kept. Versions up to 1.2.x can no longer reach the old list and use the Local one; update, or paste the new address into Preferences there (their **Default** button still gives the old one).
+
 ### Snapshots
 - **Environment variables** (request 40): each snapshot now records the System variables and your user variables, as the Environment Variables window shows them (values as written, so `%SystemRoot%` is not expanded). New Snapshot has an **Environment variables** item, ticked by default; Properties counts them.
 - In the comparison, **Environment variables** is a fourth category beside Services: select it to list the variables, with System or User, the type and the value; a changed value is highlighted, and the details show both values. Jump to opens Regedit at the key that holds the variable. They are compared only when both snapshots have them (snapshots taken with an earlier version have none).

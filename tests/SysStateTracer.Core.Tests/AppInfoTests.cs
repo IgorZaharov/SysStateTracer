@@ -22,6 +22,6 @@ public class AppInfoTests
     [Fact]
     public void GitHubUrl_PointsToTheRepository()
     {
-        Assert.Equal("https://github.com/IgorZaharov/SysStateTracer", AppInfo.GitHubUrl);
+        Assert.Equal("https://github.com/igorzakharovdev-design/SysStateTracer", AppInfo.GitHubUrl);
     }
 }
