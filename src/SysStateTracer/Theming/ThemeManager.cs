@@ -441,21 +441,32 @@ internal static class UiFonts
     public static Font Glyph(float size) => new(GlyphFamily, size);
 
     /// <summary>
-    /// Draws an icon from the glyph font with grey edge smoothing, as Windows 11 draws icons. ClearType's colour
-    /// smoothing thins the one-pixel upright strokes of outline icons (a folder lost its sides on some screens).
+    /// Draws an icon from the glyph font as a shape: its outline filled with smoothed edges. Text drawing hints the
+    /// glyph to whole pixels and, at some sizes (11 pt at 125 %), draws it without smoothing, so the one-pixel upright
+    /// strokes of outline icons fall between pixels and vanish (a folder lost its sides).
     /// </summary>
     public static void DrawGlyph(Graphics g, string glyph, Font font, Rectangle bounds, Color color, TextFormatFlags flags)
     {
         ArgumentNullException.ThrowIfNull(g);
-        var hint = g.TextRenderingHint;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        ArgumentNullException.ThrowIfNull(font);
+        using var format = new StringFormat(StringFormat.GenericTypographic)
+        {
+            Alignment = flags.HasFlag(TextFormatFlags.HorizontalCenter) ? StringAlignment.Center : StringAlignment.Near,
+            LineAlignment = flags.HasFlag(TextFormatFlags.VerticalCenter) ? StringAlignment.Center : StringAlignment.Near,
+        };
+        format.FormatFlags |= StringFormatFlags.NoWrap | StringFormatFlags.NoClip;
+        using var path = new System.Drawing.Drawing2D.GraphicsPath();
+        path.AddString(glyph, font.FontFamily, (int)font.Style, font.SizeInPoints * g.DpiY / 72f, bounds, format);
+        using var brush = new SolidBrush(color);
+        var smoothing = g.SmoothingMode;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         try
         {
-            TextRenderer.DrawText(g, glyph, font, bounds, color, flags);
+            g.FillPath(brush, path);
         }
         finally
         {
-            g.TextRenderingHint = hint;
+            g.SmoothingMode = smoothing;
         }
     }
 

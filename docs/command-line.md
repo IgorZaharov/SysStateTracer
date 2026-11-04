@@ -15,6 +15,10 @@ and its exit code.
 SysStateTracer 0.1.0+1a2b3c4
 Takes snapshots of folders, files, registry and services, and shows what changed between two of them.
 
+Folders:
+  Snapshots:                       C:\Tools\SysStateTracer
+  Reports, .reg files, Files, log: C:\Tools\SysStateTracer
+
 Usage:  SysStateTracer.exe [switch] [arguments]
 Without a switch the main window opens.
 
@@ -52,10 +56,6 @@ The switch names before 1.2.0 still work: /new-snap, /delete-snap, /rename-snap 
 A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of
 a .stsnap file anywhere. Put names and paths with spaces in quotes.
 Comparisons and exports leave out everything matched by the Global Ignore lists set in Preferences.
-
-Folders:
-  Snapshots:                       C:\Tools\SysStateTracer
-  Reports, .reg files, Files, log: C:\Tools\SysStateTracer
 
 Exit codes:
   0 success   1 wrong arguments   2 snapshot not found   4 file could not be read or written

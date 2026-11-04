@@ -16,6 +16,10 @@ public static class CliHelp
         text.Append(AppInfo.Name).Append(' ').Append(AppInfo.Version).Append(nl);
         text.Append("Takes snapshots of folders, files, registry and services, and shows what changed between two of them.").Append(nl);
         text.Append(nl);
+        text.Append("Folders:").Append(nl);
+        text.Append("  Snapshots:                       ").Append(snapshotFolder).Append(nl);
+        text.Append("  Reports, .reg files, Files, log: ").Append(dataFolder).Append(nl);
+        text.Append(nl);
         text.Append("Usage:  SysStateTracer.exe [switch] [arguments]").Append(nl);
         text.Append("Without a switch the main window opens.").Append(nl);
         text.Append(nl);
@@ -52,10 +56,6 @@ public static class CliHelp
         text.Append("A snapshot is named by its file name, with or without .stsnap, in the snapshot folder; or give the path of").Append(nl);
         text.Append("a .stsnap file anywhere. Put names and paths with spaces in quotes.").Append(nl);
         text.Append("Comparisons and exports leave out everything matched by the Global Ignore lists set in Preferences.").Append(nl);
-        text.Append(nl);
-        text.Append("Folders:").Append(nl);
-        text.Append("  Snapshots:                       ").Append(snapshotFolder).Append(nl);
-        text.Append("  Reports, .reg files, Files, log: ").Append(dataFolder).Append(nl);
         text.Append(nl);
         text.Append("Exit codes:").Append(nl);
         text.Append("  0 success   1 wrong arguments   2 snapshot not found   4 file could not be read or written").Append(nl);
