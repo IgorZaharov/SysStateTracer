@@ -791,7 +791,11 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
         return keys;
     }
 
-    private static string Shorten(string text) => text.Length <= 600 ? text : text[..600] + " …";
+    /// <summary>
+    /// A value for the details, which scroll: whole up to 32,768 characters (the longest environment variable,
+    /// e.g. a Path), so only a large registry value is cut.
+    /// </summary>
+    private static string Shorten(string text) => text.Length <= 32_768 ? text : text[..32_768] + " …";
 
     // ---- List columns ----
 

@@ -59,22 +59,52 @@ public class CurrentUserTreeTests
     }
 
     [Fact]
-    public void Details_LongValue_WrapsOntoASecondLine()
+    public void Details_LongValue_WrapsBetweenFolders()
     {
         var path = @"C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot\bin;%SystemRoot%\system32;%SystemRoot%;%SystemRoot%\System32\Wbem;C:\Program Files\Microsoft Office\root";
 
         var lines = DetailsPanel.Wrap(path, UiFonts.Normal, 300);
 
-        Assert.Equal(DetailsPanel.MaxLines, lines.Count);
+        Assert.True(lines.Count > DetailsPanel.MaxLines);
         Assert.Equal(path, string.Concat(lines));
-        foreach (var line in lines.Take(lines.Count - 1))
+        foreach (var line in lines)
         {
             Assert.True(TextRenderer.MeasureText(line, UiFonts.Normal, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width <= 300);
-            Assert.True(line.EndsWith(';') || line.EndsWith('\\'), line); // broken between folders
+        }
+
+        foreach (var line in lines.Take(lines.Count - 1))
+        {
+            Assert.True(line[^1] is ';' or '\\' or ' ', line); // broken between folders or words
         }
 
         Assert.Equal(2, DetailsPanel.Wrap(path, UiFonts.Normal, 700).Count);
         Assert.Equal(["short"], DetailsPanel.Wrap("short", UiFonts.Normal, 400));
+    }
+
+    [Fact]
+    public void Details_ValueOverThreeLines_Scrolls()
+    {
+        var longPath = string.Join(';', Enumerable.Range(0, 40).Select(i => $@"C:\Program Files\Vendor {i:D2}\bin"));
+        using var panel = new DetailsPanel { Size = new Size(900, 184) };
+        panel.ShowItem("Path", "Modified", null, @"System\Path", ("OLDER", "before"), ("NEWER", "after"), [
+            new ComparisonData.DetailRow("Variables", "System", "System", false),
+            new ComparisonData.DetailRow("Value", "short", longPath, true),
+        ]);
+        using (var bitmap = new Bitmap(panel.Width, panel.Height))
+        {
+            panel.DrawToBitmap(bitmap, panel.ClientRectangle); // lays the values out
+        }
+
+        var cell = Assert.Single(panel.Cells, c => c.Row == 1 && c.Right);
+        Assert.True(cell.Lines > DetailsPanel.MaxLines);
+        Assert.False(cell.Track.IsEmpty);
+        Assert.True(Assert.Single(panel.Cells, c => c.Row == 1 && !c.Right).Track.IsEmpty); // "short" fits
+
+        Assert.True(panel.ScrollBy(1, right: true, 2));
+        Assert.Equal(2, panel.ScrollOf(1, right: true));
+        Assert.True(panel.ScrollBy(1, right: true, 1_000));
+        Assert.Equal(cell.Lines - DetailsPanel.MaxLines, panel.ScrollOf(1, right: true)); // stops at the last three lines
+        Assert.False(panel.ScrollBy(1, right: false, 1));
     }
 
     private static ComparisonTreeModel Model(DiffResult diff, bool showAll) =>

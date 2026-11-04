@@ -10,7 +10,7 @@
 ### Comparison window
 - **Expand all / Collapse all** in the tree's right-click menu (request 38): opens or closes the folder or key and everything below it.
 - **HKCU beside HKLM and HKU** (request 41): your own registry key is a hive of its own at the top of the tree, as in Regedit, instead of "HKCU (S-1-5-21-…)" below HKU. HKU keeps the other users, and its count no longer includes your changes; with Only changes it is left out when nothing else in it changed. The path above the list says HKCU too.
-- **Long values on up to three lines** (request 42) in the details below the list, e.g. a Path variable, broken between folders; the details are a little taller to make room.
+- **Long values in the details** (request 42), e.g. a Path variable: up to three lines, broken between folders; a longer one shows three lines at a time with a scroll bar beside it (mouse wheel, click or drag). Values are shown whole up to 32,768 characters (they were cut at 600). The details are a little taller to make room.
 - **Tab** goes from the tree to the list, and **Shift+Tab** back (request 43); it used to stop on the divider between them.
 - **Keys in the tree** (request 39), on the selected row: **\*** expands all, **/** collapses all, **+** opens one level more, **−** closes the deepest open level. Expand all stops at 250,000 rows in the tree and says so in the status bar.
 

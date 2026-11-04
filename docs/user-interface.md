@@ -84,7 +84,8 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
 - **Below — details:** the selected item in both snapshots side by side (size with exact bytes, date, attributes;
   type and data; display name, status, start type; System or User, type and value; for a folder or key its date and
   contents), differences
-  highlighted; a value too long for one line (a Path variable) goes on up to three, broken between folders; each column is headed OLDER or NEWER and the snapshot name (issue #6). Its full path is in the status
+  highlighted; a value too long for one line (a Path variable) goes on up to three, broken between folders, and a longer one
+  scrolls (a scroll bar beside it; mouse wheel, click or drag); values are shown whole up to 32,768 characters; each column is headed OLDER or NEWER and the snapshot name (issue #6). Its full path is in the status
   bar (F19).
 - **Tab** moves from the tree to the list, **Shift+Tab** back.
 - **Status bar:** path, marks, Global Ignore list, and the colour legend: + New, ~ Modified, − Deleted, Changes

@@ -397,7 +397,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "heading to sort by it, again to turn the order round. Values that differ are highlighted. <b>Include "
         "subfolders</b> also lists the files of every folder below, named from the selected one (<i>root\\office00.dll</i>).",
         "<b>Below</b>: the selected item in both snapshots, side by side — size, date and attributes; type and data; "
-        "state and startup type; an environment variable's value. A long value, such as Path, goes on up to three lines. "
+        "state and startup type; an environment variable's value. A long value, such as Path, goes on up to three lines; a longer one has a scroll bar beside it. "
         "Its full path is in the status bar.",
         "Environment variables are compared only when both snapshots have them; snapshots taken with an earlier "
         "version have none, and the category then says “not in both snapshots”.",

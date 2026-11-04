@@ -39,5 +39,5 @@ Requested Features:
 39. [DONE, not released yet] Comparison window, left pane: navigation keys + / − expand / collapse one level, * expands all below the cursor, / collapses all below the cursor.
 40. [DONE, not released yet] Comparison should include User / System environment variables in snapshots.
 41. [DONE, not released yet] Comparison window: HKCU should be on the same level as HKU and HKLM.
-42. [DONE, not released yet] Comparison window: long values in the details below the list do not fit; make room for 2 rows (then 3).
+42. [DONE, not released yet] Comparison window: long values in the details below the list do not fit; make room for 2 rows (then 3, then a scroll bar for more than 3).
 43. [DONE, not released yet] Comparison window: Tab order should be left pane, then right pane.
