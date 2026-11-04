@@ -14,6 +14,7 @@ One rule per line. Blank lines and lines starting with `#` are ignored.
 | `REG:` | A registry key **and everything below it** | `REG:HKLM\SOFTWARE\Vendor\Telemetry` |
 | `REG:` | A single registry value: key path, then `\`, then the value name | `REG:HKLM\SOFTWARE\Vendor\LastRun` |
 | `SVC:` | A service, by its key name (as shown in services.msc → Properties → Service name) | `SVC:edgeupdate` |
+| `ENV:` | An environment variable: `System\` or `User\`, then its name. `ENV:User` is every user variable | `ENV:User\OneDrive` |
 
 Wildcards:
 

@@ -19,7 +19,7 @@ internal sealed class ComparisonTreeModel(ComparisonData data) : ITreeGridModel
 
     public ComparisonData Data { get; } = data;
 
-    public IReadOnlyList<long> Roots { get; } = [CategoryId(DiffArea.FileSystem), CategoryId(DiffArea.Registry), CategoryId(DiffArea.Services)];
+    public IReadOnlyList<long> Roots { get; } = [CategoryId(DiffArea.FileSystem), CategoryId(DiffArea.Registry), CategoryId(DiffArea.Services), CategoryId(DiffArea.Environment)];
 
     public static long CategoryId(DiffArea area) => -(long)area - 1;
 
@@ -32,10 +32,10 @@ internal sealed class ComparisonTreeModel(ComparisonData data) : ITreeGridModel
         ? ComparisonData.Category((DiffArea)(-id - 1))
         : Data.Container((DiffArea)((id >> 56) & 3), (int)((id >> IndexBits) & IndexMask) - 1, (int)(id & IndexMask) - 1);
 
-    public bool HasChildren(long id) => Data.ContainerHasChildren(ItemOf(id));
+    public bool HasChildren(long id) => Data.TreeHasChildren(ItemOf(id));
 
     public IReadOnlyList<long> Children(long id) =>
-        [.. Data.ContainerChildren(ItemOf(id)).Where(i => i.Older + 1 <= IndexMask && i.Newer + 1 <= IndexMask).Select(IdOf)];
+        [.. Data.TreeChildren(ItemOf(id)).Where(i => i.Older + 1 <= IndexMask && i.Newer + 1 <= IndexMask).Select(IdOf)];
 
     public string Text(long id, int column)
     {
@@ -72,7 +72,7 @@ internal sealed class ComparisonTreeModel(ComparisonData data) : ITreeGridModel
 
             if (badges.Count == 0)
             {
-                badges.Add(new GridBadge("no changes"));
+                badges.Add(new GridBadge(Data.NotInBoth(item.Area) ? "not in both snapshots" : "no changes"));
             }
 
             return (ComparisonData.CategoryName(item.Area), badges);

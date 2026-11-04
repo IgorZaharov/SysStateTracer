@@ -8,6 +8,9 @@ public enum DiffItemKind : byte
     Key,
     Value,
     Service,
+
+    /// <summary>A System or User environment variable.</summary>
+    Variable,
 }
 
 /// <summary>How an item differs between the left and right snapshot.</summary>

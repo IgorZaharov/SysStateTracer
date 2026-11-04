@@ -271,10 +271,11 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     # ---- 1 Introduction
     story.append(p("1&nbsp;&nbsp;Introduction", "h1"))
     story.append(p(
-        "SysStateTracer records the state of a Windows PC — folders and files, the registry and services — in a "
+        "SysStateTracer records the state of a Windows PC — folders and files, the registry, services and environment "
+        "variables — in a "
         "<b>snapshot</b>. Take one snapshot before a change and one after it, and SysStateTracer shows exactly what "
         "the change did: which files and folders appeared, changed or disappeared, which registry keys and values "
-        "were added, modified or removed, and which services changed. Typical uses: finding out what an installer or "
+        "were added, modified or removed, and which services and environment variables changed. Typical uses: finding out what an installer or "
         "an update really changed, tracing a setting, cleaning up after an uninstall, or comparing two PCs."))
     story.append(p("What it records", "h2"))
     story += bullets([
@@ -282,6 +283,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "<b>Registry</b>: HKEY_LOCAL_MACHINE and every user under HKEY_USERS (your own user is HKEY_CURRENT_USER). "
         "Values up to 1 MB are stored; larger ones by size and checksum.",
         "<b>Services</b>: their state and startup type; kernel drivers on request.",
+        "<b>Environment variables</b>: the System variables and your user variables, as the Environment Variables "
+        "window shows them (for example Path with %SystemRoot% not expanded).",
         "Anything Windows does not let it read is skipped and listed in the snapshot's properties.",
     ])
     story.append(p(
@@ -334,7 +337,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "others for one selected snapshot.",
         "The list shows each snapshot's name, when it was taken, on which computer, how long it took and its file size. "
         "Click a column header to sort by it, and again to reverse the order; newest first is the default. "
-        "Snapshots copied into the folder appear at once. Every window opens at the size and place it was last closed.",
+        "Snapshots copied into the folder appear at once. Every window opens at the size and place it was last closed: "
+        "the main window, Comparison, New Snapshot, Snapshot Properties, Preferences, Help and Copy to Files.",
         "Right-click a snapshot for <b>Compare with</b>, <b>Rename</b>, <b>Delete</b> and <b>Properties</b>. "
         "Keys: Ctrl+N new snapshot, Del delete, F2 rename, Enter properties, F5 refresh, Ctrl+A select all, F1 help.",
         "A file that cannot be read (damaged, cut off while copying, or made by a newer version) is listed as "
@@ -348,7 +352,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "such as “Before Office 2024 install”. Choose what to include, then click <b>Start</b>."))
     story += screens.figure("w3-new-snapshot-light", "New Snapshot: drives, the registry and services, with the saved choice ticked.")
     story += bullets([
-        "Tick or untick drives, registry hives and services. Expand a drive or a key to leave out single folders or keys. "
+        "Tick or untick drives, registry hives, services and environment variables. Expand a drive or a key to leave out single folders or keys. "
         "Your choice is remembered, and the command line uses it too.",
         "Items in the Global Ignore list are unticked and marked “(ignored)” (chapter 4).",
         "Without administrator rights, a warning bar at the top says that greyed-out items are skipped; <b>Restart as "
@@ -370,23 +374,33 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(table([
         ["Mark", "Colour", "Meaning"],
         ["<b>+</b>", f'<font color="{NEW.hexval()}">green</font>', "New: only in the second snapshot"],
-        ["<b>~</b>", f'<font color="{MODIFIED.hexval()}">orange</font>', "Modified: size, date or attributes; a registry value's type or data; a service's state or startup type"],
+        ["<b>~</b>", f'<font color="{MODIFIED.hexval()}">orange</font>', "Modified: size, date or attributes; a registry value's type or data; a service's state or startup type; an environment variable's value or type"],
         ["<b>−</b>", f'<font color="{DELETED.hexval()}">red</font>', "Deleted: only in the first snapshot"],
         ["", f'<font color="{INSIDE.hexval()}">blue</font>', "A folder or key that is the same itself but holds changes"],
     ], [16 * mm, 22 * mm, CONTENT_W - 38 * mm]))
     story.append(Spacer(1, 6))
     story += bullets([
-        "<b>Left</b>: File system, Registry and Services, with how much changed in each, then drives, folders, hives "
-        "and keys; click the arrow before one to open it. A folder or key shows how many changes are inside "
-        "it; a new or deleted folder shows how many items it held. The legend at the bottom explains the colours.",
+        "<b>Left</b>: File system, Registry, Services and Environment variables, with how much changed in each, then "
+        "drives, folders, hives and keys; click the arrow before one to open it. A folder or key shows how many changes "
+        "are inside it; a new or deleted folder shows how many items it held. The legend at the bottom explains the colours.",
+        "The registry has three hives, as in Regedit: <b>HKCU</b> (your own settings), <b>HKLM</b> (the computer's) "
+        "and <b>HKU</b> (the other users on the PC). With Only changes, HKU is shown only when another user's settings changed.",
+        "Open or close a whole branch: right-click a folder or key and choose <b>Expand all</b> or <b>Collapse all</b>. "
+        "On the keyboard, on the selected row: <b>*</b> expands all, <b>/</b> collapses all, <b>+</b> opens one more "
+        "level and <b>−</b> closes the deepest open level. Expand all stops at 250,000 rows; the status bar says so. "
+        "<b>Tab</b> moves to the list on the right, <b>Shift+Tab</b> back to the tree.",
         "<b>Show all</b> also lists folders, files, keys and values that are the same in both snapshots, in normal "
         "text; <b>Only changes</b> lists only what changed and the folders and keys leading to it. The choice is "
         "remembered.",
-        "<b>Right</b>: the files of the selected folder, the values of the selected key, or every service. Click a column "
+        "<b>Right</b>: the files of the selected folder, the values of the selected key, every service, or every "
+        "environment variable with System or User, its type and value. Click a column "
         "heading to sort by it, again to turn the order round. Values that differ are highlighted. <b>Include "
         "subfolders</b> also lists the files of every folder below, named from the selected one (<i>root\\office00.dll</i>).",
         "<b>Below</b>: the selected item in both snapshots, side by side — size, date and attributes; type and data; "
-        "state and startup type. Its full path is in the status bar.",
+        "state and startup type; an environment variable's value. A long value, such as Path, goes on up to three lines. "
+        "Its full path is in the status bar.",
+        "Environment variables are compared only when both snapshots have them; snapshots taken with an earlier "
+        "version have none, and the category then says “not in both snapshots”.",
         "<b>OLDER</b> and <b>NEWER</b> before the snapshot names, at the top and above the details, show which "
         "snapshot was taken first, whichever side it is on.",
         "A new or deleted folder or key can be opened like any other: what it holds comes from the snapshot that has "
@@ -400,7 +414,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story.append(p("Actions (right-click)", "h3"))
     story.append(table([
         ["Action", "For", "What it does"],
-        ["Jump to", "one item", "Opens Explorer with the file selected, Regedit at the key, or the Services console at the service"],
+        ["Jump to", "one item", "Opens Explorer with the file selected, Regedit at the key, the Services console at the service, or Regedit at the key that holds the environment variable"],
+        ["Expand all, Collapse all", "one folder or key in the tree", "Opens or closes it and everything below it (keys * and /)"],
         ["Mark as non-important", "any items", "Strikes them through until the window is closed; they are left out of exports"],
         ["Add to Global Ignore list", "any items", "Adds rules for them to the local Global Ignore list and hides them (chapter 4)"],
         ["Export to .REG", "registry items, a whole hive or the Registry part", "Writes the new and modified keys and values, as the newer snapshot has them, to a .reg file that Regedit can import"],
@@ -467,6 +482,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["<font face=\"Mono\">/registry:\"HKLM\\SOFTWARE\\App\",\"HKCU\\Software\\App\"</font>", "Registry keys, each with everything below it. HKCU means every user."],
         ["<font face=\"Mono\">/files:\"C:\\Program Files\\App\",\"C:\\ProgramData\\App\"</font>", "Folders or files, each with everything below it."],
         ["<font face=\"Mono\">/services:\"Spooler\"</font>", "Services by key name; for /report only."],
+        ["<font face=\"Mono\">/environment:\"System\\Path\",\"User\\*\"</font>", "Environment variables, System\\ or User\\ and the name; for /report only."],
         ["<font face=\"Mono\">/output:\"C:\\Exports\\App\"</font>", "/report: the .html report. /export: a folder, created if needed, or a .reg file."],
     ], [80 * mm, CONTENT_W - 80 * mm]))
     story.append(Spacer(1, 6))
@@ -554,6 +570,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["REG:", "a registry key and everything below it", "<font face=\"Mono\">REG:HKLM\\SOFTWARE\\Vendor\\Telemetry</font>"],
         ["REG:", "a single registry value: key path, \\, value name", "<font face=\"Mono\">REG:HKLM\\SOFTWARE\\Vendor\\LastRun</font>"],
         ["SVC:", "a service, by its service name (Properties → Service name in services.msc)", "<font face=\"Mono\">SVC:edgeupdate</font>"],
+        ["ENV:", "an environment variable: System\\ or User\\, then its name; ENV:User is every user variable", "<font face=\"Mono\">ENV:User\\OneDrive</font>"],
     ], [16 * mm, 70 * mm, CONTENT_W - 86 * mm]))
     story.append(Spacer(1, 6))
     story += bullets([

@@ -33,7 +33,7 @@ public static class DiffActions
         var nodesOnly = selection.All(i => !IsCategory(i));
         return action switch
         {
-            // One item, which has a place to open: a folder, file, key, value or service.
+            // One item, which has a place to open: a folder, file, key, value, service or environment variable.
             DiffAction.JumpTo => selection.Count == 1 && nodesOnly,
 
             DiffAction.MarkNonImportant or DiffAction.AddToIgnoreList => nodesOnly,

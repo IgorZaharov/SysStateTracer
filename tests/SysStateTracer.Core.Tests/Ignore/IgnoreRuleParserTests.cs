@@ -18,6 +18,10 @@ public class IgnoreRuleParserTests
     [InlineData(@"REG:HKLM\SYSTEM\CurrentControlSet\Services\bam", IgnoreTarget.Registry, @"HKLM\SYSTEM\ControlSet???\Services\bam")]
     [InlineData("SVC:edgeupdate", IgnoreTarget.Service, "edgeupdate")]
     [InlineData("svc: Spooler ", IgnoreTarget.Service, "Spooler")]
+    [InlineData(@"ENV:System\Path", IgnoreTarget.Environment, @"System\Path")]
+    [InlineData(@"env:user\TEMP", IgnoreTarget.Environment, @"User\TEMP")]
+    [InlineData("ENV:User", IgnoreTarget.Environment, "User")]
+    [InlineData(@"ENV:*\OneDrive*", IgnoreTarget.Environment, @"*\OneDrive*")]
     public void TryParse_NormalizesValidRules(string line, IgnoreTarget target, string pattern)
     {
         Assert.True(IgnoreRuleParser.TryParse(line, IgnoreRuleSource.Local, out var rule, out var error), error);
@@ -37,6 +41,8 @@ public class IgnoreRuleParserTests
     [InlineData(@"REG:HKXX\Foo", "must start with HKLM")]
     [InlineData(@"SVC:a\b", "without")]
     [InlineData("SVC:", "no path")]
+    [InlineData(@"ENV:Path", "System\\ or User\\")]
+    [InlineData(@"ENV:User\A\B", "System\\ or User\\")]
     public void TryParse_RejectsInvalidRules(string line, string messagePart)
     {
         Assert.False(IgnoreRuleParser.TryParse(line, IgnoreRuleSource.Local, out _, out var error));
@@ -61,6 +67,7 @@ public class IgnoreRuleParserTests
     [InlineData(IgnoreTarget.FileSystem, @"C:\Program Files\App", @"FS:C:\Program Files\App")]
     [InlineData(IgnoreTarget.Registry, @"HKLM\SOFTWARE\App", @"REG:HKLM\SOFTWARE\App")]
     [InlineData(IgnoreTarget.Service, "AppSvc", "SVC:AppSvc")]
+    [InlineData(IgnoreTarget.Environment, @"User\TEMP", @"ENV:User\TEMP")]
     public void Format_ProducesParsableRule(IgnoreTarget target, string path, string expected)
     {
         var line = IgnoreRuleParser.Format(target, path);

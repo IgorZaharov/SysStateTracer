@@ -128,6 +128,30 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 form.Close();
             }
 
+            // Preferences, About and Snapshot Properties come back where they were closed too, not centred again.
+            var properties = app.AddSnapshot("Placed", hoursAgo: 2);
+            foreach (var open in new Func<Form>[]
+            {
+                () => new PreferencesForm(app.Paths, app.Settings),
+                () => new AboutForm(app.Paths, app.Settings),
+                () => new PropertiesForm(properties, app.Paths, app.Settings),
+            })
+            {
+                Point place;
+                using (var form = Ui.Show(open()))
+                {
+                    place = new Point(form.Left + 37, form.Top + 23);
+                    form.Location = place;
+                    form.Close();
+                }
+
+                using (var form = Ui.Show(open()))
+                {
+                    Assert.Equal(place, form.Location);
+                    form.Close();
+                }
+            }
+
             // As administrator (no warning bar), the scope tree takes the height the window gains.
             using (var form = Ui.Show(new NewSnapshotForm(app.Paths, app.Settings, elevated: true)))
             {

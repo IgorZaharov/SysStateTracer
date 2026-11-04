@@ -3,10 +3,11 @@ using SysStateTracer.Core.Config;
 namespace SysStateTracer;
 
 /// <summary>
-/// Remembers each window's size, position and maximized state in SysStateTracer.config (F12). A window
+/// Remembers each window's size, position and maximized state in SysStateTracer.config (F12): the main
+/// window, Comparison, New Snapshot, Snapshot Properties, Preferences, About and Copy to Files. A window
 /// comes back where it was closed, unless that place is no longer on any screen (a monitor was removed);
-/// then it keeps its default size and position. Dialogs that open centred on their owner keep that, and
-/// only their size comes back.
+/// then it keeps its default size and position. Message boxes and the small input boxes are not
+/// remembered: they open centred on the window they belong to.
 /// </summary>
 internal static class WindowLayout
 {

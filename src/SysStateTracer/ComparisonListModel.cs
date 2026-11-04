@@ -1,13 +1,14 @@
 using System.Globalization;
 using SysStateTracer.Controls;
 using SysStateTracer.Core.Comparison;
+using SysStateTracer.Core.Model;
 using SysStateTracer.Theming;
 
 namespace SysStateTracer;
 
 /// <summary>
 /// The right pane of the comparison window: the files of the selected folder, the values of the selected key,
-/// or every service. With "Include subfolders" the files of every folder below are listed too, named relative
+/// or every service or environment variable. With "Include subfolders" the files of every folder below are listed too, named relative
 /// to the selected one ("lang\de-DE.xml"). Columns: change sign, name, then per kind size · date · attributes,
 /// type · data, or display name · status · start type, each from the right-hand snapshot (the left one for
 /// an item only there). Sorted by the column clicked; values that differ are highlighted. A row's id is its
@@ -72,6 +73,10 @@ internal sealed class ComparisonListModel : ITreeGridModel
         [
             new(string.Empty, 32), new("Name", 220), new("Type", 120), new("Data", 240),
         ],
+        DiffArea.Environment =>
+        [
+            new(string.Empty, 32), new("Name", 180), new("Variables", 80), new("Type", 120), new("Value", 300),
+        ],
         _ =>
         [
             new(string.Empty, 32), new("Name", 160), new("Display name", 220), new("Status", 90), new("Start type", 110),
@@ -87,7 +92,12 @@ internal sealed class ComparisonListModel : ITreeGridModel
     public string PathOf(long id)
     {
         var row = _rows[(int)id];
-        return Area == DiffArea.Services ? Data.Name(row.Item) : row.FolderPath + "\\" + Data.Name(row.Item);
+        return Area switch
+        {
+            DiffArea.Services => Data.Name(row.Item),
+            DiffArea.Environment => Data.Path(row.Item),
+            _ => row.FolderPath + "\\" + Data.Name(row.Item),
+        };
     }
 
     /// <summary>What Jump to opens: the file in Explorer, or in Regedit the key holding the value.</summary>
@@ -98,12 +108,13 @@ internal sealed class ComparisonListModel : ITreeGridModel
         {
             DiffArea.FileSystem => PathOf(id),
             DiffArea.Registry => row.FolderPath,
+            DiffArea.Environment => Data.Path(row.Item),
             _ => Data.Name(row.Item),
         };
     }
 
     /// <summary>A name for a row that stays the same when the snapshots are compared again.</summary>
-    public string RowKey(long id) => _rows[(int)id].Name;
+    public string RowKey(long id) => Area == DiffArea.Environment ? Data.Path(_rows[(int)id].Item) : _rows[(int)id].Name;
 
     public bool HasChildren(long id) => false;
 
@@ -119,7 +130,7 @@ internal sealed class ComparisonListModel : ITreeGridModel
 
         if (column == NameColumn)
         {
-            return Area == DiffArea.Services ? Data.Name(item) : NameText(id);
+            return Area is DiffArea.Services or DiffArea.Environment ? Data.Name(item) : NameText(id);
         }
 
         var (snapshot, index) = Data.Shown(item);
@@ -136,6 +147,14 @@ internal sealed class ComparisonListModel : ITreeGridModel
             case DiffArea.Registry:
                 var reg = snapshot.Registry;
                 return column == 2 ? ItemFormat.ValueType(reg.ValueDataType[index]) : ItemFormat.ValueData(reg, index);
+            case DiffArea.Environment:
+                var env = snapshot.Environment;
+                return column switch
+                {
+                    2 => EnvironmentTable.ScopeName(env.Scope[index]),
+                    3 => ItemFormat.ValueType(env.ValueType[index]),
+                    _ => snapshot.Names.GetString(env.Value[index]),
+                };
             default:
                 var services = snapshot.Services;
                 return column switch
@@ -169,6 +188,7 @@ internal sealed class ComparisonListModel : ITreeGridModel
         {
             DiffArea.FileSystem => Glyphs.File,
             DiffArea.Registry => Glyphs.Value,
+            DiffArea.Environment => Glyphs.Variable,
             _ => Glyphs.Settings,
         };
         return new GridRowStyle(ComparisonData.TextColor(item.Status), Strikeout: marked, Dim: marked, Bold: false, icon, ComparisonData.IconColor(item.Status));
@@ -189,6 +209,8 @@ internal sealed class ComparisonListModel : ITreeGridModel
             (DiffArea.FileSystem, 4) => fields.HasFlag(ChangedFields.Attributes),
             (DiffArea.Registry, 2) => fields.HasFlag(ChangedFields.ValueType),
             (DiffArea.Registry, 3) => fields.HasFlag(ChangedFields.ValueData),
+            (DiffArea.Environment, 3) => fields.HasFlag(ChangedFields.ValueType),
+            (DiffArea.Environment, 4) => fields.HasFlag(ChangedFields.ValueData),
             (DiffArea.Services, 2) => fields.HasFlag(ChangedFields.DisplayName),
             (DiffArea.Services, 3) => fields.HasFlag(ChangedFields.State),
             (DiffArea.Services, 4) => (fields & (ChangedFields.StartType | ChangedFields.ServiceFlags | ChangedFields.ServiceType)) != 0,

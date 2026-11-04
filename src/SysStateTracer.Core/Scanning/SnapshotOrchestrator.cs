@@ -3,6 +3,7 @@ using System.Runtime;
 using SysStateTracer.Core.Ignore;
 using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Model;
+using SysStateTracer.Core.Scanning.Env;
 using SysStateTracer.Core.Scanning.Fs;
 using SysStateTracer.Core.Scanning.Reg;
 using SysStateTracer.Core.Scanning.Svc;
@@ -29,6 +30,9 @@ public sealed class SnapshotRequest
     public bool IncludeServices { get; init; } = true;
 
     public bool IncludeDrivers { get; init; }
+
+    /// <summary>System and User environment variables (on by default).</summary>
+    public bool IncludeEnvironment { get; init; } = true;
 
     public GlobalIgnoreList Ignore { get; init; } = GlobalIgnoreList.Empty;
 
@@ -58,6 +62,7 @@ public sealed class SnapshotRequest
         FileSystemRoots = [.. VolumeDiscovery.GetFixedVolumes().Select(v => v.RootPath)],
         RegistryRoots = ["HKLM", "HKU"],
         IncludeServices = true,
+        IncludeEnvironment = true,
         Ignore = ignore,
     };
 
@@ -79,6 +84,7 @@ public sealed class SnapshotRequest
             RegistryRoots = [.. scope.RegistryRoots],
             IncludeServices = scope.IncludeServices,
             IncludeDrivers = scope.IncludeDrivers,
+            IncludeEnvironment = scope.IncludeEnvironment,
             Ignore = scope.Excluded.Count == 0
                 ? ignore
                 : GlobalIgnoreList.Build(ignore.Rules.Select(r => r.Text).Concat(scope.Excluded)),
@@ -178,6 +184,7 @@ public static class SnapshotOrchestrator
         var fsBuilder = new FsTreeBuilder(names, 64 * 1024);
         var regBuilder = new RegTreeBuilder(names);
         var svcBuilder = new ServiceTableBuilder(names);
+        var envBuilder = new EnvironmentTableBuilder(names);
         var fs = new FileSystemScanner(fsBuilder, builderLock, skipped);
         var reg = new RegistryScanner(regBuilder, builderLock, skipped);
         var svc = new ServicesScanner(svcBuilder, builderLock, skipped);
@@ -195,6 +202,11 @@ public static class SnapshotOrchestrator
         if (request.IncludeDrivers)
         {
             meta.Scope.Add("Drivers");
+        }
+
+        if (request.IncludeEnvironment)
+        {
+            meta.Scope.Add("Environment variables");
         }
 
         var estimate = EstimateEntries(fsRoots);
@@ -231,9 +243,21 @@ public static class SnapshotOrchestrator
                     cancellationToken)),
                 cancellationToken),
             Task.Run(
-                () => Timed(() => svc.Scan(
-                    new ServicesScanOptions { IncludeServices = request.IncludeServices, IncludeDrivers = request.IncludeDrivers, Ignore = request.Ignore.Matcher },
-                    cancellationToken)),
+                () => Timed(() =>
+                {
+                    svc.Scan(
+                        new ServicesScanOptions { IncludeServices = request.IncludeServices, IncludeDrivers = request.IncludeDrivers, Ignore = request.Ignore.Matcher },
+                        cancellationToken);
+
+                    // A few dozen values: read with the services, under the same lock the other builders use for names.
+                    if (request.IncludeEnvironment)
+                    {
+                        lock (builderLock)
+                        {
+                            EnvironmentScanner.Scan(envBuilder, request.Ignore.Matcher, skipped);
+                        }
+                    }
+                }),
                 cancellationToken),
         };
 
@@ -266,9 +290,10 @@ public static class SnapshotOrchestrator
         var fsTree = fsBuilder.Build();
         var regTree = regBuilder.Build();
         var services = svcBuilder.Build();
+        var environment = envBuilder.Build();
         names.Freeze();
         PhaseHook?.Invoke("built");
-        return (new Snapshot(meta, names, fsTree, regTree, services, skipped.ToList()), final);
+        return (new Snapshot(meta, names, fsTree, regTree, services, skipped.ToList(), environment: environment), final);
     }
 
     /// <summary>Current change-journal position of every drive in <paramref name="fsRoots"/> that has a journal.</summary>

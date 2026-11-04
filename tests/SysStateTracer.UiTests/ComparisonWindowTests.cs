@@ -89,7 +89,7 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
 
             // The tree: the categories, open, with the drive and the hive; no files or values in it.
             var tree = (ComparisonTreeModel)form.Tree.Model!;
-            Assert.Equal(5, form.Tree.RowCount);
+            Assert.Equal(6, form.Tree.RowCount); // File system, C:\, Registry, HKLM, Services, Environment variables
             Assert.StartsWith("File system  (", tree.Text(ComparisonTreeModel.CategoryId(DiffArea.FileSystem), 0), StringComparison.Ordinal);
             Assert.Empty(tree.Children(ComparisonTreeModel.CategoryId(DiffArea.Services)));
 
@@ -189,6 +189,27 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             Assert.Equal(["ClickToRunSvc", "Spooler"], list.Roots.Select(list.NameOf));
             Assert.True(list.IsChangedCell(list.Roots[1], 3)); // status
 
+            // Environment variables: the category lists them, System and User; the Path's new value is highlighted.
+            Assert.Empty(tree.Children(ComparisonTreeModel.CategoryId(DiffArea.Environment)));
+            form.Tree.SetSelection([ComparisonTreeModel.CategoryId(DiffArea.Environment)]);
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(["OFFICE_ROOT", "Path"], list.Roots.Select(list.NameOf));
+            var path = list.Roots[1];
+            Assert.Equal("~", list.Text(path, ComparisonListModel.ChangeColumn));
+            Assert.Equal("System", list.Text(path, 2));
+            Assert.Equal(@"System\Path", list.PathOf(path));
+            Assert.True(list.IsChangedCell(path, 4));
+            Assert.False(list.IsChangedCell(path, 3));
+            var pathValue = Assert.Single(list.Data.Details(list.ItemOf(path)), r => r.Label == "Value");
+            Assert.True(pathValue.Changed);
+            Assert.EndsWith(@"Microsoft Office\root", pathValue.Right, StringComparison.Ordinal);
+            Assert.Equal("+", list.Text(list.Roots[0], ComparisonListModel.ChangeColumn));
+            form.ShowAll = true;
+            list = (ComparisonListModel)form.List.Model!;
+            Assert.Equal(["OFFICE_ROOT", "OS", "Path", "TEMP"], list.Roots.Select(list.NameOf));
+            Assert.Equal("User", list.Text(list.Roots[3], 2));
+            form.ShowAll = false;
+
             // Menu rules (§10.6).
             var registry = form.Diff!.Registry;
             var versionNode = Enumerable.Range(0, registry.Count).Single(n => form.Diff.FullPath(registry, n) == @"HKLM\SOFTWARE\Contoso\Version");
@@ -206,6 +227,70 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             form.Marks.Toggle([value]);
             list = (ComparisonListModel)form.List.Model!;
             Assert.True(list.Style(list.Roots[2]).Strikeout);
+            form.Close();
+        });
+    }
+
+    [Fact]
+    public void Comparison_Tree_ExpandAndCollapseBranches_WithMenuAndKeys()
+    {
+        Ui.Run(() =>
+        {
+            using var app = new TestApp();
+            var before = app.AddSnapshot("Before", hoursAgo: 30, extraFiles: 3);
+            var after = app.AddSnapshot("After", hoursAgo: 29, extraFiles: 8, installed: true);
+            using var form = new ComparisonForm(app.Paths, app.Settings, before, after);
+            Ui.Show(form);
+            Assert.True(Ui.PumpUntil(() => form.Diff is not null && !form.IsLoading, 30_000), "comparison did not load");
+            var grid = form.Tree;
+            var tree = (ComparisonTreeModel)grid.Model!;
+            var fs = ComparisonTreeModel.CategoryId(DiffArea.FileSystem);
+            string[] Visible() => [.. grid.VisibleIds.Where(id => id >= 0).Select(id => tree.Data.Path(tree.ItemOf(id)))];
+
+            // Tab goes from the tree straight to the list, Shift+Tab back.
+            Assert.True(grid.Focus());
+            Assert.True(form.TabBetweenPanes(back: false));
+            Assert.True(form.List.Focused, "Tab from the tree did not reach the list");
+            Assert.True(form.TabBetweenPanes(back: true));
+            Assert.True(grid.Focused, "Shift+Tab from the list did not reach the tree");
+
+            // * on File system: every folder below it opens, down to the deepest.
+            grid.Select(fs);
+            Assert.True(grid.BranchKey('*'));
+            Assert.Contains(@"C:\Program Files\Microsoft Office\root", Visible());
+            Assert.Equal(fs, grid.FocusedId); // the cursor stays on the row acted on
+            var all = grid.RowCount;
+
+            // − closes the deepest open level, one level per press; + opens them again in the same order.
+            Assert.True(grid.BranchKey('-'));
+            Assert.DoesNotContain(@"C:\Program Files\Microsoft Office\root", Visible());
+            Assert.Contains(@"C:\Program Files\Microsoft Office", Visible());
+            Assert.True(grid.BranchKey('+'));
+            Assert.Equal(all, grid.RowCount);
+
+            // / closes the whole branch; opening it again shows one level only, not the folders opened before.
+            Assert.True(grid.BranchKey('/'));
+            Assert.False(grid.IsExpanded(fs));
+            Assert.DoesNotContain(@"C:\", Visible());
+            Assert.True(grid.BranchKey('+'));
+            Assert.Equal([@"C:\"], Visible().Where(p => p.StartsWith("C:", StringComparison.Ordinal)));
+            Assert.True(grid.BranchKey('+'));
+            Assert.Contains(@"C:\Program Files", Visible());
+            Assert.DoesNotContain(@"C:\Program Files\Contoso", Visible());
+
+            // Other rows stay as they were; other keys are not taken.
+            Assert.True(grid.IsExpanded(ComparisonTreeModel.CategoryId(DiffArea.Registry)));
+            Assert.False(grid.BranchKey('a'));
+
+            // The context menu's Expand all and Collapse all do the same; Expand all stops at the row limit.
+            grid.MaxExpandedRows = grid.RowCount + 1;
+            Assert.False(grid.ExpandAll(fs));
+            Assert.True(grid.RowCount <= grid.MaxExpandedRows);
+            grid.MaxExpandedRows = 250_000;
+            Assert.True(grid.ExpandAll(fs));
+            Assert.Equal(all, grid.RowCount);
+            grid.CollapseAll(fs);
+            Assert.False(grid.IsExpanded(fs));
             form.Close();
         });
     }

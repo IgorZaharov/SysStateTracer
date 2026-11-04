@@ -102,6 +102,8 @@ public sealed class SnapshotCounts
 
     public long Services { get; set; }
 
+    public long EnvironmentVariables { get; set; }
+
     public long Skipped { get; set; }
 }
 

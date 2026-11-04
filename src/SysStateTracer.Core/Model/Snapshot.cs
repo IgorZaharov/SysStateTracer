@@ -15,10 +15,13 @@ public enum SnapshotParts
     RegistryData = 4,
     Services = 8,
     Skipped = 16,
-    All = FileSystem | Registry | RegistryData | Services | Skipped,
+
+    /// <summary>System and User environment variables (empty in snapshots made before they were recorded).</summary>
+    Environment = 32,
+    All = FileSystem | Registry | RegistryData | Services | Skipped | Environment,
 }
 
-/// <summary>One snapshot in memory: metadata plus its file-system, registry and services parts.</summary>
+/// <summary>One snapshot in memory: metadata plus its file-system, registry, services and environment parts.</summary>
 public sealed class Snapshot
 {
     public Snapshot(
@@ -28,7 +31,8 @@ public sealed class Snapshot
         RegTree? registry = null,
         ServiceTable? services = null,
         IReadOnlyList<SkippedItem>? skipped = null,
-        SnapshotParts loadedParts = SnapshotParts.All)
+        SnapshotParts loadedParts = SnapshotParts.All,
+        EnvironmentTable? environment = null)
     {
         ArgumentNullException.ThrowIfNull(meta);
         ArgumentNullException.ThrowIfNull(names);
@@ -37,6 +41,7 @@ public sealed class Snapshot
         FileSystem = fileSystem ?? FsTree.Empty;
         Registry = registry ?? RegTree.Empty;
         Services = services ?? ServiceTable.Empty;
+        Environment = environment ?? EnvironmentTable.Empty;
         Skipped = skipped ?? [];
         LoadedParts = loadedParts;
     }
@@ -51,6 +56,9 @@ public sealed class Snapshot
     public RegTree Registry { get; }
 
     public ServiceTable Services { get; }
+
+    /// <summary>System and User environment variables.</summary>
+    public EnvironmentTable Environment { get; }
 
     public IReadOnlyList<SkippedItem> Skipped { get; }
 

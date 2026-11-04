@@ -34,3 +34,10 @@ Requested Features:
 34. [DONE in v1.1.0] Preferences > General: Show Grid Lines and Use zebra striping, for the Comparison and Main windows.
 35. [DONE in v1.1.0] UI: Snapshot Comparison window - added / modified / deleted folders have green / orange / red glyphs; unchanged files, folders and keys in the standard font colour (plus: blue for folders holding changes, details pane with both snapshots side by side, Include subfolders, colour legend).
 36. [DONE in v1.1.0] Bugfix: profile folders (e.g. Desktop) on a test VM with FSLogix Profile Containers were not scanned.
+37. [DONE, not released yet] UX: All windows should retain size and position.
+38. [DONE, not released yet] Comparison window, left pane: context menu to Expand / Collapse all subkeys under the cursor.
+39. [DONE, not released yet] Comparison window, left pane: navigation keys + / − expand / collapse one level, * expands all below the cursor, / collapses all below the cursor.
+40. [DONE, not released yet] Comparison should include User / System environment variables in snapshots.
+41. [DONE, not released yet] Comparison window: HKCU should be on the same level as HKU and HKLM.
+42. [DONE, not released yet] Comparison window: long values in the details below the list do not fit; make room for 2 rows (then 3).
+43. [DONE, not released yet] Comparison window: Tab order should be left pane, then right pane.

@@ -12,7 +12,7 @@ public sealed class IgnoreMatcher
     public IgnoreMatcher(IEnumerable<IgnoreRule> rules)
     {
         ArgumentNullException.ThrowIfNull(rules);
-        _targets = [new Target(), new Target(), new Target()];
+        _targets = [new Target(), new Target(), new Target(), new Target()];
         var count = 0;
         foreach (var rule in rules)
         {

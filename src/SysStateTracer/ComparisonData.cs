@@ -46,8 +46,8 @@ internal readonly record struct ViewItem(DiffArea Area, int Older, int Newer, in
 /// </summary>
 internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, string? currentUserSid, bool showAll)
 {
-    private readonly Dictionary<(int Older, int Newer), int>?[] _containerNodes = new Dictionary<(int, int), int>?[3];
-    private readonly Dictionary<(int Older, int Newer), int>?[] _leafNodes = new Dictionary<(int, int), int>?[3];
+    private readonly Dictionary<(int Older, int Newer), int>?[] _containerNodes = new Dictionary<(int, int), int>?[4];
+    private readonly Dictionary<(int Older, int Newer), int>?[] _leafNodes = new Dictionary<(int, int), int>?[4];
 
     public DiffResult Diff { get; } = diff;
 
@@ -148,7 +148,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
     /// <summary>Drives or hives under a category.</summary>
     public List<ViewItem> CategoryChildren(DiffArea area)
     {
-        if (area == DiffArea.Services)
+        if (area is DiffArea.Services or DiffArea.Environment)
         {
             return [];
         }
@@ -166,7 +166,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
 
     public bool CategoryHasChildren(DiffArea area) => area switch
     {
-        DiffArea.Services => false,
+        DiffArea.Services or DiffArea.Environment => false,
         _ when !ShowAll => Diff.Tree(area).Count > 0,
         DiffArea.FileSystem => Diff.Older.FileSystem.Count + Diff.Newer.FileSystem.Count > 0,
         _ => Diff.Older.Registry.KeyCount + Diff.Newer.Registry.KeyCount > 0,
@@ -201,6 +201,88 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
 
     private static List<(string Name, int Index)> Kids(int index, Func<List<(string Name, int Index)>> read) => index >= 0 ? read() : [];
 
+    // ---- HKCU beside HKLM and HKU (the tree) ----
+
+    /// <summary>
+    /// The folders or keys a tree row shows: as <see cref="ContainerChildren"/>, except that the current user's
+    /// key is moved from below HKU to the top level as HKCU, before HKLM, as in Regedit. HKU is left out when only
+    /// changes are shown and nothing else in it changed.
+    /// </summary>
+    public List<ViewItem> TreeChildren(ViewItem parent)
+    {
+        var children = ContainerChildren(parent);
+        if (parent.IsCategory && parent.Area == DiffArea.Registry)
+        {
+            var users = children.FindIndex(IsUsersHive);
+            if (users >= 0)
+            {
+                var userKeys = ContainerChildren(children[users]);
+                var i = userKeys.FindIndex(IsCurrentUserKey);
+                if (i >= 0)
+                {
+                    var user = userKeys[i];
+                    if (!ShowAll && TreeChildren(children[users]).Count == 0)
+                    {
+                        children.RemoveAt(users);
+                    }
+
+                    children.Insert(0, user);
+                }
+            }
+        }
+        else if (IsUsersHive(parent))
+        {
+            children.RemoveAll(IsCurrentUserKey);
+        }
+
+        return children;
+    }
+
+    /// <summary>Whether a tree row has an arrow: HKU only when it holds more than HKCU.</summary>
+    public bool TreeHasChildren(ViewItem item) => IsUsersHive(item) ? TreeChildren(item).Count > 0 : ContainerHasChildren(item);
+
+    /// <summary>The HKU hive itself.</summary>
+    public bool IsUsersHive(ViewItem item)
+    {
+        if (item.Area != DiffArea.Registry || item.IsCategory || item.IsValue)
+        {
+            return false;
+        }
+
+        var (snapshot, index) = Source(item);
+        return snapshot.Registry.Parent[index] < 0 && snapshot.Names.GetString(snapshot.Registry.Name[index]) == "HKU";
+    }
+
+    /// <summary>The key of the user running SysStateTracer below HKU (HKU\S-1-5-21-…), shown as HKCU.</summary>
+    public bool IsCurrentUserKey(ViewItem item)
+    {
+        if (currentUserSid is null || item.Area != DiffArea.Registry || item.IsCategory || item.IsValue)
+        {
+            return false;
+        }
+
+        var (snapshot, index) = Source(item);
+        var reg = snapshot.Registry;
+        var parent = reg.Parent[index];
+        return parent >= 0 && reg.Parent[parent] < 0 && snapshot.Names.GetString(reg.Name[parent]) == "HKU"
+            && string.Equals(snapshot.Names.GetString(reg.Name[index]), currentUserSid, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>A path as the tree shows it: "HKCU\Software" for the current user's key, otherwise <see cref="Path"/>.</summary>
+    public string DisplayPath(ViewItem item)
+    {
+        var path = Path(item);
+        if (currentUserSid is null || item.Area != DiffArea.Registry || item.IsCategory)
+        {
+            return path;
+        }
+
+        var prefix = @"HKU\" + currentUserSid;
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && (path.Length == prefix.Length || path[prefix.Length] == '\\')
+            ? "HKCU" + path[prefix.Length..]
+            : path;
+    }
+
     /// <summary>Cheap check for the + box: whether a folder or key may hold folders or keys to show.</summary>
     public bool ContainerHasChildren(ViewItem item)
     {
@@ -228,20 +310,25 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
 
     // ---- Files, values and services (the list) ----
 
-    /// <summary>The files or values directly in a folder or key, sorted by name; every service for the Services category.</summary>
+    /// <summary>
+    /// The files or values directly in a folder or key, sorted by name; every service or environment variable
+    /// for the Services or Environment variables category.
+    /// </summary>
     public List<ViewItem> Leaves(ViewItem parent)
     {
         var area = parent.Area;
         if (parent.IsCategory)
         {
-            if (area != DiffArea.Services)
+            if (area is not (DiffArea.Services or DiffArea.Environment) || NotInBoth(area))
             {
                 return [];
             }
 
             return ShowAll
-                ? Merge(area, value: false, Services(Diff.Older), Services(Diff.Newer), string.Empty, container: false)
-                : Sorted([.. Diff.Services.Roots().Select(n => FromNode(area, n))]);
+                ? area == DiffArea.Services
+                    ? Merge(area, value: false, Services(Diff.Older), Services(Diff.Newer), string.Empty, container: false)
+                    : Merge(area, value: false, Variables(Diff.Older), Variables(Diff.Newer), string.Empty, container: false)
+                : Sorted([.. Diff.Tree(area).Roots().Select(n => FromNode(area, n))]);
         }
 
         if (!ShowAll && parent.Node >= 0 && !IsWhole(area, parent.Node))
@@ -313,6 +400,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
         {
             DiffArea.FileSystem => IgnoreTarget.FileSystem,
             DiffArea.Registry => IgnoreTarget.Registry,
+            DiffArea.Environment => IgnoreTarget.Environment,
             _ => IgnoreTarget.Service,
         };
         var items = new List<ViewItem>(pairs.Count);
@@ -405,6 +493,19 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
         return list;
     }
 
+    /// <summary>Variables as "System\Path" and "User\TEMP": a System and a User variable of the same name are different items.</summary>
+    private static List<(string Name, int Index)> Variables(Snapshot snapshot)
+    {
+        var env = snapshot.Environment;
+        var list = new List<(string, int)>(env.Count);
+        for (var i = 0; i < env.Count; i++)
+        {
+            list.Add((env.Key(i, snapshot.Names), i));
+        }
+
+        return list;
+    }
+
     // ---- Names, paths and values ----
 
     /// <summary>The snapshot an item is read from (the older one when it is in both) and its index there.</summary>
@@ -429,12 +530,13 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             DiffArea.FileSystem => snapshot.FileSystem.Name[index],
             DiffArea.Registry when item.IsValue => snapshot.Registry.ValueName[index],
             DiffArea.Registry => snapshot.Registry.Name[index],
+            DiffArea.Environment => snapshot.Environment.Name[index],
             _ => snapshot.Services.Name[index],
         };
         return snapshot.Names.GetString(id);
     }
 
-    /// <summary>The name as shown: "C:\" for a drive, "(Default)", "HKCU  (S-1-5-…)", "Print Spooler  (Spooler)".</summary>
+    /// <summary>The name as shown: "C:\" for a drive, "(Default)", "HKCU" for the current user's key, "Print Spooler  (Spooler)".</summary>
     public string DisplayName(ViewItem item)
     {
         var name = Name(item);
@@ -451,12 +553,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             case DiffArea.Registry when item.IsValue:
                 return name.Length == 0 ? "(Default)" : name;
             case DiffArea.Registry:
-                var reg = snapshot.Registry;
-                var parent = reg.Parent[index];
-                return parent >= 0 && reg.Parent[parent] < 0 && snapshot.Names.GetString(reg.Name[parent]) == "HKU"
-                    && string.Equals(name, currentUserSid, StringComparison.OrdinalIgnoreCase)
-                    ? $"HKCU  ({name})"
-                    : name;
+                return IsCurrentUserKey(item) ? "HKCU" : name;
             case DiffArea.Services:
                 var display = snapshot.Names.GetString(snapshot.Services.DisplayName[index]);
                 return string.IsNullOrEmpty(display) || display == name ? name : $"{display}  ({name})";
@@ -465,7 +562,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
         }
     }
 
-    /// <summary>Full path of a folder, file or key ("C:\Program Files\Contoso", "HKLM\SOFTWARE"); a service's name.</summary>
+    /// <summary>Full path of a folder, file or key ("C:\Program Files\Contoso", "HKLM\SOFTWARE"); a service's name; "User\TEMP".</summary>
     public string Path(ViewItem item)
     {
         if (item.IsCategory)
@@ -479,6 +576,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             DiffArea.FileSystem => snapshot.FileSystem.GetFullPath(index, snapshot.Names),
             DiffArea.Registry when !item.IsValue => snapshot.Registry.GetFullPath(index, snapshot.Names),
             DiffArea.Registry => Name(item),
+            DiffArea.Environment => snapshot.Environment.Key(index, snapshot.Names),
             _ => Name(item),
         };
     }
@@ -487,6 +585,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
     {
         DiffArea.FileSystem => "File system",
         DiffArea.Registry => "Registry",
+        DiffArea.Environment => "Environment variables",
         _ => "Services",
     };
 
@@ -495,14 +594,27 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
     {
         DiffArea.FileSystem => Diff.FileSystemCounts,
         DiffArea.Registry => Diff.RegistryCounts,
+        DiffArea.Environment => Diff.EnvironmentCounts,
         _ => Diff.ServicesCounts,
     };
+
+    /// <summary>
+    /// Environment variables that only one snapshot recorded (one from before 1.3, or taken without them):
+    /// they are not compared, and nothing is listed.
+    /// </summary>
+    public bool NotInBoth(DiffArea area) =>
+        area == DiffArea.Environment && (Diff.Older.Environment.Count == 0 || Diff.Newer.Environment.Count == 0);
 
     /// <summary>"File system  (3 new, 1 modified, 0 deleted)".</summary>
     public string CategoryText(DiffArea area)
     {
         var counts = Counts(area);
         var name = CategoryName(area);
+        if (NotInBoth(area))
+        {
+            return $"{name}  (not in both snapshots)";
+        }
+
         return counts.Total == 0
             ? $"{name}  (no changes)"
             : string.Create(CultureInfo.CurrentCulture, $"{name}  ({counts.New:N0} new, {counts.Modified:N0} modified, {counts.Deleted:N0} deleted)");
@@ -515,6 +627,18 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
         {
             var tree = Diff.Tree(item.Area);
             var count = tree.ChangedItems(item.Node);
+            if (IsUsersHive(item))
+            {
+                // HKCU is shown beside HKU, so its changes are counted there.
+                foreach (var child in tree.Children(item.Node))
+                {
+                    if (IsContainer(tree.Kind(child)) && IsCurrentUserKey(FromNode(item.Area, child)))
+                    {
+                        count -= tree.ChangedItems(child);
+                    }
+                }
+            }
+
             return item.Status switch
             {
                 RowStatus.Inside => string.Create(CultureInfo.CurrentCulture, $"  ({count:N0})"),
@@ -620,6 +744,11 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             case DiffArea.Registry:
                 Add("Last written", (s, i) => ItemFormat.Time(s.Registry.LastWriteTime[i]), false);
                 Add("Contains", (s, i) => $"{DiffItems.Count(SubkeyCount(s.Registry, i), "key")}, {DiffItems.Count(s.Registry.KeyValueCount[i], "value")}", false);
+                break;
+            case DiffArea.Environment:
+                Add("Variables", (s, i) => EnvironmentTable.ScopeName(s.Environment.Scope[i]), false);
+                Add("Type", (s, i) => ItemFormat.ValueType(s.Environment.ValueType[i]), fields.HasFlag(ChangedFields.ValueType));
+                Add("Value", (s, i) => Shorten(s.Names.GetString(s.Environment.Value[i])), fields.HasFlag(ChangedFields.ValueData));
                 break;
             default:
                 Add("Display name", (s, i) => s.Names.GetString(s.Services.DisplayName[i]), fields.HasFlag(ChangedFields.DisplayName));

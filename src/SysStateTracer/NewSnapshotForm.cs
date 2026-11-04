@@ -320,7 +320,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
 
         if (_tree.IsEmpty)
         {
-            MessageDialog.Inform(this, "New Snapshot", "Nothing is selected. Check at least one drive, registry hive or the services.");
+            MessageDialog.Inform(this, "New Snapshot", "Nothing is selected. Check at least one drive, registry hive, the services or the environment variables.");
             return;
         }
 
@@ -361,7 +361,7 @@ internal sealed class NewSnapshotForm : ThemedDialog
             CreatedPath = result.Path;
             var meta = result.Meta;
             var c = meta.Counts;
-            var items = c.Folders + c.Files + c.RegistryKeys + c.RegistryValues + c.Services;
+            var items = c.Folders + c.Files + c.RegistryKeys + c.RegistryValues + c.Services + c.EnvironmentVariables;
             var skippedNote = c.Skipped > 0
                 ? string.Create(CultureInfo.CurrentCulture, $", {c.Skipped:N0} not readable (see Properties).")
                 : ".";

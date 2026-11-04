@@ -66,6 +66,7 @@ public static class SnapshotWriter
                 WriteFileSystem(writer, snapshot.FileSystem, options.CacheInfo is not null);
                 WriteRegistry(writer, snapshot.Registry);
                 WriteServices(writer, snapshot.Services);
+                WriteEnvironment(writer, snapshot.Environment);
                 WriteSkipped(writer, snapshot.Skipped);
                 if (options.CacheInfo is not null)
                 {
@@ -126,6 +127,7 @@ public static class SnapshotWriter
         counts.RegistryKeys = snapshot.Registry.KeyCount;
         counts.RegistryValues = snapshot.Registry.ValueCount;
         counts.Services = snapshot.Services.Count;
+        counts.EnvironmentVariables = snapshot.Environment.Count;
         counts.Skipped = snapshot.Skipped.Count;
     }
 
@@ -180,6 +182,19 @@ public static class SnapshotWriter
         w.Write(SectionKind.SvcState, services.State);
         w.Write(SectionKind.SvcStartType, services.StartType);
         w.Write(SectionKind.SvcFlags, services.Flags);
+    }
+
+    private static void WriteEnvironment(SectionWriter w, EnvironmentTable environment)
+    {
+        if (environment.Count == 0)
+        {
+            return; // nothing to write; the reader gives an empty table for missing sections
+        }
+
+        w.Write(SectionKind.EnvScope, environment.Scope);
+        w.Write(SectionKind.EnvName, environment.Name);
+        w.Write(SectionKind.EnvValue, environment.Value);
+        w.Write(SectionKind.EnvType, environment.ValueType);
     }
 
     private static void WriteSkipped(SectionWriter w, IReadOnlyList<SkippedItem> skipped)

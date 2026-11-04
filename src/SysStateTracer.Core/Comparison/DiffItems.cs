@@ -3,12 +3,15 @@ using SysStateTracer.Core.Model;
 
 namespace SysStateTracer.Core.Comparison;
 
-/// <summary>The three parts of a comparison.</summary>
+/// <summary>The parts of a comparison.</summary>
 public enum DiffArea : byte
 {
     FileSystem,
     Registry,
     Services,
+
+    /// <summary>System and User environment variables.</summary>
+    Environment,
 }
 
 /// <summary>A node of one part of a comparison.</summary>
@@ -127,6 +130,12 @@ public static class DiffItems
                 return $"{ItemFormat.ValueType(reg.ValueDataType[index])} · {ItemFormat.ValueData(reg, index)}";
             }
 
+            case DiffItemKind.Variable:
+            {
+                var env = snapshot.Environment;
+                return $"{ItemFormat.ValueType(env.ValueType[index])} · {snapshot.Names.GetString(env.Value[index])}";
+            }
+
             default:
             {
                 var services = snapshot.Services;
@@ -139,7 +148,7 @@ public static class DiffItems
     public static string Count(long count, string noun) =>
         string.Create(CultureInfo.CurrentCulture, $"{count:N0} {noun}{(count == 1 ? string.Empty : "s")}");
 
-    /// <summary>The Global Ignore rule that hides this item: "FS:path", "REG:key[\value]" or "SVC:name".</summary>
+    /// <summary>The Global Ignore rule that hides this item: "FS:path", "REG:key[\value]", "SVC:name" or "ENV:User\name".</summary>
     public static string IgnoreRule(DiffResult diff, DiffItem item)
     {
         ArgumentNullException.ThrowIfNull(diff);
@@ -148,6 +157,7 @@ public static class DiffItems
         {
             DiffArea.FileSystem => "FS:" + diff.FullPath(tree, item.Node),
             DiffArea.Registry => "REG:" + diff.FullPath(tree, item.Node),
+            DiffArea.Environment => "ENV:" + diff.FullPath(tree, item.Node),
             _ => "SVC:" + diff.Name(tree, item.Node),
         };
     }

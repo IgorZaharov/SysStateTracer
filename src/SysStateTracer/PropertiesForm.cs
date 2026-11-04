@@ -1,6 +1,7 @@
 using System.Globalization;
 using SysStateTracer.Controls;
 using SysStateTracer.Core.Comparison;
+using SysStateTracer.Core.Config;
 using SysStateTracer.Core.Interop;
 using SysStateTracer.Core.Model;
 using SysStateTracer.Core.Storage;
@@ -28,12 +29,18 @@ internal sealed class PropertiesForm : ThemedDialog
     private readonly Panel _scroller;
     private TableLayoutPanel? _grid;
 
-    public PropertiesForm(string path)
+    /// <summary>With <paramref name="paths"/> and <paramref name="settings"/> the window comes back where it was closed.</summary>
+    public PropertiesForm(string path, AppPaths? paths = null, AppSettings? settings = null)
         : base("Snapshot Properties")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
         Size = new Size(640, 580);
+        if (paths is not null && settings is not null)
+        {
+            WindowLayout.Remember(this, "Properties", paths, settings);
+        }
+
         _sections.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         var scroller = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
@@ -102,6 +109,7 @@ internal sealed class PropertiesForm : ThemedDialog
         Row("Registry keys", N(counts.RegistryKeys));
         Row("Registry values", N(counts.RegistryValues));
         Row("Services", N(counts.Services));
+        Row("Environment variables", N(counts.EnvironmentVariables));
         Row("Skipped (not readable)", N(counts.Skipped));
 
         if (skipped.Count > 0)

@@ -85,6 +85,7 @@ public sealed class SnapshotReader : IDisposable
         var reg = parts.HasFlag(SnapshotParts.Registry) ? LoadRegistry(names, parts.HasFlag(SnapshotParts.RegistryData), cancellationToken) : null;
         var services = parts.HasFlag(SnapshotParts.Services) ? LoadServices(names, cancellationToken) : null;
         var skipped = parts.HasFlag(SnapshotParts.Skipped) ? LoadSkipped(cancellationToken) : null;
+        var environment = parts.HasFlag(SnapshotParts.Environment) ? LoadEnvironment(names, cancellationToken) : null;
 
         var loaded = parts;
         if (!parts.HasFlag(SnapshotParts.Registry))
@@ -92,7 +93,7 @@ public sealed class SnapshotReader : IDisposable
             loaded &= ~SnapshotParts.RegistryData;
         }
 
-        return new Snapshot(Info.Meta, names, fs, reg, services, skipped, loaded);
+        return new Snapshot(Info.Meta, names, fs, reg, services, skipped, loaded, environment);
     }
 
     public void Dispose() => _file.Dispose();
@@ -187,6 +188,23 @@ public sealed class SnapshotReader : IDisposable
         catch (ArgumentException ex)
         {
             throw Corrupt("The services data is inconsistent.", ex);
+        }
+    }
+
+    /// <summary>Snapshots from before 1.3 have no environment sections: an empty table.</summary>
+    private EnvironmentTable LoadEnvironment(NameTable names, CancellationToken ct)
+    {
+        var name = ReadColumn<int>(SectionKind.EnvName, ct);
+        var value = ReadColumn<int>(SectionKind.EnvValue, ct);
+        ValidateIds(name, names.Count, "environment variable names");
+        ValidateIds(value, names.Count, "environment variable values");
+        try
+        {
+            return new EnvironmentTable(ReadColumn<EnvironmentScope>(SectionKind.EnvScope, ct), name, value, ReadColumn<uint>(SectionKind.EnvType, ct));
+        }
+        catch (ArgumentException ex)
+        {
+            throw Corrupt("The environment variables data is inconsistent.", ex);
         }
     }
 

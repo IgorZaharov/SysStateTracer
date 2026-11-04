@@ -42,6 +42,7 @@ public static class CliHelp
             "HKCU means every user (HKU\\*).");
         Item(text, "/files:\"folder\",\"folder\"", "Folders or files and everything below them, e.g. \"C:\\Program Files\\App\".");
         Item(text, "/services:\"name\",\"name\"", "Services by key name, e.g. \"Spooler\" (/report only).");
+        Item(text, "/environment:\"var\",\"var\"", "Environment variables as System\\name or User\\name, e.g. \"System\\Path\" (/report only).");
         text.Append("  Separate several with commas, or repeat the switch (for a path that contains a comma). * and ? work").Append(nl);
         text.Append("  as in the Global Ignore list. With filters, an area without one is left out: /registry: alone exports").Append(nl);
         text.Append("  only a .reg file. A filter that matches nothing gives a warning.").Append(nl);

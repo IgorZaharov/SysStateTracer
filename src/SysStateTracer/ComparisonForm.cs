@@ -22,7 +22,8 @@ namespace SysStateTracer;
 /// </summary>
 internal sealed class ComparisonForm : Form
 {
-    private const int DetailsHeight = 140;
+    /// <summary>Room for the title, the headers and three properties, one of them on three lines.</summary>
+    private const int DetailsHeight = 184;
 
     private readonly AppPaths _paths;
     private readonly AppSettings _settings;
@@ -50,6 +51,9 @@ internal sealed class ComparisonForm : Form
     private readonly Label _status = new() { AutoSize = false, AutoEllipsis = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Font = UiFonts.Caption };
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _jump = new("Jump to");
+    private readonly ToolStripMenuItem _expandAll = new("Expand all") { ShortcutKeyDisplayString = "*" };
+    private readonly ToolStripMenuItem _collapseAll = new("Collapse all") { ShortcutKeyDisplayString = "/" };
+    private readonly ToolStripSeparator _branchSeparator = new();
     private readonly ToolStripMenuItem _mark = new("Mark as non-important");
     private readonly ToolStripMenuItem _ignore = new("Add to Global Ignore list…");
     private readonly ToolStripMenuItem _exportReg = new("Export to .REG…");
@@ -67,6 +71,9 @@ internal sealed class ComparisonForm : Form
     private ComparisonData? _data;
     private VirtualTreeGrid _active;
     private long? _listedFolder;
+
+    /// <summary>The tree row the context menu was opened on: Expand all and Collapse all act on it.</summary>
+    private long? _menuRow;
     private bool _swapped;
     private bool _loading;
     private bool _building;
@@ -173,9 +180,21 @@ internal sealed class ComparisonForm : Form
             case Keys.Shift | Keys.F10:
                 ShowMenuAtFocus();
                 return true;
+            case Keys.Tab or (Keys.Shift | Keys.Tab) when TabBetweenPanes(keyData.HasFlag(Keys.Shift)):
+                return true;
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    /// <summary>
+    /// Tab from the tree goes to the list, Shift+Tab from the list back to the tree (the split containers between
+    /// them would otherwise take the focus). False when the focus is elsewhere: Tab then moves as usual.
+    /// </summary>
+    internal bool TabBetweenPanes(bool back)
+    {
+        var (from, to) = back ? (_list, _tree) : (_tree, _list);
+        return from.Focused && to.Focus();
     }
 
     /// <summary>"OLDER  name": the caption and the snapshot name on one line (issue #6).</summary>
@@ -260,11 +279,20 @@ internal sealed class ComparisonForm : Form
         _tree.RowActivated += (_, id) => JumpTo(_tree, id);
         _tree.Enter += (_, _) => Activate(_tree);
         _tree.MouseUp += (_, e) => ShowMenuOnRightClick(_tree, e);
+        _tree.BranchKeys = true; // + − * / expand and collapse the branch under the cursor
+        _tree.MaxExpandedRows = ComparisonListModel.MaxRows;
+        _tree.ExpandStopped += (_, _) => _status.Text = string.Create(
+            CultureInfo.CurrentCulture,
+            $"Expand all stopped at {_tree.MaxExpandedRows:N0} rows in the tree; the folders and keys it did not reach are still closed.");
         var treeHolder = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4, 2, 0, 0) };
         treeHolder.Controls.Add(_tree);
         _split.Panel1.Controls.Add(treeHolder);
         _split.Panel1.Controls.Add(new Separator { Dock = DockStyle.Top });
         _split.Panel1.Controls.Add(modes);
+
+        // Tab goes from the tree to the list: Show all / Only changes comes before the tree, not between them.
+        modes.TabIndex = 0;
+        treeHolder.TabIndex = 1;
 
         // Right: the selected folder and Include subfolders, the list, the details.
         var listBar = new TableLayoutPanel { Dock = DockStyle.Top, Height = 44, ColumnCount = 3, RowCount = 1, Padding = new Padding(16, 0, 12, 0) };
@@ -312,6 +340,8 @@ internal sealed class ComparisonForm : Form
         _rightSplit.Panel1.Controls.Add(listHolder);
         _rightSplit.Panel1.Controls.Add(new Separator { Dock = DockStyle.Top });
         _rightSplit.Panel1.Controls.Add(listBar);
+        listHolder.TabIndex = 0;
+        listBar.TabIndex = 1;
         _rightSplit.Panel2.Controls.Add(_details);
         _split.Panel2.Controls.Add(_rightSplit);
 
@@ -345,12 +375,27 @@ internal sealed class ComparisonForm : Form
                 JumpTo(_active, _active.SelectedIds.First());
             }
         };
+        _expandAll.Click += (_, _) =>
+        {
+            if (_menuRow is { } id)
+            {
+                Cursor.Current = Cursors.WaitCursor;
+                _tree.ExpandAll(id);
+            }
+        };
+        _collapseAll.Click += (_, _) =>
+        {
+            if (_menuRow is { } id)
+            {
+                _tree.CollapseAll(id);
+            }
+        };
         _mark.Click += (_, _) => ToggleMarks();
         _ignore.Click += async (_, _) => await AddToIgnoreListAsync();
         _exportReg.Click += (_, _) => ExportRegistry();
         _copy.Click += (_, _) => CopyToFiles();
         _revert.Click += (_, _) => RevertValues();
-        _menu.Items.AddRange([_jump, new ToolStripSeparator(), _mark, _ignore, new ToolStripSeparator(), _exportReg, _copy, new ToolStripSeparator(), _revert]);
+        _menu.Items.AddRange([_jump, _branchSeparator, _expandAll, _collapseAll, new ToolStripSeparator(), _mark, _ignore, new ToolStripSeparator(), _exportReg, _copy, new ToolStripSeparator(), _revert]);
         _menu.Opening += (_, e) =>
         {
             var items = SelectedItems(_active);
@@ -364,10 +409,17 @@ internal sealed class ComparisonForm : Form
             _jump.Text = single is { IsCategory: false } one ? one.Area switch
             {
                 DiffArea.FileSystem => "Jump to (Explorer)",
-                DiffArea.Registry => "Jump to (Regedit)",
+                DiffArea.Registry or DiffArea.Environment => "Jump to (Regedit)",
                 _ => "Jump to (Services)",
             } : "Jump to";
             _jump.Enabled = single is { IsCategory: false };
+
+            // The tree only: the branch of the row the menu was opened on.
+            var onTree = _active == _tree && _menuRow is not null && _tree.Model is ComparisonTreeModel;
+            _branchSeparator.Visible = _expandAll.Visible = _collapseAll.Visible = onTree;
+            var hasChildren = onTree && ((ComparisonTreeModel)_tree.Model!).HasChildren(_menuRow!.Value);
+            _expandAll.Enabled = hasChildren;
+            _collapseAll.Enabled = hasChildren && _tree.IsExpanded(_menuRow!.Value);
 
             // Unchanged items and what a whole new or deleted folder or key holds are for information (F10, F11):
             // only Jump to works on them; the other actions work on changes.
@@ -400,6 +452,7 @@ internal sealed class ComparisonForm : Form
         if (e.Button == MouseButtons.Right && grid.SelectedIds.Count > 0 && e.Y > grid.HeaderHeight)
         {
             _active = grid;
+            _menuRow = grid.IdAt(e.Location) ?? grid.FocusedId;
             _menu.Show(grid, e.Location);
         }
     }
@@ -408,6 +461,7 @@ internal sealed class ComparisonForm : Form
     {
         if (_active.SelectedIds.Count > 0)
         {
+            _menuRow = _active.FocusedId;
             _menu.Show(_active, new Point(40, _active.HeaderHeight + 8));
         }
     }
@@ -643,15 +697,20 @@ internal sealed class ComparisonForm : Form
             _building = false;
         }
 
-        _listTitle.Text = folder.IsCategory ? ComparisonData.CategoryName(folder.Area) : _data.Path(folder);
+        _listTitle.Text = folder.IsCategory ? ComparisonData.CategoryName(folder.Area) : _data.DisplayPath(folder);
         _listSummary.Text = ListSummary(model);
     }
 
     private static string ListSummary(ComparisonListModel model)
     {
-        if (model.Folder.IsCategory && model.Area != DiffArea.Services)
+        if (model.Folder.IsCategory && model.Area is not (DiffArea.Services or DiffArea.Environment))
         {
             return model.Area == DiffArea.FileSystem ? "Select a drive or folder on the left." : "Select a key on the left.";
+        }
+
+        if (model.Data.NotInBoth(model.Area))
+        {
+            return "Only one snapshot has environment variables, so they are not compared.";
         }
 
         long added = 0, modified = 0, deleted = 0;
@@ -675,6 +734,7 @@ internal sealed class ComparisonForm : Form
         {
             DiffArea.FileSystem => "file",
             DiffArea.Registry => "value",
+            DiffArea.Environment => "variable",
             _ => "service",
         };
         var text = DiffItems.Count(model.Count, noun) + string.Create(CultureInfo.CurrentCulture, $" · {added:N0} new, {modified:N0} modified, {deleted:N0} deleted");
@@ -716,7 +776,7 @@ internal sealed class ComparisonForm : Form
         {
             _details.ShowMessage(items.Count > 1
                 ? string.Create(CultureInfo.CurrentCulture, $"{items.Count:N0} items selected.")
-                : "Select a folder, file, key, value or service to see it in both snapshots.");
+                : "Select a folder, file, key, value, service or variable to see it in both snapshots.");
             return;
         }
 
@@ -840,7 +900,7 @@ internal sealed class ComparisonForm : Form
         var marks = new List<DiffItem>();
         if (view.Marked.Count > 0)
         {
-            foreach (var area in new[] { DiffArea.FileSystem, DiffArea.Registry, DiffArea.Services })
+            foreach (var area in new[] { DiffArea.FileSystem, DiffArea.Registry, DiffArea.Services, DiffArea.Environment })
             {
                 var diffTree = _diff.Tree(area);
                 for (var n = 0; n < diffTree.Count; n++)
@@ -932,6 +992,11 @@ internal sealed class ComparisonForm : Form
                     break;
                 case DiffArea.Registry:
                     ShellLauncher.OpenInRegedit(path);
+                    break;
+                case DiffArea.Environment:
+                    // The key the variable is set in; Regedit lists it among the key's values.
+                    var (envSnapshot, envIndex) = _data.Shown(item);
+                    ShellLauncher.OpenInRegedit(Core.Scanning.Env.EnvironmentScanner.RegistryKeyPath(envSnapshot.Environment.Scope[envIndex]));
                     break;
                 default:
                     var (snapshot, index) = _data.Shown(item);
@@ -1070,7 +1135,7 @@ internal sealed class ComparisonForm : Form
             return;
         }
 
-        using var window = new CopyProgressForm(files, _paths.FilesDirectory);
+        using var window = new CopyProgressForm(files, _paths.FilesDirectory, _paths, _settings);
         window.ShowDialog(this);
     }
 

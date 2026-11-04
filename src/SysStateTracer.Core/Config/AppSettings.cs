@@ -102,6 +102,9 @@ public sealed class SnapshotScope
     /// <summary>Kernel drivers as well as services (off by default, plan 2.16).</summary>
     public bool IncludeDrivers { get; set; }
 
+    /// <summary>System and User environment variables (on by default).</summary>
+    public bool IncludeEnvironment { get; set; } = true;
+
     /// <summary>
     /// Folders and keys unchecked inside an included drive or hive in New Snapshot (W3), as rule lines
     /// ("FS:C:\Temp", "REG:HKLM\SOFTWARE\X"). They are left out like Global Ignore rules, for this scope only.

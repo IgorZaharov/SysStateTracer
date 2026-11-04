@@ -594,7 +594,7 @@ internal sealed class MainForm : Form
             return;
         }
 
-        using var window = new PropertiesForm(selected[0].Path);
+        using var window = new PropertiesForm(selected[0].Path, _paths, _settings);
         window.ShowDialog(this);
     }
 

@@ -50,6 +50,9 @@ public class SnapshotOrchestratorTests
         Assert.Contains("Services", meta.Scope);
         Assert.True(meta.CompletedAt >= meta.StartedAt);
         Assert.True(meta.Counts.Services > 100);
+        Assert.Contains("Environment variables", meta.Scope);
+        Assert.True(meta.Counts.EnvironmentVariables > 0);
+        Assert.Contains(Enumerable.Range(0, snapshot.Environment.Count), i => snapshot.Environment.Key(i, snapshot.Names) == "System" + Path.DirectorySeparatorChar + "Path");
         Assert.Equal(1, meta.Counts.Files);
 
         var files = Enumerable.Range(0, snapshot.FileSystem.Count)
@@ -141,6 +144,7 @@ public class SnapshotOrchestratorTests
         Assert.Equal(new[] { "HKLM", "HKU" }, request.RegistryRoots);
         Assert.True(request.IncludeServices);
         Assert.False(request.IncludeDrivers);
+        Assert.True(request.IncludeEnvironment);
     }
 
     private sealed class SyncProgress(Action<ScanProgress> report) : IProgress<ScanProgress>

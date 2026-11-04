@@ -152,6 +152,7 @@ public static class CliRunner
             Say("  Folders:  " + (request.FileSystemRoots.Count == 0 ? "(none)" : string.Join(", ", request.FileSystemRoots)));
             Say("  Registry: " + (request.RegistryRoots.Count == 0 ? "(none)" : string.Join(", ", request.RegistryRoots)));
             Say("  Services: " + (request.IncludeServices ? request.IncludeDrivers ? "services and drivers" : "yes" : "no"));
+            Say("  Environment variables: " + (request.IncludeEnvironment ? "yes" : "no"));
 
             var printer = new ScanPrinter(this, env.ProgressInterval);
             var result = SnapshotOrchestrator.Run(request, printer, cancellationToken);
@@ -160,7 +161,7 @@ public static class CliRunner
             var counts = meta.Counts;
             Say($"Snapshot saved: {result.Path}");
             Say(string.Create(CultureInfo.InvariantCulture,
-                $"  {counts.Folders:N0} folders, {counts.Files:N0} files, {counts.RegistryKeys:N0} registry keys, {counts.RegistryValues:N0} values, {counts.Services:N0} services"));
+                $"  {counts.Folders:N0} folders, {counts.Files:N0} files, {counts.RegistryKeys:N0} registry keys, {counts.RegistryValues:N0} values, {counts.Services:N0} services, {counts.EnvironmentVariables:N0} environment variables"));
             if (counts.Skipped > 0)
             {
                 Say(string.Create(CultureInfo.InvariantCulture, $"  {counts.Skipped:N0} items could not be read and were skipped (details in {AppPaths.LogFileName})."));
@@ -391,7 +392,7 @@ public static class CliRunner
             return CliExitCode.Success;
         }
 
-        /// <summary>Reads /files:, /registry: and /services: (issue #8); null filter when none was given.</summary>
+        /// <summary>Reads /files:, /registry:, /services: (issue #8) and /environment:; null filter when none was given.</summary>
         private bool TryFilter(CliCommand command, out DiffFilter? filter)
         {
             filter = null;
@@ -400,7 +401,7 @@ public static class CliRunner
                 return true;
             }
 
-            if (!DiffFilter.TryCreate(command.Files, command.Registry, command.Services, out var parsed, out var error))
+            if (!DiffFilter.TryCreate(command.Files, command.Registry, command.Services, command.Environment, out var parsed, out var error))
             {
                 Error(error);
                 return false;
@@ -484,6 +485,7 @@ public static class CliRunner
         {
             IgnoreTarget.FileSystem => "File system:",
             IgnoreTarget.Registry => "Registry:",
+            IgnoreTarget.Environment => "Environment:",
             _ => "Services:",
         };
 
@@ -494,6 +496,7 @@ public static class CliRunner
             Counts("File system", leftIsOlder ? diff.FileSystemCounts : Flip(diff.FileSystemCounts));
             Counts("Registry", leftIsOlder ? diff.RegistryCounts : Flip(diff.RegistryCounts));
             Counts("Services", leftIsOlder ? diff.ServicesCounts : Flip(diff.ServicesCounts));
+            Counts("Environment", leftIsOlder ? diff.EnvironmentCounts : Flip(diff.EnvironmentCounts));
 
             void Counts(string label, DiffCounts counts) => Say(string.Create(
                 CultureInfo.InvariantCulture,

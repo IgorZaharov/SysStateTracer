@@ -50,6 +50,11 @@ internal static class SampleSnapshots
         services.Add("BITS", "Background Intelligent Transfer Service", 0x20, 1, 2, ServiceFlags.DelayedAutoStart | ServiceFlags.TriggerStart);
         services.Add("edgeupdate", "Microsoft Edge Update Service", 0x10, 1, 3, ServiceFlags.TriggerStart);
 
+        var environment = new EnvironmentTableBuilder(names);
+        environment.Add(EnvironmentScope.User, "TEMP", @"%USERPROFILE%\AppData\Local\Temp", 2);
+        environment.Add(EnvironmentScope.System, "Path", @"%SystemRoot%\system32;%SystemRoot%", 2);
+        environment.Add(EnvironmentScope.System, "OS", "Windows_NT", 1);
+
         var meta = new SnapshotMeta
         {
             Name = "20261027_14-05-12_WS-0142",
@@ -73,7 +78,8 @@ internal static class SampleSnapshots
             fs.Build(),
             reg.Build(),
             services.Build(),
-            [new SkippedItem(@"C:\System Volume Information", 5), new SkippedItem(@"HKLM\SECURITY", 5)]);
+            [new SkippedItem(@"C:\System Volume Information", 5), new SkippedItem(@"HKLM\SECURITY", 5)],
+            environment: environment.Build());
         names.Freeze();
         return snapshot;
     }

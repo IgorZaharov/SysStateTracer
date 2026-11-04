@@ -7,7 +7,7 @@ namespace SysStateTracer.Core.Storage;
 internal static class SnapshotFormat
 {
     public const ushort MajorVersion = 1;
-    public const ushort MinorVersion = 0;
+    public const ushort MinorVersion = 1;
     public const int HeaderSize = 512;
     public const int BlockSize = 1 << 20;
 
@@ -164,6 +164,11 @@ internal enum SectionKind : ushort
     SkippedChars = 70,
     SkippedOffsets = 71,
     SkippedErrors = 72,
+
+    EnvScope = 90,
+    EnvName = 91,
+    EnvValue = 92,
+    EnvType = 93,
 
     /// <summary>UTF-8 JSON describing what an SysStateTracer.cache file was built from; cache files only.</summary>
     CacheInfo = 80,

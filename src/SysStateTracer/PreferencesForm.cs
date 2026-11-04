@@ -53,7 +53,7 @@ internal sealed class PreferencesForm : ThemedDialog
         // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
         Size = new Size(940, 580);
         MinimumSize = new Size(940, 460); // issue #5: the Global Ignore list buttons fit on one row
-        WindowLayout.Remember(this, "Preferences", paths, settings, keepPosition: false);
+        WindowLayout.Remember(this, "Preferences", paths, settings);
 
         _pageTabs.SelectedIndexChanged += (_, _) => ShowPage(general: _pageTabs.SelectedIndex == 0);
 
@@ -100,6 +100,7 @@ internal sealed class PreferencesForm : ThemedDialog
     {
         IgnoreTarget.FileSystem => "Folder or file",
         IgnoreTarget.Registry => "Registry",
+        IgnoreTarget.Environment => "Environment variable",
         _ => "Service",
     };
 

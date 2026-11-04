@@ -68,12 +68,18 @@ public sealed class DiffFilter
     /// <summary>Reads the filters; false with a message naming the first one that is not valid.</summary>
     public static bool TryCreate(
         IReadOnlyList<string> files, IReadOnlyList<string> registry, IReadOnlyList<string> services, out DiffFilter filter, out string error)
+        => TryCreate(files, registry, services, [], out filter, out error);
+
+    /// <summary>Reads the filters, with <c>/environment:</c> ones; false with a message naming the first one that is not valid.</summary>
+    public static bool TryCreate(
+        IReadOnlyList<string> files, IReadOnlyList<string> registry, IReadOnlyList<string> services, IReadOnlyList<string> environment, out DiffFilter filter, out string error)
     {
+        ArgumentNullException.ThrowIfNull(environment);
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(services);
         var entries = new List<Entry>();
-        foreach (var (target, values, label) in new[] { (IgnoreTarget.FileSystem, files, "/files:"), (IgnoreTarget.Registry, registry, "/registry:"), (IgnoreTarget.Service, services, "/services:") })
+        foreach (var (target, values, label) in new[] { (IgnoreTarget.FileSystem, files, "/files:"), (IgnoreTarget.Registry, registry, "/registry:"), (IgnoreTarget.Service, services, "/services:"), (IgnoreTarget.Environment, environment, "/environment:") })
         {
             foreach (var value in values)
             {
@@ -123,6 +129,7 @@ public sealed class DiffFilter
             Filter(diff, diff.FileSystem, IgnoreTarget.FileSystem, cancellationToken),
             Filter(diff, diff.Registry, IgnoreTarget.Registry, cancellationToken),
             Filter(diff, diff.Services, IgnoreTarget.Service, cancellationToken),
+            Filter(diff, diff.Environment, IgnoreTarget.Environment, cancellationToken),
             diff.Ignore);
     }
 

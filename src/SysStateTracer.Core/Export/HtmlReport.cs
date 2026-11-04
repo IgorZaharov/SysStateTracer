@@ -48,6 +48,7 @@ public static class HtmlReport
         SummaryRow(output, "File system", diff.FileSystemCounts);
         SummaryRow(output, "Registry", diff.RegistryCounts);
         SummaryRow(output, "Services", diff.ServicesCounts);
+        SummaryRow(output, "Environment variables", diff.EnvironmentCounts);
         output.Write("</table>\n<div class=\"tree\" id=\"tree\"><div class=\"hdr\"><span>Name</span><span>");
         output.Write(Html(diff.Left.Meta.Name));
         output.Write("</span><span>");
@@ -85,7 +86,7 @@ public static class HtmlReport
         {
             var budget = MaxContentRows;
             json.WriteStartArray();
-            foreach (var (area, label) in new[] { (DiffArea.FileSystem, "File system"), (DiffArea.Registry, "Registry"), (DiffArea.Services, "Services") })
+            foreach (var (area, label) in new[] { (DiffArea.FileSystem, "File system"), (DiffArea.Registry, "Registry"), (DiffArea.Services, "Services"), (DiffArea.Environment, "Environment variables") })
             {
                 var tree = diff.Tree(area);
                 var rows = new List<Row>(tree.Count);
@@ -269,6 +270,7 @@ public static class HtmlReport
         return tree.Kind(node) switch
         {
             DiffItemKind.Value when name.Length == 0 => "(Default)",
+            DiffItemKind.Variable => diff.FullPath(tree, node), // "User\TEMP": the same name can be in both scopes
             DiffItemKind.Folder when tree.Parent(node) < 0 => name + "\\",
             _ => name,
         };

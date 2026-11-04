@@ -42,6 +42,7 @@ Filters for /report and /export: only what they name is compared and exported.
                                       HKCU means every user (HKU\*).
   /files:"folder","folder"            Folders or files and everything below them, e.g. "C:\Program Files\App".
   /services:"name","name"             Services by key name, e.g. "Spooler" (/report only).
+  /environment:"var","var"            Environment variables as System\name or User\name, e.g. "System\Path" (/report only).
   Separate several with commas, or repeat the switch (for a path that contains a comma). * and ? work
   as in the Global Ignore list. With filters, an area without one is left out: /registry: alone exports
   only a .reg file. A filter that matches nothing gives a warning.
@@ -134,6 +135,7 @@ The folders shown are the real ones on the PC where it runs.
 | `/registry:` | Registry keys, each with everything below it | `/registry:"HKLM\SOFTWARE\App","HKCU\Software\App"` |
 | `/files:` | Folders or files, each with everything below it | `/files:"C:\Program Files\App","C:\ProgramData\App"` |
 | `/services:` | Services by key name (`/report` only; services are not exported) | `/services:"Spooler","BITS"` |
+| `/environment:` | Environment variables as `System\name` or `User\name`; `User\*` is every user variable (`/report` only) | `/environment:"System\Path","User\TEMP"` |
 | `/output:` | `/report`: the `.html` report. `/export`: a folder, or a `.reg` file | `/output:"C:\Exports\App"` |
 
 - **Several values:** separate them with commas, or repeat the switch. A path that contains a comma must be given
@@ -166,7 +168,7 @@ The folders shown are the real ones on the PC where it runs.
   still be given as the last argument without `/output:`.
 - **Errors** (exit code 1, nothing is compared): an unknown option such as `/file:`, an empty value or list entry,
   a filter that is not valid (for example a registry key that does not start with HKLM, HKU, HKCU, HKCR or HKCC),
-  `/output:` twice, an `.html` path for `/export`, a non-`.html` path for `/report`, `/services:` with `/export`, or
+  `/output:` twice, an `.html` path for `/export`, a non-`.html` path for `/report`, `/services:` or `/environment:` with `/export`, or
   a filter with `/new`, `/del` or `/rename`. The output folder is checked before the snapshots are read: when it
   cannot be created or written to, or is a file, the reason is printed and the exit code is 4.
 

@@ -79,6 +79,7 @@ SysStateTracer.exe /export "Before Office 2024 install" "After Office 2024 insta
 - **Registry:** HKLM and every user under HKU, with values up to 1 MB (larger values are recorded by size and hash).
   `HKLM\SAM` and `HKLM\SECURITY` are left out by default.
 - **Services:** state and startup type; kernel drivers optionally.
+- **Environment variables:** the System variables and the user's own, as written (`%SystemRoot%` not expanded).
 - Anything that cannot be read is skipped and listed in the snapshot's properties.
 
 **Snapshots contain registry data, which can include sensitive settings such as product keys.** Treat `.stsnap`

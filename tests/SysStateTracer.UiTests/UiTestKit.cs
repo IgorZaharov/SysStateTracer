@@ -267,6 +267,16 @@ internal sealed class TestApp : IDisposable
             svc.Add("ClickToRunSvc", "Microsoft Office Click-to-Run Service", 0x10, 4, 2, ServiceFlags.None);
         }
 
+        // Office adds itself to the System Path and sets a variable of its own.
+        var env = new EnvironmentTableBuilder(names);
+        env.Add(EnvironmentScope.System, "Path", installed ? @"%SystemRoot%\system32;%SystemRoot%;C:\Program Files\Microsoft Office\root" : @"%SystemRoot%\system32;%SystemRoot%", 2);
+        env.Add(EnvironmentScope.System, "OS", "Windows_NT", 1);
+        env.Add(EnvironmentScope.User, "TEMP", @"%USERPROFILE%\AppData\Local\Temp", 2);
+        if (installed)
+        {
+            env.Add(EnvironmentScope.System, "OFFICE_ROOT", @"C:\Program Files\Microsoft Office\root", 1);
+        }
+
         var started = DateTimeOffset.Now.AddHours(-hoursAgo);
         var meta = new SnapshotMeta
         {
@@ -280,7 +290,7 @@ internal sealed class TestApp : IDisposable
             AppVersion = "0.1.0+1a2b3c4",
             Mode = hoursAgo > 100 ? SnapshotMode.Full : SnapshotMode.Incremental,
             ModeReason = hoursAgo > 100 ? "no previous snapshot" : null,
-            Scope = [@"C:\", "HKLM", "HKU", "Services"],
+            Scope = [@"C:\", "HKLM", "HKU", "Services", "Environment variables"],
             FileSystemMethods = ["C: master file table"],
             IgnoreRuleCount = 94,
             Timings = new SnapshotTimings { FileSystemMs = 2_050, RegistryMs = 6_980, ServicesMs = 140, WriteMs = 410, TotalMs = 9_420 },
@@ -288,7 +298,7 @@ internal sealed class TestApp : IDisposable
         IReadOnlyList<SkippedItem>? skipped = withSkipped
             ? [new(@"C:\System Volume Information", 5), new(@"HKLM\SOFTWARE\Locked\Key", 5), new(@"C:\pagefile.sys", 32)]
             : null;
-        var snapshot = new Snapshot(meta, names, fs.Build(), reg.Build(), svc.Build(), skipped);
+        var snapshot = new Snapshot(meta, names, fs.Build(), reg.Build(), svc.Build(), skipped, environment: env.Build());
         names.Freeze();
         var path = Path.Combine(SnapshotFolder, name + ".stsnap");
         SnapshotWriter.Write(path, snapshot);

@@ -35,10 +35,13 @@ public sealed record CliCommand(CliCommandKind Kind, IReadOnlyList<string> Names
 
     public IReadOnlyList<string> Services { get; init; } = [];
 
+    /// <summary>/environment: "System\Path", "User\*" (/report only).</summary>
+    public IReadOnlyList<string> Environment { get; init; } = [];
+
     /// <summary>/output: as given: the .html report, or for /export a folder or a .reg file.</summary>
     public string? OutputPath { get; init; }
 
-    public bool HasFilters => Files.Count + Registry.Count + Services.Count > 0;
+    public bool HasFilters => Files.Count + Registry.Count + Services.Count + Environment.Count > 0;
 }
 
 /// <summary>Either a command or the reason the arguments are wrong.</summary>
@@ -95,6 +98,7 @@ public static class CliParser
         var files = new List<string>();
         var registry = new List<string>();
         var services = new List<string>();
+        var environment = new List<string>();
         string? output = null;
         foreach (var option in options)
         {
@@ -122,6 +126,9 @@ public static class CliParser
                 case "services":
                     services.AddRange(SplitList(value));
                     break;
+                case "environment":
+                    environment.AddRange(SplitList(value));
+                    break;
                 case "output":
                     if (output is not null)
                     {
@@ -131,13 +138,13 @@ public static class CliParser
                     output = value;
                     break;
                 default:
-                    return CliParseResult.Fail($"Unknown option {option[..(colon + 1)]}; use /files:, /registry:, /services: or /output:.");
+                    return CliParseResult.Fail($"Unknown option {option[..(colon + 1)]}; use /files:, /registry:, /services:, /environment: or /output:.");
             }
         }
 
-        if (files.Concat(registry).Concat(services).Any(string.IsNullOrWhiteSpace))
+        if (files.Concat(registry).Concat(services).Concat(environment).Any(string.IsNullOrWhiteSpace))
         {
-            return CliParseResult.Fail("A /files:, /registry: or /services: list has an empty entry (two commas in a row, or a comma at the end).");
+            return CliParseResult.Fail("A /files:, /registry:, /services: or /environment: list has an empty entry (two commas in a row, or a comma at the end).");
         }
 
         var extra = rest.FirstOrDefault(a => TryGetSwitch(a, out _));
@@ -187,7 +194,7 @@ public static class CliParser
                 }
 
                 return names.Count is 0 or 2
-                    ? new CliParseResult(new CliCommand(kind, names, reports.FirstOrDefault()) { Files = files, Registry = registry, Services = services, OutputPath = output }, null)
+                    ? new CliParseResult(new CliCommand(kind, names, reports.FirstOrDefault()) { Files = files, Registry = registry, Services = services, Environment = environment, OutputPath = output }, null)
                     : CliParseResult.Fail($"{name} needs two snapshot names, or none for the newest two.");
             }
 
@@ -195,6 +202,11 @@ public static class CliParser
                 if (services.Count > 0)
                 {
                     return CliParseResult.Fail($"{name} exports registry keys and files, not services: /services: works only with /report.");
+                }
+
+                if (environment.Count > 0)
+                {
+                    return CliParseResult.Fail($"{name} exports registry keys and files, not environment variables: /environment: works only with /report.");
                 }
 
                 if (output is not null && output.EndsWith(HtmlExtension, StringComparison.OrdinalIgnoreCase))
@@ -232,6 +244,7 @@ public static class CliParser
         "files" => "/files:\"C:\\Program Files\\App\"",
         "registry" => "/registry:\"HKLM\\SOFTWARE\\App\"",
         "services" => "/services:\"Spooler\"",
+        "environment" => "/environment:\"System\\Path\"",
         _ => "/output:\"C:\\Exports\"",
     };
 

@@ -25,7 +25,8 @@ internal sealed class CopyProgressForm : ThemedDialog
     private readonly CancellationTokenSource _stop = new();
     private bool _running;
 
-    public CopyProgressForm(IReadOnlyList<FileToCopy> files, string targetFolder)
+    /// <summary>With <paramref name="paths"/> and <paramref name="settings"/> the window comes back where it was closed.</summary>
+    public CopyProgressForm(IReadOnlyList<FileToCopy> files, string targetFolder, AppPaths? paths = null, AppSettings? settings = null)
         : base("Copy to Files")
     {
         _files = files;
@@ -33,6 +34,10 @@ internal sealed class CopyProgressForm : ThemedDialog
         ClientSize = new Size(640, 220);
         FormBorderStyle = FormBorderStyle.Sizable;
         MinimumSize = new Size(520, 220);
+        if (paths is not null && settings is not null)
+        {
+            WindowLayout.Remember(this, "CopyToFiles", paths, settings);
+        }
 
         var layout = new Panel { Dock = DockStyle.Fill };
         var title = new Label

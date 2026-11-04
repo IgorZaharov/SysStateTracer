@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Snapshots
+- **Environment variables** (request 40): each snapshot now records the System variables and your user variables, as the Environment Variables window shows them (values as written, so `%SystemRoot%` is not expanded). New Snapshot has an **Environment variables** item, ticked by default; Properties counts them.
+- In the comparison, **Environment variables** is a fourth category beside Services: select it to list the variables, with System or User, the type and the value; a changed value is highlighted, and the details show both values. Jump to opens Regedit at the key that holds the variable. They are compared only when both snapshots have them (snapshots taken with an earlier version have none).
+- Global Ignore list: **`ENV:`** rules, e.g. `ENV:User\OneDrive`, or `ENV:User` for every user variable. Command line: **`/environment:"System\Path"`** filters a `/report`. The HTML report lists the variables too.
+
+### Comparison window
+- **Expand all / Collapse all** in the tree's right-click menu (request 38): opens or closes the folder or key and everything below it.
+- **HKCU beside HKLM and HKU** (request 41): your own registry key is a hive of its own at the top of the tree, as in Regedit, instead of "HKCU (S-1-5-21-…)" below HKU. HKU keeps the other users, and its count no longer includes your changes; with Only changes it is left out when nothing else in it changed. The path above the list says HKCU too.
+- **Long values on up to three lines** (request 42) in the details below the list, e.g. a Path variable, broken between folders; the details are a little taller to make room.
+- **Tab** goes from the tree to the list, and **Shift+Tab** back (request 43); it used to stop on the divider between them.
+- **Keys in the tree** (request 39), on the selected row: **\*** expands all, **/** collapses all, **+** opens one level more, **−** closes the deepest open level. Expand all stops at 250,000 rows in the tree and says so in the status bar.
+
+### Windows
+- **Every window comes back where it was closed** (request 37): Preferences, Help / About, Snapshot Properties and Copy to Files now remember their place as well as their size, like the main window, Comparison and New Snapshot. Message boxes still open centred on their window.
+
 ### Windows 11 look
 - **Mica** in the title bar on Windows 11 22H2 and later (the first Windows 11 release keeps a plain title bar); the window body in Mica's colours, with lists and trees on a lighter card. Text in Segoe UI Variable at the Windows 11 sizes (Segoe UI on Windows 10).
 - Buttons, list rows and selection as in Windows 11: rounded, a soft blue selection with a blue bar at the row's left end, a light fill under the mouse.

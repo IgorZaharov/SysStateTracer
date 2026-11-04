@@ -364,4 +364,7 @@ internal static class Glyphs
     public const string File = "\uE7C3";
     public const string Drive = "\uEDA2";
     public const string Value = "\uE8EC";
+
+    /// <summary>An environment variable (Segoe Fluent "Code").</summary>
+    public const string Variable = "\uE943";
 }

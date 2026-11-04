@@ -27,6 +27,11 @@ public class CliFilterTests
 
         // A repeated switch adds to the list, so a path with a comma can be given on its own.
         Assert.Equal([@"C:\A", @"D:\B"], CliParser.Parse(["/export", @"/files:C:\A", @"/files:D:\B"]).Command!.Files);
+
+        // Environment variables: System\name or User\name, for reports.
+        var env = CliParser.Parse(["/report", @"/environment:System\Path,User\*"]).Command!;
+        Assert.Equal([@"System\Path", @"User\*"], env.Environment);
+        Assert.True(env.HasFilters);
     }
 
     [Theory]
@@ -34,6 +39,7 @@ public class CliFilterTests
     [InlineData("/export", "/files:")]
     [InlineData("/export", "/files:C:\\1,,C:\\2")]
     [InlineData("/export", "/services:Spooler")]
+    [InlineData("/export", "/environment:System\\Path")]
     [InlineData("/export", "/output:C:\\r.html")]
     [InlineData("/export", "/output:C:\\a", "/output:C:\\b")]
     [InlineData("/report", "/output:C:\\r.txt")]

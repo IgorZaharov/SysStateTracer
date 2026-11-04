@@ -10,6 +10,8 @@ namespace SysStateTracer.Core.Ignore;
 /// <item><c>REG:HKLM\SOFTWARE\Vendor</c> — a key and everything below it. HKCU means every user (<c>HKU\*</c>),
 /// HKCR means <c>HKLM\SOFTWARE\Classes</c>, and <c>CurrentControlSet</c> matches the real <c>ControlSet00x</c>.</item>
 /// <item><c>SVC:edgeupdate</c> — a service by its key name.</item>
+/// <item><c>ENV:User\TEMP</c> — an environment variable, <c>System\</c> or <c>User\</c> and its name;
+/// <c>ENV:User</c> is every user variable.</item>
 /// </list>
 /// <c>*</c> matches any text (including across '\'), <c>?</c> one character other than '\'.
 /// Matching ignores case. Lines starting with <c>#</c> and blank lines are skipped.
@@ -19,6 +21,7 @@ public static class IgnoreRuleParser
     private const string FsPrefix = "FS:";
     private const string RegPrefix = "REG:";
     private const string SvcPrefix = "SVC:";
+    private const string EnvPrefix = "ENV:";
 
     /// <summary>Parses a multi-line text such as the default list or a downloaded list.</summary>
     public static (List<IgnoreRule> Rules, List<IgnoreRuleError> Errors) ParseText(string text, IgnoreRuleSource source)
@@ -86,9 +89,14 @@ public static class IgnoreRuleParser
             target = IgnoreTarget.Service;
             body = text[SvcPrefix.Length..];
         }
+        else if (text.StartsWith(EnvPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            target = IgnoreTarget.Environment;
+            body = text[EnvPrefix.Length..];
+        }
         else
         {
-            error = "A rule must start with FS:, REG: or SVC:.";
+            error = "A rule must start with FS:, REG:, SVC: or ENV:.";
             return false;
         }
 
@@ -100,6 +108,10 @@ public static class IgnoreRuleParser
         else if (target == IgnoreTarget.Registry)
         {
             pattern = NormalizeRegistry(body, out error);
+        }
+        else if (target == IgnoreTarget.Environment)
+        {
+            pattern = NormalizeEnvironment(body, out error);
         }
         else
         {
@@ -124,6 +136,7 @@ public static class IgnoreRuleParser
         {
             IgnoreTarget.FileSystem => FsPrefix,
             IgnoreTarget.Registry => RegPrefix,
+            IgnoreTarget.Environment => EnvPrefix,
             _ => SvcPrefix,
         };
 
@@ -195,6 +208,33 @@ public static class IgnoreRuleParser
 
         error = string.Empty;
         return string.Join('\\', segments);
+    }
+
+    /// <summary>"System\Path", "User\TEMP", "User", "*\Path": the scope first (or a wildcard), then the variable name.</summary>
+    private static string? NormalizeEnvironment(string body, out string error)
+    {
+        var path = NormalizeInputPath(body.Trim().Replace('/', '\\')).ToString();
+        if (Validate(path, allowBackslash: true, out error) is null)
+        {
+            return null;
+        }
+
+        var parts = path.Split('\\');
+        var scope = parts[0].ToUpperInvariant() switch
+        {
+            "SYSTEM" => "System",
+            "USER" => "User",
+            _ when parts[0].Contains('*', StringComparison.Ordinal) || parts[0].Contains('?', StringComparison.Ordinal) => parts[0],
+            _ => null,
+        };
+        if (scope is null || parts.Length > 2)
+        {
+            error = @"An environment rule is System\ or User\ and a variable name, e.g. ENV:User\TEMP.";
+            return null;
+        }
+
+        error = string.Empty;
+        return parts.Length == 1 ? scope : scope + "\\" + parts[1];
     }
 
     private static string? NormalizeService(string body, out string error)

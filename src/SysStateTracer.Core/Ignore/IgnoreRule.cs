@@ -6,6 +6,9 @@ public enum IgnoreTarget
     FileSystem,
     Registry,
     Service,
+
+    /// <summary>An environment variable, "System\Path" or "User\TEMP" (ENV: rules).</summary>
+    Environment,
 }
 
 /// <summary>Where a rule came from. Remote rules (from the remote list, F1) are read-only in Preferences.</summary>

@@ -12,8 +12,9 @@ public readonly record struct DiffCounts(long New, long Deleted, long Modified)
 /// <summary>Two snapshots and how they differ, with the left one shown first (normally the older).</summary>
 public sealed class DiffResult
 {
-    internal DiffResult(Snapshot left, Snapshot right, DiffTree fileSystem, DiffTree registry, DiffTree services, IgnoreMatcher ignore)
+    internal DiffResult(Snapshot left, Snapshot right, DiffTree fileSystem, DiffTree registry, DiffTree services, DiffTree environment, IgnoreMatcher ignore)
     {
+        Environment = environment;
         Ignore = ignore;
         Left = left;
         Right = right;
@@ -38,6 +39,9 @@ public sealed class DiffResult
 
     public DiffTree Services { get; }
 
+    /// <summary>System and User environment variables.</summary>
+    public DiffTree Environment { get; }
+
     /// <summary>
     /// The Global Ignore rules the comparison was made with. A new or deleted folder or key is one node,
     /// so exports apply these rules again to what is inside it.
@@ -48,11 +52,12 @@ public sealed class DiffResult
     {
         DiffArea.FileSystem => FileSystem,
         DiffArea.Registry => Registry,
+        DiffArea.Environment => Environment,
         _ => Services,
     };
 
     /// <summary>Right on the left and vice versa; New and Deleted trade places. Instant.</summary>
-    public DiffResult Swap() => new(Right, Left, FileSystem.Swap(), Registry.Swap(), Services.Swap(), Ignore);
+    public DiffResult Swap() => new(Right, Left, FileSystem.Swap(), Registry.Swap(), Services.Swap(), Environment.Swap(), Ignore);
 
     // A new or deleted folder or key counts with what it holds, less what Global Ignore rules leave out.
     public DiffCounts FileSystemCounts => Count(FileSystem, n => n.Kind == DiffItemKind.Folder ? Math.Max(0, FileSystem.ChangedItems(n.Node) - 1) : 0);
@@ -60,6 +65,8 @@ public sealed class DiffResult
     public DiffCounts RegistryCounts => Count(Registry, n => n.Kind == DiffItemKind.Key ? Math.Max(0, Registry.ChangedItems(n.Node) - 1) : 0);
 
     public DiffCounts ServicesCounts => Count(Services, _ => 0);
+
+    public DiffCounts EnvironmentCounts => Count(Environment, _ => 0);
 
     /// <summary>Name of a node, e.g. "notepad.exe", a value name (empty for the default value) or a service name.</summary>
     public string Name(DiffTree tree, int node)
@@ -72,6 +79,7 @@ public sealed class DiffResult
             DiffItemKind.Folder or DiffItemKind.File => snapshot.FileSystem.Name[index],
             DiffItemKind.Key => snapshot.Registry.Name[index],
             DiffItemKind.Value => snapshot.Registry.ValueName[index],
+            DiffItemKind.Variable => snapshot.Environment.Name[index],
             _ => snapshot.Services.Name[index],
         };
         return snapshot.Names.GetString(id);
@@ -88,6 +96,7 @@ public sealed class DiffResult
             DiffItemKind.Folder or DiffItemKind.File => snapshot.FileSystem.GetFullPath(index, snapshot.Names),
             DiffItemKind.Key => snapshot.Registry.GetFullPath(index, snapshot.Names),
             DiffItemKind.Value => FullPath(tree, tree.Parent(node)) + "\\" + Name(tree, node),
+            DiffItemKind.Variable => snapshot.Environment.Key(index, snapshot.Names),
             _ => Name(tree, node),
         };
     }
@@ -137,8 +146,9 @@ public static class SnapshotComparer
         var fs = Task.Run(() => new FileSystemWalk(older, newer, ignore, cancellationToken).Run(), cancellationToken);
         var reg = Task.Run(() => new RegistryWalk(older, newer, ignore, cancellationToken).Run(), cancellationToken);
         var services = CompareServices(older, newer, ignore);
+        var environment = CompareEnvironment(older, newer, ignore);
         Task.WhenAll(fs, reg).GetAwaiter().GetResult();
-        return new DiffResult(older, newer, fs.Result, reg.Result, services, ignore);
+        return new DiffResult(older, newer, fs.Result, reg.Result, services, environment, ignore);
     }
 
     private static int CompareNames(ReadOnlySpan<char> a, ReadOnlySpan<char> b) => a.CompareTo(b, StringComparison.OrdinalIgnoreCase);
@@ -201,6 +211,73 @@ public static class SnapshotComparer
                 if (fields != ChangedFields.None && !ignore.IsIgnoredEntry(IgnoreTarget.Service, newer.Names[b.Name[j]]))
                 {
                     builder.Add(-1, DiffItemKind.Service, ChangeKind.Modified, fields, i, j, 1);
+                }
+
+                i++;
+                j++;
+            }
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// Variables are matched by scope, then name ignoring case; a different type or value is "modified".
+    /// Only when both snapshots recorded them: a snapshot from before 1.3, or one taken without them, has
+    /// none at all, and every variable would look new or deleted.
+    /// </summary>
+    private static DiffTree CompareEnvironment(Snapshot older, Snapshot newer, IgnoreMatcher ignore)
+    {
+        var a = older.Environment;
+        var b = newer.Environment;
+        var builder = new DiffTreeBuilder();
+        if (a.Count == 0 || b.Count == 0)
+        {
+            return builder.Build();
+        }
+
+        var check = ignore.RuleCount > 0;
+        int i = 0, j = 0;
+        while (i < a.Count || j < b.Count)
+        {
+            var order = i >= a.Count ? 1
+                : j >= b.Count ? -1
+                : a.Scope[i] != b.Scope[j] ? a.Scope[i].CompareTo(b.Scope[j])
+                : CompareNames(older.Names[a.Name[i]], newer.Names[b.Name[j]]);
+            if (order < 0)
+            {
+                if (!check || !ignore.IsIgnored(IgnoreTarget.Environment, a.Key(i, older.Names)))
+                {
+                    builder.Add(-1, DiffItemKind.Variable, ChangeKind.Deleted, ChangedFields.None, i, -1, 1);
+                }
+
+                i++;
+            }
+            else if (order > 0)
+            {
+                if (!check || !ignore.IsIgnored(IgnoreTarget.Environment, b.Key(j, newer.Names)))
+                {
+                    builder.Add(-1, DiffItemKind.Variable, ChangeKind.New, ChangedFields.None, -1, j, 1);
+                }
+
+                j++;
+            }
+            else
+            {
+                var fields = ChangedFields.None;
+                if (a.ValueType[i] != b.ValueType[j])
+                {
+                    fields |= ChangedFields.ValueType;
+                }
+
+                if (!older.Names[a.Value[i]].SequenceEqual(newer.Names[b.Value[j]]))
+                {
+                    fields |= ChangedFields.ValueData;
+                }
+
+                if (fields != ChangedFields.None && (!check || !ignore.IsIgnored(IgnoreTarget.Environment, b.Key(j, newer.Names))))
+                {
+                    builder.Add(-1, DiffItemKind.Variable, ChangeKind.Modified, fields, i, j, 1);
                 }
 
                 i++;

@@ -18,6 +18,9 @@ internal enum ScopeKind
     Key,
     Services,
     Drivers,
+
+    /// <summary>System and User environment variables.</summary>
+    Environment,
 }
 
 /// <summary>Data of one scope tree node.</summary>
@@ -72,6 +75,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     private TreeNode? _fileSystem;
     private TreeNode? _registry;
     private TreeNode? _services;
+    private TreeNode? _environment;
 
     public ScopeTree()
     {
@@ -152,6 +156,9 @@ internal sealed class ScopeTree : TreeView, IThemed
         AddNode(_services.Nodes, new ScopeItem(ScopeKind.Services, string.Empty), "Windows services (as in services.msc)", scope.IncludeServices ? Checked : Unchecked);
         AddNode(_services.Nodes, new ScopeItem(ScopeKind.Drivers, string.Empty), "Kernel and file-system drivers", scope.IncludeDrivers ? Checked : Unchecked);
 
+        _environment = AddNode(Nodes, new ScopeItem(ScopeKind.Category, string.Empty), "Environment variables", Unchecked);
+        AddNode(_environment.Nodes, new ScopeItem(ScopeKind.Environment, string.Empty), "System variables and your user variables", scope.IncludeEnvironment ? Checked : Unchecked);
+
         foreach (TreeNode category in Nodes)
         {
             UpdateFromChildren(category);
@@ -224,6 +231,11 @@ internal sealed class ScopeTree : TreeView, IThemed
         {
             scope.IncludeServices = StateOf(_services.Nodes[0]) == Checked;
             scope.IncludeDrivers = StateOf(_services.Nodes[1]) == Checked;
+        }
+
+        if (_environment is not null)
+        {
+            scope.IncludeEnvironment = StateOf(_environment.Nodes[0]) == Checked;
         }
 
         return scope;

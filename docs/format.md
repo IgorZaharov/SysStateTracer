@@ -29,7 +29,7 @@ renames the file. A `.stsnap` file therefore only exists once it is complete.
 | --- | --- | --- | --- |
 | 0 | 8 | Magic | `53 54 53 4E 41 50 0A 1A` = "STSNAP" LF Ctrl-Z |
 | 8 | 2 | Major version | 1. Readers reject other majors. |
-| 10 | 2 | Minor version | 0. Newer minors only add sections; readers ignore unknown sections. |
+| 10 | 2 | Minor version | 1 (0 before 1.3, without environment variables). Newer minors only add sections; readers ignore unknown sections. |
 | 12 | 4 | Header size | 512 |
 | 16 | 8 | File length | Must equal the actual file length (detects truncated copies). |
 | 24 | 8 | Section table offset | |
@@ -142,6 +142,19 @@ Sorted by service name.
 | 64 | SvcStartType | uint32 | 0 boot, 1 system, 2 automatic, 3 manual, 4 disabled |
 | 65 | SvcFlags | byte | bit 0 = delayed auto-start, bit 1 = trigger start |
 
+### Environment variables (minor version 1)
+
+System and User environment variables as set in the registry, values not expanded; sorted by scope (System
+first), then by name ignoring case. Written only when there are any; a file without these sections has none
+(snapshots from before 1.3).
+
+| Kind | Name | Element | Content |
+| --- | --- | --- | --- |
+| 90 | EnvScope | byte | 0 = System (`HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment`), 1 = User (`HKCU\Environment` of the user who took the snapshot) |
+| 91 | EnvName | int32 | Name index (variable name) |
+| 92 | EnvValue | int32 | Name index (value, as written) |
+| 93 | EnvType | uint32 | Registry type: 1 = REG_SZ, 2 = REG_EXPAND_SZ |
+
 ### Skipped items
 
 Paths that could not be read, with their Win32 error code.
@@ -184,11 +197,11 @@ camelCase property names, enums as strings. Unknown properties are ignored.
   "appVersion": "0.1.0+81c5413",
   "mode": "Incremental",
   "modeReason": null,
-  "scope": ["C:\\", "HKLM", "HKU", "Services"],
+  "scope": ["C:\\", "HKLM", "HKU", "Services", "Environment variables"],
   "fileSystemMethods": ["C:\\: master file table"],
   "ignoreRuleCount": 12,
   "timings": { "fileSystemMs": 2100, "registryMs": 5300, "servicesMs": 400, "writeMs": 1900, "totalMs": 8700 },
-  "counts": { "folders": 310000, "files": 1190000, "registryKeys": 820000, "registryValues": 1450000, "services": 290, "skipped": 37 }
+  "counts": { "folders": 310000, "files": 1190000, "registryKeys": 820000, "registryValues": 1450000, "services": 290, "environmentVariables": 41, "skipped": 37 }
 }
 ```
 

@@ -176,7 +176,7 @@ public class DiffExportTests
         var end = html.IndexOf("</script>", start, StringComparison.Ordinal);
         var json = html[(start + "<script type=\"application/json\" id=\"data\">".Length)..end];
         using var data = JsonDocument.Parse(json);
-        Assert.Equal(3, data.RootElement.GetArrayLength());
+        Assert.Equal(4, data.RootElement.GetArrayLength()); // file system, registry, services, environment variables
         Assert.Equal("File system", data.RootElement[0][0].GetString());
         // What new and deleted folders and keys hold is listed too, so they open to any depth (issue #3):
         // NewFolder (sub, sub\b.txt, a.txt) and D:\Data (report.xlsx); NewApp (Sub, v, Huge) and OldApp (x).
