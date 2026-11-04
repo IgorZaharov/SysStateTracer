@@ -50,7 +50,7 @@ internal sealed class ColorLegend : Control, IThemed
     {
         var g = e.Graphics;
         var p = _palette;
-        g.Clear(p.Surface);
+        ThemeManager.ClearBehind(g, this, p.Surface);
         const TextFormatFlags flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
         var x = 2;
         var height = Height;
@@ -66,7 +66,7 @@ internal sealed class ColorLegend : Control, IThemed
             else
             {
                 var iconColor = entry.Label == "Unchanged" ? p.SecondaryText : color;
-                TextRenderer.DrawText(g, Glyphs.Folder, _iconFont, new Rectangle(x, 0, IconWidth, height), iconColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                UiFonts.DrawGlyph(g, Glyphs.Folder, _iconFont, new Rectangle(x, 0, IconWidth, height), iconColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                 x += IconWidth + 4;
             }
 

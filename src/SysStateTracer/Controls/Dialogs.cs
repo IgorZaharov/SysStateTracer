@@ -72,7 +72,7 @@ internal class ThemedDialog : Form
     protected override void OnPaintBackground(PaintEventArgs e)
     {
         base.OnPaintBackground(e);
-        if (Buttons.Visible && Buttons.Controls.Count > 0)
+        if (Buttons.Visible && Buttons.Controls.Count > 0 && !ThemeManager.MicaOn)
         {
             var p = ThemeManager.Current;
             var top = Buttons.Top;
@@ -80,6 +80,17 @@ internal class ThemedDialog : Form
             using var pen = new Pen(p.Border);
             e.Graphics.FillRectangle(brush, 0, top, ClientSize.Width, ClientSize.Height - top);
             e.Graphics.DrawLine(pen, 0, top, ClientSize.Width, top);
+        }
+    }
+
+    /// <summary>Over the wallpaper backdrop (drawn by the Paint event) only the footer's line, on top of it.</summary>
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        if (Buttons.Visible && Buttons.Controls.Count > 0 && ThemeManager.MicaOn)
+        {
+            using var pen = new Pen(ThemeManager.Current.Border);
+            e.Graphics.DrawLine(pen, 0, Buttons.Top, ClientSize.Width, Buttons.Top);
         }
     }
 

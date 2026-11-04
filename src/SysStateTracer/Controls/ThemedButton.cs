@@ -13,6 +13,7 @@ internal sealed class ThemedButton : Button, IThemed
     private Font? _glyphFont;
     private bool _hover;
     private bool _pressed;
+    private bool _iconOnly;
 
     public ThemedButton()
     {
@@ -37,7 +38,21 @@ internal sealed class ThemedButton : Button, IThemed
     /// <summary>Optional icon drawn before the text; with no text the icon is drawn alone.</summary>
     public string? Glyph { get; set; }
 
-    private Font GlyphFont => _glyphFont ??= UiFonts.Glyph(Font.Size);
+    /// <summary>Only the icon is drawn (a command bar too narrow for the labels); the text stays for the tooltip and screen readers.</summary>
+    public bool IconOnly
+    {
+        get => _iconOnly;
+        set
+        {
+            if (_iconOnly != value)
+            {
+                _iconOnly = value;
+                Invalidate();
+            }
+        }
+    }
+
+    private Font GlyphFont =>_glyphFont ??= UiFonts.Glyph(Font.Size);
 
     /// <summary>Width that fits the icon and the text with Windows 11 padding (11 px at each side, 8 px between).</summary>
     public int PreferredButtonWidth()
@@ -104,8 +119,7 @@ internal sealed class ThemedButton : Button, IThemed
     {
         var p = _palette;
         var g = pevent.Graphics;
-        var behind = Parent?.BackColor ?? p.Background;
-        g.Clear(behind);
+        var behind = ThemeManager.ClearBehind(g, this, p.Background);
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
         // Windows 11 control fills and strokes, as translucent layers over what is behind the button.
@@ -181,9 +195,9 @@ internal sealed class ThemedButton : Button, IThemed
             return;
         }
 
-        if (Text.Length == 0)
+        if (Text.Length == 0 || IconOnly)
         {
-            TextRenderer.DrawText(g, Glyph, GlyphFont, ClientRectangle, text, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            UiFonts.DrawGlyph(g, Glyph, GlyphFont, ClientRectangle, text, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
             return;
         }
 
@@ -191,7 +205,7 @@ internal sealed class ThemedButton : Button, IThemed
         var textSize = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding);
         var gap = LogicalToDeviceUnits(8);
         var x = Math.Max(LogicalToDeviceUnits(8), (Width - (glyphSize.Width + gap + textSize.Width)) / 2);
-        TextRenderer.DrawText(g, Glyph, GlyphFont, new Rectangle(x, 0, glyphSize.Width, Height), text, TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        UiFonts.DrawGlyph(g, Glyph, GlyphFont, new Rectangle(x, 0, glyphSize.Width, Height), text, TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         var textLeft = x + glyphSize.Width + gap;
         TextRenderer.DrawText(g, Text, Font, new Rectangle(textLeft, 0, Width - textLeft - 4, Height), text, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
     }

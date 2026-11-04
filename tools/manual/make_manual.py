@@ -334,7 +334,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     story += bullets([
         "The command bar: <b>New snapshot</b>, <b>Compare</b>, <b>Rename</b>, <b>Delete</b>, <b>Properties</b>; "
         "<b>Preferences</b> and <b>Help</b> at the right end. Compare opens the two selected snapshots, or offers the "
-        "others for one selected snapshot.",
+        "others for one selected snapshot. In a narrow window the buttons from the right end show only their icon; "
+        "point at one to see its name.",
         "The list shows each snapshot's name, when it was taken, on which computer, how long it took and its file size. "
         "Click a column header to sort by it, and again to reverse the order; newest first is the default. "
         "Snapshots copied into the folder appear at once. Every window opens at the size and place it was last closed: "

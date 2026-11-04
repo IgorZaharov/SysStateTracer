@@ -7,7 +7,8 @@ changes. Screenshots of every window in both themes are saved by the UI tests on
 Every window opens where and as large as it was when it was last closed, maximized too (F12): the main window,
 Comparison, New Snapshot, Snapshot Properties, Preferences, Help / About and Copy to Files. A place on a monitor
 that is no longer connected is not used. Message boxes and the small input boxes open centred on their window. The
-first time, the main window is 850 × 450 and no other window is taller than 580 pixels (F14, at 100 % display scaling).
+first time, the main window is 850 × 450 and no other window is taller than 580 pixels (F14, at 100 % display scaling), except Preferences, which opens tall
+enough for its whole General page (request 44; never taller than the screen, and the page scrolls on a small one).
 
 ## Main window (W1)
 
@@ -15,11 +16,15 @@ first time, the main window is 850 × 450 and no other window is taller than 580
   Without administrator rights a warning bar says what is missing and offers **Restart as administrator**; its close
   button hides it until the next start.
 
-- **Look (Windows 11):** Mica in the title bar on Windows 11 22H2 (build 22621) and later; the window body in Mica's colours, the list on a
-  lighter card; rounded selection with a blue bar at the row's left end. The other windows share these colours, and
+- **Look (Windows 11):** Mica in the title bar on Windows 11 22H2 (build 22621) and later, and behind the whole window as
+  in Settings (request 45): the wallpaper, blurred and tinted, painted by SysStateTracer, with cards as a translucent
+  lighter layer and lists, trees and text boxes in matching solid colours. It turns plain while the window is inactive
+  and is off with transparency effects off (Settings → Personalization → Colors), in high contrast and over Remote
+  Desktop. The list on a lighter card; rounded selection with a blue bar at the row's left end. The other windows share these colours, and
   their buttons sit in a footer below a thin line, as in Windows 11 dialogs.
 - **Command bar:** **New snapshot**, **Compare** (the two selected snapshots, or the selected one with one picked from
-  a menu), Rename, Delete, Properties; Preferences and Help at the right end. Close the window to exit.
+  a menu), Rename, Delete, Properties; Preferences and Help at the right end. In a window too narrow for every label,
+  the buttons from the right end (Properties first) show only their icon; the tooltip names them. Close the window to exit.
 - **List:** Name, Created, Computer, Duration, Size, read from the snapshot headers only (100 snapshots list in
   well under half a second). Click a column header to sort by it, again to reverse; an arrow shows which (F16).
   Dates, durations and sizes start with the newest, longest or largest. The default is newest first, and the choice

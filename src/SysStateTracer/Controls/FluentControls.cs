@@ -5,7 +5,8 @@ namespace SysStateTracer.Controls;
 
 /// <summary>
 /// A Windows 11 layer: a rounded card in the background colour with a thin border, on the window's Mica tint
-/// (<see cref="Palette.Surface"/>). Children go inside <see cref="Control.Padding"/>, clear of the corners.
+/// (<see cref="Palette.Surface"/>). Over the wallpaper backdrop it is a translucent white with the backdrop showing
+/// through, as the cards in Settings. Children go inside <see cref="Control.Padding"/>, clear of the corners.
 /// </summary>
 internal class LayerPanel : Panel, IThemed
 {
@@ -13,9 +14,12 @@ internal class LayerPanel : Panel, IThemed
 
     public LayerPanel()
     {
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
         Padding = new Padding(4);
     }
+
+    /// <summary>A plain card shows the backdrop through it; a tinted one (an info bar) stays solid.</summary>
+    private bool OverBackdrop => ThemeManager.MicaOn && GetType() == typeof(LayerPanel);
 
     /// <summary>Corner radius at 96 DPI.</summary>
     public int Radius { get; set; } = 8;
@@ -23,8 +27,13 @@ internal class LayerPanel : Panel, IThemed
     public virtual void ApplyTheme(Palette palette)
     {
         _palette = palette;
-        BackColor = palette.Surface;
+        BackColor = OverBackdrop ? Color.Transparent : palette.Surface; // see-through: its children show the card
         Invalidate();
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        // OnPaint draws everything, what is behind the card included.
     }
 
     protected virtual Color Fill(Palette palette) => palette.Background;
@@ -32,10 +41,10 @@ internal class LayerPanel : Panel, IThemed
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        g.Clear(Parent?.BackColor ?? _palette.Surface);
+        ThemeManager.ClearBehind(g, this, _palette.Surface);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         using var path = ThemedButton.Rounded(new Rectangle(0, 0, Width - 1, Height - 1), LogicalToDeviceUnits(Radius));
-        using var brush = new SolidBrush(Fill(_palette));
+        using var brush = new SolidBrush(OverBackdrop ? ThemeManager.LayerOverBackdrop(_palette) : Fill(_palette));
         using var pen = new Pen(_palette.Border);
         g.FillPath(brush, path);
         g.DrawPath(pen, path);
@@ -246,7 +255,7 @@ internal sealed class SelectorBar : Control, IThemed
     {
         var p = _palette;
         var g = e.Graphics;
-        g.Clear(Parent?.BackColor ?? p.Background);
+        ThemeManager.ClearBehind(g, this, p.Background);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         var bounds = ItemBounds();
         for (var i = 0; i < _items.Count; i++)
@@ -345,7 +354,7 @@ internal sealed class PathBar : Control, IThemed
     {
         var p = _palette;
         var g = e.Graphics;
-        g.Clear(Parent?.BackColor ?? p.Background);
+        ThemeManager.ClearBehind(g, this, p.Background);
         var parts = Parts(Text);
         if (parts.Count == 0)
         {
@@ -451,7 +460,7 @@ internal sealed class TagLabel : Control, IThemed
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        g.Clear(Parent?.BackColor ?? _palette.Surface);
+        ThemeManager.ClearBehind(g, this, _palette.Surface);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         using (var path = ThemedButton.Rounded(new Rectangle(0, 0, Width - 1, Height - 1), 4))
         using (var brush = new SolidBrush(_palette.IsDark ? Color.FromArgb(20, 255, 255, 255) : Color.FromArgb(14, 0, 0, 0)))

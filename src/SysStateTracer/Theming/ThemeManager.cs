@@ -35,12 +35,19 @@ internal static class ThemeManager
     private static readonly ConditionalWeakTable<Control, StrongBox<ThemeRole>> Roles = new();
     private static ThemePreference _preference = ThemePreference.System;
     private static bool _listening;
+    private static bool _micaAllowed;
 
     public static event EventHandler? Changed;
 
     public static ThemePreference Preference => _preference;
 
     public static Palette Current { get; private set; } = Palette.Light;
+
+    /// <summary>
+    /// The wallpaper backdrop (<see cref="MicaBackdrop"/>) is behind the window body and the cards: only with the
+    /// theme from the settings (not with a palette forced by tests and screenshots) and where Windows shows Mica.
+    /// </summary>
+    public static bool MicaOn => _micaAllowed && MicaBackdrop.Available;
 
     /// <summary>Lines between rows and columns in lists and the comparison grid (Preferences → General).</summary>
     public static bool GridLines { get; private set; }
@@ -65,6 +72,7 @@ internal static class ThemeManager
     public static void SetPreference(ThemePreference preference)
     {
         _preference = preference;
+        _micaAllowed = true;
         if (!_listening)
         {
             _listening = true;
@@ -75,16 +83,93 @@ internal static class ThemeManager
                     Update();
                 }
             };
+
+            // A new wallpaper or screen, or transparency effects turned on or off: new colours and backdrop.
+            MicaBackdrop.Changed += (_, _) => Update(force: true);
         }
 
         Update();
     }
 
-    /// <summary>Forces a palette (screenshots and tests).</summary>
+    /// <summary>Forces a palette (screenshots and tests); the wallpaper backdrop is left out.</summary>
     public static void SetPalette(Palette palette)
     {
+        _micaAllowed = false;
         Current = palette;
         Changed?.Invoke(null, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The palette over the wallpaper backdrop: the window body in the backdrop's average colour; cards, lists and
+    /// text boxes as Windows 11's translucent layers over it (dark: 5 % white, light: 70 % white), so the parts
+    /// drawn solid match the cards drawn over the backdrop.
+    /// </summary>
+    internal static Palette OverBackdrop(Palette palette, Color average) => palette with
+    {
+        Surface = average,
+        Background = Palette.Blend(average, Color.White, palette.IsDark ? 0.05 : 0.7),
+        Input = palette.IsDark ? Palette.Blend(average, Color.White, 0.09) : Color.White,
+        Border = Palette.Blend(average, palette.IsDark ? Color.White : Color.Black, palette.IsDark ? 0.1 : 0.09),
+    };
+
+    /// <summary>A layer (card) over the backdrop: <see cref="Palette.Background"/> as a translucent white.</summary>
+    public static Color LayerOverBackdrop(Palette palette)
+    {
+        ArgumentNullException.ThrowIfNull(palette);
+        return palette.IsDark ? Color.FromArgb(13, 255, 255, 255) : Color.FromArgb(179, 255, 255, 255);
+    }
+
+    /// <summary>
+    /// Clears a custom-drawn control to what is behind it: its parent's colour, or, where the parent is see-through
+    /// (over the backdrop), whatever the parent shows there. Returns a solid colour close to it, for blending.
+    /// </summary>
+    public static Color ClearBehind(Graphics g, Control control, Color fallback)
+    {
+        ArgumentNullException.ThrowIfNull(g);
+        ArgumentNullException.ThrowIfNull(control);
+        var behind = control.Parent?.BackColor ?? fallback;
+        var seeThrough = behind.A < 255 || (control.Parent is Form && MicaOn);
+        if (!seeThrough || control.Parent is null)
+        {
+            g.Clear(behind);
+            return behind;
+        }
+
+        ButtonRenderer.DrawParentBackground(g, control.ClientRectangle, control);
+        return Current.Surface;
+    }
+
+    /// <summary>The window body: the backdrop while the window is active (Mica turns plain in inactive windows).</summary>
+    private static void PaintBackdrop(Form form, PaintEventArgs e)
+    {
+        if (MicaOn && IsActive(form))
+        {
+            MicaBackdrop.Paint(e.Graphics, form, e.ClipRectangle, Current.IsDark);
+        }
+    }
+
+    /// <summary>The active window (tests that force the backdrop on treat every window as active).</summary>
+    private static bool IsActive(Form form) => Form.ActiveForm == form || MicaBackdrop.Override == true;
+
+    /// <summary>
+    /// Repaints what shows the backdrop: the window, its see-through containers and what is drawn on them; not
+    /// lists, trees and text boxes, which are solid. Used when the window moves (the backdrop stays with the
+    /// screen) and when it becomes active or inactive.
+    /// </summary>
+    private static void InvalidateBackdrop(Control control)
+    {
+        control.Invalidate(invalidateChildren: false);
+        foreach (Control child in control.Controls)
+        {
+            if (child.BackColor.A < 255)
+            {
+                InvalidateBackdrop(child);
+            }
+            else if (child is not (ListView or TreeView or TextBoxBase or ListBox or ComboBox or Controls.VirtualTreeGrid or SplitContainer or Controls.DetailsPanel))
+            {
+                child.Invalidate(invalidateChildren: false);
+            }
+        }
     }
 
     public static void SetRole(Control control, ThemeRole role)
@@ -108,6 +193,28 @@ internal static class ThemeManager
         {
             NativeUi.SetDarkTitleBar(form.Handle, Current.IsDark);
             NativeUi.SetMica(form.Handle);
+        };
+        form.Paint += (_, e) => PaintBackdrop(form, e);
+        form.Activated += (_, _) =>
+        {
+            if (MicaOn)
+            {
+                InvalidateBackdrop(form);
+            }
+        };
+        form.Deactivate += (_, _) =>
+        {
+            if (MicaOn)
+            {
+                InvalidateBackdrop(form);
+            }
+        };
+        form.Move += (_, _) =>
+        {
+            if (MicaOn && IsActive(form))
+            {
+                InvalidateBackdrop(form);
+            }
         };
         Apply(form);
     }
@@ -184,7 +291,7 @@ internal static class ThemeManager
         }
     }
 
-    private static void Update()
+    private static void Update(bool force = false)
     {
         var dark = _preference switch
         {
@@ -193,9 +300,15 @@ internal static class ThemeManager
             _ => WindowsUsesDarkApps(),
         };
         var palette = dark ? Palette.Dark : Palette.Light;
-        if (!ReferenceEquals(palette, Current))
+        if (MicaOn)
         {
-            SetPalette(palette);
+            palette = OverBackdrop(palette, MicaBackdrop.Average(dark));
+        }
+
+        if (force || palette != Current)
+        {
+            Current = palette;
+            Changed?.Invoke(null, EventArgs.Empty);
         }
     }
 
@@ -268,6 +381,11 @@ internal static class ThemeManager
             case ToolStrip strip:
                 ApplyMenu(strip, p);
                 break;
+            case Panel when MicaOn && control is not Form:
+                // Containers are see-through over the backdrop: on the window body it shows, on a card the card.
+                control.BackColor = Color.Transparent;
+                control.ForeColor = p.Text;
+                break;
             default:
                 control.BackColor = background;
                 control.ForeColor = p.Text;
@@ -321,6 +439,25 @@ internal static class UiFonts
     public static string GlyphFamily { get; } = Pick("Segoe Fluent Icons", "Segoe MDL2 Assets");
 
     public static Font Glyph(float size) => new(GlyphFamily, size);
+
+    /// <summary>
+    /// Draws an icon from the glyph font with grey edge smoothing, as Windows 11 draws icons. ClearType's colour
+    /// smoothing thins the one-pixel upright strokes of outline icons (a folder lost its sides on some screens).
+    /// </summary>
+    public static void DrawGlyph(Graphics g, string glyph, Font font, Rectangle bounds, Color color, TextFormatFlags flags)
+    {
+        ArgumentNullException.ThrowIfNull(g);
+        var hint = g.TextRenderingHint;
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        try
+        {
+            TextRenderer.DrawText(g, glyph, font, bounds, color, flags);
+        }
+        finally
+        {
+            g.TextRenderingHint = hint;
+        }
+    }
 
     /// <summary>The same face as <paramref name="font"/> in semibold (or bold where there is no semibold).</summary>
     public static Font SemiboldOf(Font font)

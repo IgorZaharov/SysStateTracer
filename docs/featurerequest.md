@@ -41,3 +41,5 @@ Requested Features:
 41. [DONE, not released yet] Comparison window: HKCU should be on the same level as HKU and HKLM.
 42. [DONE, not released yet] Comparison window: long values in the details below the list do not fit; make room for 2 rows (then 3, then a scroll bar for more than 3).
 43. [DONE, not released yet] Comparison window: Tab order should be left pane, then right pane.
+44. [DONE, not released yet] Preferences: the default window does not fit the bottom text; make it taller by default.
+45. [DONE, not released yet] UI: transparency and colours closer to the Windows Settings window: Mica all over the window, in different shades of grey.

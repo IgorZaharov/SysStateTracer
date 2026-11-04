@@ -1122,7 +1122,7 @@ internal sealed partial class VirtualTreeGrid : Control, IThemed
                             iconColor = Palette.Blend(own, p.Background, 0.5);
                         }
 
-                        TextRenderer.DrawText(g, icon, _iconFont, new Rectangle(x + textLeft, y, IconWidth, RowHeight), iconColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                        UiFonts.DrawGlyph(g, icon, _iconFont, new Rectangle(x + textLeft, y, IconWidth, RowHeight), iconColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                         textLeft += IconWidth + 4;
                     }
 

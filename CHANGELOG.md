@@ -16,8 +16,12 @@
 
 ### Windows
 - **Every window comes back where it was closed** (request 37): Preferences, Help / About, Snapshot Properties and Copy to Files now remember their place as well as their size, like the main window, Comparison and New Snapshot. Message boxes still open centred on their window.
+- **Preferences** opens tall enough to show the whole General page (the Lists setting was cut off at the bottom), also when it was closed smaller, but never taller than the screen; on a small screen the page scrolls (request 44).
 
 ### Windows 11 look
+- **Narrow main window:** the command buttons from the right end show only their icon instead of being cut off (Properties was clipped).
+- **Sharper icons:** folder and key icons in the comparison tree and its legend are drawn with grey edge smoothing, as Windows 11 draws icons; with ClearType their upright sides could disappear.
+- **Mica behind the whole window**, as in the Settings app (request 45): the window body shows your wallpaper, blurred and tinted dark or light, and cards are a translucent lighter layer over it; lists, trees and text boxes take matching solid colours. SysStateTracer paints it itself (Windows puts Mica only behind the title bar of a window like this), so it follows the wallpaper, turns plain while the window is inactive, and is off where Windows turns Mica off: before Windows 11 22H2, with transparency effects off, in high contrast and over Remote Desktop.
 - **Mica** in the title bar on Windows 11 22H2 and later (the first Windows 11 release keeps a plain title bar); the window body in Mica's colours, with lists and trees on a lighter card. Text in Segoe UI Variable at the Windows 11 sizes (Segoe UI on Windows 10).
 - Buttons, list rows and selection as in Windows 11: rounded, a soft blue selection with a blue bar at the row's left end, a light fill under the mouse.
 - **Main window:** a command bar replaces the sidebar: New snapshot, **Compare** (new: the two selected snapshots, or the selected one with one picked from a menu), Rename, Delete, Properties; Preferences and Help at the right end. Exit is gone: close the window. The administrator warning is a Windows 11 warning bar with a close button.

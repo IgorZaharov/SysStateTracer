@@ -32,7 +32,8 @@ internal sealed class MainForm : Form
     private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, Font = UiFonts.Caption };
     private readonly Label _hint = new() { AutoSize = true, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleRight, Font = UiFonts.Caption, Text = "Drag one snapshot onto another to compare them" };
     private readonly Label _empty = new() { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Visible = false };
-    private readonly ThemedButton _new = new() { Text = "New snapshot", Glyph = Glyphs.Add, Primary = true };
+    private Control? _commands;
+    private readonly ThemedButton _new =new() { Text = "New snapshot", Glyph = Glyphs.Add, Primary = true };
     private readonly ThemedButton _compare = new() { Text = "Compare", Glyph = Glyphs.Compare };
     private readonly ThemedButton _renameButton = new() { Text = "Rename", Glyph = Glyphs.Rename, Subtle = true };
     private readonly ThemedButton _delete = new() { Text = "Delete", Glyph = Glyphs.Delete, Subtle = true };
@@ -274,6 +275,39 @@ internal sealed class MainForm : Form
         window.Show(this);
     }
 
+    /// <summary>The command buttons, left to right.</summary>
+    internal ThemedButton[] CommandButtons => [_new, _compare, _renameButton, _delete, _propertiesButton];
+
+    internal Control? CommandBar => _commands;
+
+    /// <summary>
+    /// When the window is too narrow for every label, the buttons from the right end show only their icon (the tooltip
+    /// still names them), as in the Windows 11 command bar; New snapshot keeps its label.
+    /// </summary>
+    internal void FitCommands()
+    {
+        if (_commands is null)
+        {
+            return;
+        }
+
+        var buttons = CommandButtons;
+        var full = buttons.Select(b => b.PreferredButtonWidth()).ToArray();
+        var need = buttons.Select((b, i) => full[i] + b.Margin.Horizontal).Sum();
+        for (var i = buttons.Length - 1; i >= 0; i--)
+        {
+            var button = buttons[i];
+            var compact = i > 0 && need > _commands.ClientSize.Width;
+            if (compact)
+            {
+                need -= full[i] - button.Height;
+            }
+
+            button.IconOnly = compact;
+            button.Width = compact ? button.Height : full[i];
+        }
+    }
+
     private static string Duration(long ms) => ms switch
     {
         <= 0 => string.Empty,
@@ -320,6 +354,8 @@ internal sealed class MainForm : Form
         header.Controls.Add(commands);
         header.Controls.Add(tools);
         header.Controls.Add(title);
+        _commands = commands;
+        commands.Resize += (_, _) => FitCommands();
 
         _new.Click += (_, _) => NewSnapshot();
         _compare.Click += (_, _) => CompareSelected();

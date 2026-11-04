@@ -34,7 +34,8 @@ internal sealed class PreferencesForm : ThemedDialog
     private readonly ThemedButton _editRule = new() { Text = "Edit…", Width = 80 };
     private readonly ThemedButton _removeRule = new() { Text = "Remove", Width = 90 };
     private Task? _remoteRead;
-    private readonly Panel _generalPage = new() { Dock = DockStyle.Fill };
+    private readonly Panel _generalPage = new() { Dock = DockStyle.Fill, AutoScroll = true };
+    private TableLayoutPanel? _generalLayout;
     private readonly Panel _ignorePage = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly SelectorBar _pageTabs = new() { Dock = DockStyle.Top, Items = { "General", "Global Ignore list" } };
 
@@ -50,7 +51,7 @@ internal sealed class PreferencesForm : ThemedDialog
         _localLines = ReadLocalLines();
 
         FormBorderStyle = FormBorderStyle.Sizable;
-        // Window size, not client size: no window is taller than 580 px at 100 % scaling (F14).
+        // Window size, not client size; OnLoad makes it taller when the General page needs more.
         Size = new Size(940, 580);
         MinimumSize = new Size(940, 460); // issue #5: the Global Ignore list buttons fit on one row
         WindowLayout.Remember(this, "Preferences", paths, settings);
@@ -77,6 +78,29 @@ internal sealed class PreferencesForm : ThemedDialog
         ok.Click += (_, _) => Save();
         ShowPage(general: true);
     }
+
+    /// <summary>
+    /// Opens tall enough for the whole General page, also when a smaller size was remembered (it was cut off at the
+    /// bottom at 580 px), but never taller than the screen; the page scrolls when the screen is too small.
+    /// </summary>
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e); // the remembered size and place first
+        var missing = GeneralPageMissingHeight();
+        if (missing > 0)
+        {
+            var screen = Screen.FromControl(this).WorkingArea;
+            Height = Math.Min(Height + missing, screen.Height);
+            if (Bottom > screen.Bottom)
+            {
+                Top = Math.Max(screen.Top, screen.Bottom - Height);
+            }
+        }
+    }
+
+    /// <summary>How many pixels the General page lacks to show everything without scrolling (0 when it fits; tests).</summary>
+    internal int GeneralPageMissingHeight() =>
+        _generalLayout is null ? 0 : Math.Max(0, _generalLayout.PreferredSize.Height + 16 - _generalPage.ClientSize.Height);
 
     /// <summary>Opens on the Global Ignore list page (tests, and "Add to Global Ignore list" follow-ups).</summary>
     internal void ShowIgnorePage() => ShowPage(general: false);
@@ -135,6 +159,7 @@ internal sealed class PreferencesForm : ThemedDialog
         var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         ThemeManager.SetRole(layout, ThemeRole.Surface);
+        _generalLayout = layout;
 
         var folderRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
         _folder.Text = _paths.SnapshotDirectory(_settings);

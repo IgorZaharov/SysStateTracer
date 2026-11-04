@@ -32,6 +32,32 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [Fact]
+    public void Main_NarrowWindow_CommandsShowIconsOnly_NoneClipped()
+    {
+        Ui.Run(() =>
+        {
+            using var app = new TestApp();
+            using var form = Ui.Show(new MainForm(app.Paths, app.Settings));
+            var bar = form.CommandBar!;
+
+            form.Width = 1400;
+            Ui.Pump();
+            Assert.All(form.CommandButtons, b => Assert.False(b.IconOnly));
+
+            form.Width = 640;
+            Ui.Pump();
+            Assert.True(form.CommandButtons[^1].IconOnly, "Properties should drop its label first");
+            Assert.False(form.CommandButtons[0].IconOnly); // New snapshot keeps its label
+            Assert.All(form.CommandButtons, b => Assert.True(b.Right <= bar.ClientSize.Width, $"{b.Text} is clipped: {b.Right} > {bar.ClientSize.Width}"));
+
+            form.Width = 1400;
+            Ui.Pump();
+            Assert.All(form.CommandButtons, b => Assert.False(b.IconOnly));
+            form.Close();
+        });
+    }
+
+    [Fact]
     public void Main_ListsNewestFirstOrByName_AndHundredSnapshotsQuickly()
     {
         Ui.Run(() =>
@@ -162,9 +188,13 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 form.Close();
             }
 
+            // Preferences opens tall enough for the whole General page, also over a smaller remembered size.
+            app.Settings.Windows["Preferences"] = new() { X = 40, Y = 40, Width = 940, Height = 460 };
             using (var form = Ui.Show(new PreferencesForm(app.Paths, app.Settings)))
             {
-                Assert.True(form.Height <= 580, $"Preferences is {form.Height} px tall");
+                var screen = Screen.FromControl(form).WorkingArea;
+                Assert.True(form.GeneralPageMissingHeight() == 0 || form.Height == screen.Height, $"Preferences is {form.Height} px tall and lacks {form.GeneralPageMissingHeight()} px");
+                Assert.True(form.Height > 460);
                 form.Close();
             }
 
