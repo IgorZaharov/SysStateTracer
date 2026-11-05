@@ -7,9 +7,9 @@ snapshots to show what was created, modified or deleted in between — for examp
 
 (Inspired by SysTracer from Blue Project Software which is highly regarded and worth checking out too if you like this software)
 
-[![Download SysStateTracer.exe](https://img.shields.io/badge/Download-SysStateTracer.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe)
-[![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/Manual.pdf)
-[![Latest version](https://img.shields.io/github/v/release/igorzakharovdev-design/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest)
+[![Download SysStateTracer.exe](https://img.shields.io/badge/Download-SysStateTracer.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe)
+[![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)
+[![Latest version](https://img.shields.io/github/v/release/IgorZaharov/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/IgorZaharov/SysStateTracer/releases/latest)
 [![VirusTotal: 0/67 Detected](https://img.shields.io/badge/VirusTotal-0%2F67%20Detected-2ea44f?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/f93669c58d6f2c6e9af5d9f4d2cfb931d153db6208f8121721f177af28f295a4) <!-- virustotal -->
 
 **Before the first start:** the exe is not code-signed, so Windows blocks a downloaded exe. Put
@@ -24,15 +24,15 @@ snapshots to show what was created, modified or deleted in between — for examp
 
 Direct links to the latest version — click to download, no GitHub account needed:
 
-- **[SysStateTracer.exe](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe)** — the program: one file for Windows 10 and 11 x64, nothing to install. Unblock it before the first start (see above).
-- **[Manual.pdf](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/Manual.pdf)** — the user manual, with screenshots.
-- [SysStateTracer.exe.sha256](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe.sha256) — the exe's SHA-256; check it in PowerShell with
+- **[SysStateTracer.exe](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe)** — the program: one file for Windows 10 and 11 x64, nothing to install. Unblock it before the first start (see above).
+- **[Manual.pdf](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)** — the user manual, with screenshots.
+- [SysStateTracer.exe.sha256](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe.sha256) — the exe's SHA-256; check it in PowerShell with
   `(Get-FileHash .\SysStateTracer.exe).Hash`. The release notes list it too.
 
 Please, report any bugs or issues to the document here:
-- **[BUGS/ISSUES](https://github.com/igorzakharovdev-design/SysStateTracer/issues)**
+- **[BUGS/ISSUES](https://github.com/IgorZaharov/SysStateTracer/issues)**
   
-Older versions and release candidates are on the [Releases](https://github.com/igorzakharovdev-design/SysStateTracer/releases) page.
+Older versions and release candidates are on the [Releases](https://github.com/IgorZaharov/SysStateTracer/releases) page.
 
 On first start:
 
@@ -90,8 +90,8 @@ files like a registry backup and don't share them publicly.
 
 ## Documentation
 
-The user manual, **Manual.pdf**, comes with every [release](https://github.com/igorzakharovdev-design/SysStateTracer/releases);
-the latest build of it is on the [`ui-preview`](https://github.com/igorzakharovdev-design/SysStateTracer/releases/tag/ui-preview) pre-release.
+The user manual, **Manual.pdf**, comes with every [release](https://github.com/IgorZaharov/SysStateTracer/releases);
+the latest build of it is on the [`ui-preview`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/ui-preview) pre-release.
 
 | Document | Contents |
 | --- | --- |
@@ -115,7 +115,7 @@ dotnet publish src/SysStateTracer -c Release     # single-file SysStateTracer.ex
 ```
 
 Every push to `main` is built and tested on GitHub Actions (including window screenshots in both themes on the
-[`ui-preview`](https://github.com/igorzakharovdev-design/SysStateTracer/releases/tag/ui-preview) pre-release, and an
+[`ui-preview`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/ui-preview) pre-release, and an
 end-to-end run on clean Windows Server 2022 and 2025 runners). A tag such as `v1.0.0` publishes a release.
 
 | Path | Contents |

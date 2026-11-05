@@ -16,10 +16,10 @@ public sealed record RemoteIgnoreFetch(string? Text, string Message)
 public static class RemoteIgnoreSource
 {
     /// <summary>The list kept in this project's repository.</summary>
-    public const string DefaultLocation = "https://raw.githubusercontent.com/igorzakharovdev-design/SysStateTracer/main/ignore/SysStateTracer.ignore.txt";
+    public const string DefaultLocation = "https://raw.githubusercontent.com/IgorZaharov/SysStateTracer/main/ignore/SysStateTracer.ignore.txt";
 
-    /// <summary>The default up to 1.2.x, in the repository that no longer exists; settings holding it are moved to <see cref="DefaultLocation"/>.</summary>
-    public const string FormerDefaultLocation = "https://raw.githubusercontent.com/IgorZaharov/SysStateTracer/main/ignore/SysStateTracer.ignore.txt";
+    /// <summary>The default from 1.2.2 to 1.3.0, while the project was at igorzakharovdev-design/SysStateTracer; settings holding it are moved back to <see cref="DefaultLocation"/>.</summary>
+    public const string FormerDefaultLocation = "https://raw.githubusercontent.com/igorzakharovdev-design/SysStateTracer/main/ignore/SysStateTracer.ignore.txt";
 
     public const int MaxBytes = 1024 * 1024;
 

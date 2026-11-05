@@ -101,7 +101,7 @@ Examples:
     $p = Start-Process SysStateTracer.exe '/new "Before driver update"' -Wait -PassThru; $p.ExitCode
 
 Everything printed is also written to SysStateTracer.log.
-Documentation and source: https://github.com/igorzakharovdev-design/SysStateTracer
+Documentation and source: https://github.com/IgorZaharov/SysStateTracer
 ```
 
 The folders shown are the real ones on the PC where it runs.

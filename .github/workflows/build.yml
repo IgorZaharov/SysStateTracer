@@ -120,7 +120,7 @@ jobs:
           }
           $failed = $false
           $help = Invoke-Cli '/?'
-          if ($help.Code -ne 0 -or $help.Text -notmatch 'Examples:' -or $help.Text -notmatch [regex]::Escape('https://github.com/igorzakharovdev-design/SysStateTracer')) {
+          if ($help.Code -ne 0 -or $help.Text -notmatch 'Examples:' -or $help.Text -notmatch [regex]::Escape('https://github.com/IgorZaharov/SysStateTracer')) {
             Write-Host "::error title=CLI /?::exit $($help.Code); output: $(($help.Text -split "`r?`n" | Select-Object -First 5) -join ' | ')"
             $failed = $true
           }

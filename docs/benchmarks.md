@@ -131,7 +131,7 @@ The window side, measured by the UI tests on the same kind of runner:
 | Same: select all | 13–22 ms | |
 
 The same measurements on your own PC: double-click `SysStateTracer.Bench.exe` from the
-[`bench`](https://github.com/igorzakharovdev-design/SysStateTracer/releases/tag/bench) pre-release; it now also loads and
+[`bench`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/bench) pre-release; it now also loads and
 compares the two consecutive snapshots.
 
 ## Open question: reading the NTFS master file table directly

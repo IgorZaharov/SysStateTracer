@@ -108,7 +108,7 @@ public class SettingsStoreTests
     }
 
     [Fact]
-    public void Load_FormerDefaultRemoteLocation_MovesToNewRepository()
+    public void Load_FormerDefaultRemoteLocation_MovesBackToOriginalRepository()
     {
         using var dir = new TempDirectory();
         var path = dir.File(AppPaths.ConfigFileName);
@@ -117,7 +117,7 @@ public class SettingsStoreTests
         var settings = SettingsStore.Load(path);
 
         Assert.Equal(
-            "https://raw.githubusercontent.com/igorzakharovdev-design/SysStateTracer/main/ignore/SysStateTracer.ignore.txt",
+            "https://raw.githubusercontent.com/IgorZaharov/SysStateTracer/main/ignore/SysStateTracer.ignore.txt",
             settings.IgnoreListRemoteLocation);
     }
 }

@@ -7,7 +7,7 @@ public static class AppInfo
 {
     public const string Name = "SysStateTracer";
 
-    public const string GitHubUrl = "https://github.com/igorzakharovdev-design/SysStateTracer";
+    public const string GitHubUrl = "https://github.com/IgorZaharov/SysStateTracer";
 
     /// <summary>Version with a short commit hash, e.g. <c>0.1.0+aa73335</c>.</summary>
     public static string Version { get; } = ShortenVersion(

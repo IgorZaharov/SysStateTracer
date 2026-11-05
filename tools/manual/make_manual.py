@@ -28,7 +28,7 @@ from reportlab.platypus import (BaseDocTemplate, CondPageBreak, Frame, Image, Ke
                                 PageBreak, PageTemplate, Paragraph, Preformatted, Spacer, Table, TableStyle)
 from reportlab.platypus.tableofcontents import TableOfContents
 
-GITHUB = "https://github.com/igorzakharovdev-design/SysStateTracer"
+GITHUB = "https://github.com/IgorZaharov/SysStateTracer"
 RELEASES = GITHUB + "/releases"
 LATEST = RELEASES + "/latest/download"
 ISSUES = GITHUB + "/issues"

@@ -50,7 +50,7 @@ Snapshots store only `HKLM` and `HKU`; the other root keys are views of those.
 - **Also use the shared remote list** (on by default) adds the rules of a list read from an `http://` / `https://`
   address or from a file path, including a network share such as `\\server\share\SysStateTracer.ignore.txt`. The
   default address is the shared list in this repository:
-  `https://raw.githubusercontent.com/igorzakharovdev-design/SysStateTracer/main/ignore/SysStateTracer.ignore.txt`
+  `https://raw.githubusercontent.com/IgorZaharov/SysStateTracer/main/ignore/SysStateTracer.ignore.txt`
   ([ignore/SysStateTracer.ignore.txt](../ignore/SysStateTracer.ignore.txt)).
   Up to 1.2.x it was in the former repository, `IgorZaharov/SysStateTracer`, which no longer exists; settings that
   still hold that old default are moved to the new address on start.

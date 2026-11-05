@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Repository
+- The project is back at **https://github.com/IgorZaharov/SysStateTracer**. Help / About, `/?`, the manual and the README
+  link there, and the default remote Global Ignore list is read from it; saved settings that hold the
+  igorzakharovdev-design address are moved to it on load.
+
 ## [1.3.0] — 2026-11-05
 
 ### Download

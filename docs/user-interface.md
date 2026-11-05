@@ -2,7 +2,7 @@
 
 All windows follow the Light, Dark or Windows theme chosen in Preferences, and switch at once when it
 changes. Screenshots of every window in both themes are saved by the UI tests on each push and kept on the
-[`ui-preview`](https://github.com/igorzakharovdev-design/SysStateTracer/releases/tag/ui-preview) pre-release.
+[`ui-preview`](https://github.com/IgorZaharov/SysStateTracer/releases/tag/ui-preview) pre-release.
 
 Every window opens where and as large as it was when it was last closed, maximized too (F12): the main window,
 Comparison, New Snapshot, Snapshot Properties, Preferences, Help / About and Copy to Files. A place on a monitor
