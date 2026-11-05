@@ -227,6 +227,14 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
             form.Marks.Toggle([value]);
             list = (ComparisonListModel)form.List.Model!;
             Assert.True(list.Style(list.Roots[2]).Strikeout);
+
+            // Del in the list unmarks and marks the selection, as the menu item does.
+            form.List.Select(list.Roots[2]);
+            Assert.True(form.List.Focus());
+            Assert.True(form.MarkFromKeyboard());
+            Assert.False(list.Style(list.Roots[2]).Strikeout);
+            Assert.True(form.MarkFromKeyboard());
+            Assert.True(list.Style(list.Roots[2]).Strikeout);
             form.Close();
         });
     }

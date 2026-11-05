@@ -54,7 +54,7 @@ internal sealed class ComparisonForm : Form
     private readonly ToolStripMenuItem _expandAll = new("Expand all") { ShortcutKeyDisplayString = "*" };
     private readonly ToolStripMenuItem _collapseAll = new("Collapse all") { ShortcutKeyDisplayString = "/" };
     private readonly ToolStripSeparator _branchSeparator = new();
-    private readonly ToolStripMenuItem _mark = new("Mark as non-important");
+    private readonly ToolStripMenuItem _mark = new("Mark as non-important") { ShortcutKeyDisplayString = "Del" };
     private readonly ToolStripMenuItem _ignore = new("Add to Global Ignore list…");
     private readonly ToolStripMenuItem _exportReg = new("Export to .REG…");
     private readonly ToolStripMenuItem _copy = new("Copy to .\\Files");
@@ -188,6 +188,8 @@ internal sealed class ComparisonForm : Form
                 return true;
             case Keys.Tab or (Keys.Shift | Keys.Tab) when TabBetweenPanes(keyData.HasFlag(Keys.Shift)):
                 return true;
+            case Keys.Delete when MarkFromKeyboard():
+                return true;
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
@@ -201,6 +203,27 @@ internal sealed class ComparisonForm : Form
     {
         var (from, to) = back ? (_list, _tree) : (_tree, _list);
         return from.Focused && to.Focus();
+    }
+
+    /// <summary>
+    /// Del in the tree or the list: Mark as non-important on the selection, or unmark it, as the menu item would.
+    /// False when the focus is in neither pane, so Del keeps its usual meaning elsewhere.
+    /// </summary>
+    internal bool MarkFromKeyboard()
+    {
+        var grid = _tree.Focused ? _tree : _list.Focused ? _list : null;
+        if (grid is null)
+        {
+            return false;
+        }
+
+        _active = grid;
+        if (CanMark(grid))
+        {
+            ToggleMarks();
+        }
+
+        return true;
     }
 
     /// <summary>"OLDER  name": the caption and the snapshot name on one line (issue #6).</summary>
@@ -431,7 +454,7 @@ internal sealed class ComparisonForm : Form
             // only Jump to works on them; the other actions work on changes.
             var selection = Selection(_active);
             var extra = items.Any(i => ComparisonData.ItemOf(i) is null);
-            _mark.Enabled = !extra && DiffActions.IsEnabled(DiffAction.MarkNonImportant, selection);
+            _mark.Enabled = CanMark(_active);
             _mark.Checked = !extra && selection.Count > 0 && selection.All(_marks.IsMarked);
             _ignore.Enabled = !extra && DiffActions.IsEnabled(DiffAction.AddToIgnoreList, selection);
             _exportReg.Enabled = !extra && DiffActions.IsEnabled(DiffAction.ExportReg, selection);
@@ -471,6 +494,12 @@ internal sealed class ComparisonForm : Form
             _menu.Show(_active, new Point(40, _active.HeaderHeight + 8));
         }
     }
+
+    /// <summary>Mark as non-important works on changes only, not on items shown for information (F10, F11).</summary>
+    private bool CanMark(VirtualTreeGrid grid) =>
+        _diff is not null
+        && !SelectedItems(grid).Any(i => ComparisonData.ItemOf(i) is null)
+        && DiffActions.IsEnabled(DiffAction.MarkNonImportant, Selection(grid));
 
     /// <summary>The items selected in a pane.</summary>
     private List<ViewItem> SelectedItems(VirtualTreeGrid grid) => grid.Model switch

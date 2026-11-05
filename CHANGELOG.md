@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Comparison window
+- **Del** marks the selected items as non-important, in the tree and in the list; Del again unmarks them. The menu shows the key beside **Mark as non-important**.
+
 ## [1.2.3] — 2026-11-05
 
 ### Comparison window
