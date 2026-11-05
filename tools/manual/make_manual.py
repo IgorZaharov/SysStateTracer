@@ -429,8 +429,37 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["Revert Value", "registry keys and values", "Puts the values back as the older snapshot has them, after saving a backup"],
     ], [38 * mm, 42 * mm, CONTENT_W - 80 * mm]))
 
+    story.append(CondPageBreak(120 * mm))
+    story.append(p("2.4&nbsp;&nbsp;Permission changes", "h2"))
+    story.append(p(
+        "SysStateTracer can also show what an installer did to access rights: which folders, files and registry keys "
+        "got a new owner, stopped inheriting their permissions, or gained or lost entries of their own. This is off by "
+        "default, because it makes snapshots slower."))
+    story += screens.figure("new-snapshot-permissions", "New Snapshot with Permissions ticked, below the other parts.",
+                            width=95 * mm, max_height=110 * mm, path=REPO / "docs" / "images" / "new-snapshot-permissions.png")
+    story += bullets([
+        "Tick <b>Permissions</b> in New Snapshot for both snapshots you want to compare. A warning says that it "
+        "significantly increases scanning time: the registry takes up to a fifth longer, and "
+        "drives read folder by folder (without administrator rights, or other file systems than NTFS) take about four to "
+        "five times longer. From the command line, <i>/new /permissions</i> does the same for one snapshot.",
+        "Only an item's <b>own</b> permissions are recorded: its owner, whether it inherits from its parent, and the entries "
+        "set on it. Inherited entries are left out, so a change made on a folder shows on that folder, not on every file inside it.",
+        "Permissions are compared only when both snapshots recorded them.",
+    ])
+    story += screens.figure("comparison-permissions", "A folder whose permissions changed: Users got Modify on Program Files (x86)\\Google.",
+                            path=REPO / "docs" / "images" / "comparison-permissions.png")
+    story += bullets([
+        "A folder, file or key whose own permissions changed is <b>modified</b> (orange), like any other change.",
+        "The list has a <b>Permissions</b> column for files: <i>Inherited</i>, <i>Own · unchanged</i>, or what changed, "
+        "such as <i>+ Allow · Users · Modify</i> or <i>Owner changed</i>.",
+        "The details below show <b>Owner</b>, <b>Inheritance</b> and <b>Own entries</b> in both snapshots, with account "
+        "names, and what each entry applies to (this folder, subfolders and files). What differs is highlighted.",
+        "In folders that do not use automatic inheritance, such as %TEMP%, the first permission change can also list "
+        "the files inside once, when Windows turns their copied entries into inherited ones.",
+    ])
+
     story.append(CondPageBreak(100 * mm))
-    story.append(p("2.4&nbsp;&nbsp;Reverting registry values", "h2"))
+    story.append(p("2.5&nbsp;&nbsp;Reverting registry values", "h2"))
     story.append(p(
         "<b>Revert Value</b> always goes back to the snapshot that was taken first, whichever side it is shown on. "
         "It lists every value as it is now and as it will be, and asks first:"))
@@ -441,7 +470,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "file (double-click it) undoes the revert."))
 
     story.append(CondPageBreak(90 * mm))
-    story.append(p("2.5&nbsp;&nbsp;Copying files to .\\Files", "h2"))
+    story.append(p("2.6&nbsp;&nbsp;Copying files to .\\Files", "h2"))
     story += screens.figure("dialog-copy-to-files-light", "Copy to .\\Files: progress, and the files that could not be copied.", width=125 * mm)
     story += bullets([
         "Files keep their folders: C:\\ProgramData\\App\\x.ini becomes Files\\ProgramData\\App\\x.ini; files from other "
@@ -452,7 +481,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
     ])
 
     story.append(CondPageBreak(90 * mm))
-    story.append(p("2.6&nbsp;&nbsp;Snapshot properties", "h2"))
+    story.append(p("2.7&nbsp;&nbsp;Snapshot properties", "h2"))
     story += screens.figure("w2-properties-light", "Snapshot Properties: when, where and how the snapshot was taken.", width=120 * mm)
     story.append(p(
         "Properties show the snapshot's file, when and on which computer it was taken, how long each part took, whether "
