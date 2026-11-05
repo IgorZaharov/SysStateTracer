@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Imaging;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using SysStateTracer.Core.Config;
@@ -15,6 +16,13 @@ namespace SysStateTracer.UiTests;
 internal static class Ui
 {
     private static readonly TimeSpan RunTimeout = TimeSpan.FromMinutes(3);
+
+    // Runs when the test assembly loads, before any test: a test that creates a control directly (not through
+    // Run) would otherwise make SetCompatibleTextRenderingDefault below throw, failing every window test after it.
+#pragma warning disable CA2255 // A test assembly needs this one-time WinForms setup before its first test.
+    [ModuleInitializer]
+#pragma warning restore CA2255
+    internal static void Initialize() => RuntimeHelpers.RunClassConstructor(typeof(Ui).TypeHandle);
 
     static Ui()
     {
