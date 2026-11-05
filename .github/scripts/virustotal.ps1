@@ -97,14 +97,37 @@ try {
     $analysis = ($body | ConvertFrom-Json).data.id
 
     $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+    $status = $null
+    $stats = $null
     do {
         Start-Sleep -Seconds 60
-        $result = Invoke-VT GET "https://www.virustotal.com/api/v3/analyses/$analysis"
-        $status = $result.data.attributes.status
+        try {
+            $result = Invoke-VT GET "https://www.virustotal.com/api/v3/analyses/$analysis"
+            $status = $result.data.attributes.status
+            if ($status -eq 'completed') { $stats = $result.data.attributes.stats }
+        }
+        catch {
+            # Right after an upload the analysis can be unknown for a while (404, seen on 5 Nov 2026): not ready yet.
+            if ([int]($_.Exception.Response.StatusCode) -ne 404) { throw }
+            $status = 'not found yet'
+        }
+
         Write-Host "Analysis: $status"
     } while ($status -ne 'completed' -and (Get-Date) -lt $deadline)
 
-    if ($status -ne 'completed') {
+    if ($null -eq $stats) {
+        # No finished analysis: the file's latest result, when VirusTotal has one (a file it scanned before).
+        try {
+            $file = Invoke-VT GET "https://www.virustotal.com/api/v3/files/$sha256"
+            $stats = $file.data.attributes.last_analysis_stats
+            if ($stats) { Write-Host 'Using the latest analysis of this file.' }
+        }
+        catch {
+            $stats = $null
+        }
+    }
+
+    if ($null -eq $stats) {
         Write-Host "::warning title=VirusTotal::The analysis did not finish within $TimeoutMinutes minutes: $report"
         Write-Output-Value 'scanned' 'false'
         exit 0
@@ -112,7 +135,6 @@ try {
 
     # Detected = engines that call it malicious, as the VirusTotal page counts them; the total leaves out engines
     # that could not scan this file type, timed out or failed.
-    $stats = $result.data.attributes.stats
     $detected = [int]$stats.malicious
     $total = [int]$stats.malicious + [int]$stats.suspicious + [int]$stats.undetected + [int]$stats.harmless
     $level = if ($detected -eq 0) { 'notice' } else { 'warning' }
