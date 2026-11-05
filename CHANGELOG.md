@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.3] — 2026-11-05
+
 ### Comparison window
 - **Mark as non-important** marks the folders and keys above the item too when nothing else in them changed: marking the only change in a branch strikes through the whole branch, up to the first folder or key that still holds another change. Unmarking an item unmarks the branch above it.
 
