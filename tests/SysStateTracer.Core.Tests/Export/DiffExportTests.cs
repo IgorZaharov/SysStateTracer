@@ -44,6 +44,35 @@ public class DiffExportTests
     }
 
     [Fact]
+    public void Marks_BranchWithNothingElseLeftIsMarkedAsAWhole()
+    {
+        var diff = Compare();
+        var marks = new ImportanceMarks();
+        var tree = diff.Registry;
+        DiffItem Reg(string path) => new(DiffArea.Registry, Find(diff, tree, path));
+        var vendor = Reg(@"HKLM\SOFTWARE\Vendor");
+        var software = Reg(@"HKLM\SOFTWARE");
+        var hklm = Reg("HKLM");
+
+        // The changed values of Vendor: Vendor holds nothing else, SOFTWARE still holds NewApp and OldApp.
+        marks.Toggle(diff, tree.Children(vendor.Node).Select(n => vendor with { Node = n }));
+        Assert.True(marks.IsMarked(vendor));
+        Assert.False(marks.IsMarked(software));
+
+        var newApp = Reg(@"HKLM\SOFTWARE\NewApp");
+        marks.Toggle(diff, [newApp, Reg(@"HKLM\SOFTWARE\OldApp")]);
+        Assert.True(marks.IsMarked(software));
+        Assert.True(marks.IsMarked(hklm));
+
+        // Unmarking one change unmarks the branch above it, not its marked neighbours.
+        marks.Toggle(diff, [newApp]);
+        Assert.False(marks.IsMarked(newApp));
+        Assert.False(marks.IsMarked(software));
+        Assert.False(marks.IsMarked(hklm));
+        Assert.True(marks.IsMarked(vendor));
+    }
+
+    [Fact]
     public void Files_WholeDriveFromItsTopNode_WithoutNonImportant()
     {
         var diff = Compare();

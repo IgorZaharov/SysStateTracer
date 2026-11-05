@@ -51,6 +51,54 @@ public sealed class ImportanceMarks
         }
     }
 
+    /// <summary>
+    /// <see cref="Toggle(IEnumerable{DiffItem})"/> for a menu click in the comparison window. Marking also marks
+    /// each unchanged parent whose changes are now all marked, up the tree, so a branch with nothing else
+    /// left in it is struck through as a whole. Unmarking also unmarks the parents of the items.
+    /// </summary>
+    public void Toggle(DiffResult diff, IEnumerable<DiffItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(diff);
+        ArgumentNullException.ThrowIfNull(items);
+        var list = items.ToList();
+        if (list.Count > 0 && list.All(_marked.Contains))
+        {
+            _marked.ExceptWith(list);
+            foreach (var item in list)
+            {
+                var tree = diff.Tree(item.Area);
+                for (var p = tree.Parent(item.Node); p >= 0; p = tree.Parent(p))
+                {
+                    _marked.Remove(item with { Node = p });
+                }
+            }
+
+            return;
+        }
+
+        _marked.UnionWith(list);
+        foreach (var item in list)
+        {
+            var tree = diff.Tree(item.Area);
+            for (var p = tree.Parent(item.Node); p >= 0; p = tree.Parent(p))
+            {
+                var parent = item with { Node = p };
+                if (_marked.Contains(parent))
+                {
+                    continue;
+                }
+
+                if (tree.Change(p) != ChangeKind.Unchanged
+                    || !tree.Children(p).All(c => IsMarkedOrInside(diff, item with { Node = c })))
+                {
+                    break;
+                }
+
+                _marked.Add(parent);
+            }
+        }
+    }
+
     /// <summary>True when the node or one of its parents is marked.</summary>
     public bool IsMarkedOrInside(DiffResult diff, DiffItem item)
     {

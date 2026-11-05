@@ -195,6 +195,15 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
                 var screen = Screen.FromControl(form).WorkingArea;
                 Assert.True(form.GeneralPageMissingHeight() == 0 || form.Height == screen.Height, $"Preferences is {form.Height} px tall and lacks {form.GeneralPageMissingHeight()} px");
                 Assert.True(form.Height > 460);
+
+                // Every button is as wide as its label; the rows of buttons fit in the window.
+                static IEnumerable<Control> All(Control c) => c.Controls.Cast<Control>().SelectMany(x => All(x).Prepend(x));
+                foreach (var button in All(form).OfType<ThemedButton>())
+                {
+                    Assert.True(button.Width >= button.PreferredButtonWidth(), $"\"{button.Text}\" is {button.Width} px wide, needs {button.PreferredButtonWidth()} px");
+                }
+
+                Assert.True(form.MinimumSize.Width <= form.Width);
                 form.Close();
             }
 

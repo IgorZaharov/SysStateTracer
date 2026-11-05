@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Comparison window
+- **Mark as non-important** marks the folders and keys above the item too when nothing else in them changed: marking the only change in a branch strikes through the whole branch, up to the first folder or key that still holds another change. Unmarking an item unmarks the branch above it.
+
+### Windows
+- **Preferences:** buttons are as wide as their labels ("Add registry key…", "Check now", "Program folder" and others were cut off), and the window opens wide enough to show them on one row.
+- **Preferences:** the snapshot folder and remote list boxes are centred on the buttons beside them, and each theme's choice is centred under its picture.
+
 ## [1.2.2] — 2026-11-05
 
 ### Download

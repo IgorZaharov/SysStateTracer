@@ -105,7 +105,7 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
 |---|---|---|
 | Jump to | one item | Explorer with the file selected, Regedit at the key, the Services console with the service selected, or Regedit at the key that holds the environment variable |
 | Expand all / Collapse all | one tree row | Opens or closes the row and everything below it (also \* and /) |
-| Mark as non-important | any items | Strikes them through until the window closes; left out of exports |
+| Mark as non-important | any items | Strikes them through until the window closes; left out of exports. A folder or key whose changes are then all marked is marked too |
 | Add to Global Ignore list | any items | Adds rules to the local list and hides the items |
 | Export to .REG | registry items, also a whole hive or the Registry row | New and modified keys and values from the newer snapshot |
 | Copy to .\Files | folders and files, also a drive or the File system row | New and modified files, with a progress window and Cancel; skipped files are listed |

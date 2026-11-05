@@ -416,7 +416,7 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         ["Action", "For", "What it does"],
         ["Jump to", "one item", "Opens Explorer with the file selected, Regedit at the key, the Services console at the service, or Regedit at the key that holds the environment variable"],
         ["Expand all, Collapse all", "one folder or key in the tree", "Opens or closes it and everything below it (keys * and /)"],
-        ["Mark as non-important", "any items", "Strikes them through until the window is closed; they are left out of exports"],
+        ["Mark as non-important", "any items", "Strikes them through until the window is closed; they are left out of exports. A folder or key whose changes are then all marked is marked too"],
         ["Add to Global Ignore list", "any items", "Adds rules for them to the local Global Ignore list and hides them (chapter 4)"],
         ["Export to .REG", "registry items, a whole hive or the Registry part", "Writes the new and modified keys and values, as the newer snapshot has them, to a .reg file that Regedit can import"],
         ["Copy to .\\Files", "folders and files, a whole drive or the File system part", "Copies the new and modified files from the disk into the Files folder, keeping their folders"],

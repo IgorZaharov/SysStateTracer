@@ -1029,7 +1029,7 @@ internal sealed class ComparisonForm : Form
 
     private void ToggleMarks()
     {
-        _marks.Toggle(Selection(_active).Where(i => !DiffActions.IsCategory(i)));
+        _marks.Toggle(_diff!, Selection(_active).Where(i => !DiffActions.IsCategory(i)));
         _tree.Invalidate();
         _list.Invalidate();
         UpdateStatus();

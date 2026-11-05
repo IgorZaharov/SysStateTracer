@@ -36,6 +36,8 @@ internal sealed class PreferencesForm : ThemedDialog
     private Task? _remoteRead;
     private readonly Panel _generalPage = new() { Dock = DockStyle.Fill, AutoScroll = true };
     private TableLayoutPanel? _generalLayout;
+    private readonly List<ThemedButton> _fitButtons = [];
+    private readonly List<FlowLayoutPanel> _buttonRows = [];
     private readonly Panel _ignorePage = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly SelectorBar _pageTabs = new() { Dock = DockStyle.Top, Items = { "General", "Global Ignore list" } };
 
@@ -86,6 +88,7 @@ internal sealed class PreferencesForm : ThemedDialog
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e); // the remembered size and place first
+        FitButtons();
         var missing = GeneralPageMissingHeight();
         if (missing > 0)
         {
@@ -96,6 +99,42 @@ internal sealed class PreferencesForm : ThemedDialog
                 Top = Math.Max(screen.Top, screen.Bottom - Height);
             }
         }
+    }
+
+    /// <summary>
+    /// Makes each button as wide as its label at the window's DPI (fixed widths cut "Add registry key…" and others
+    /// off), and the window wide enough for the widest row of buttons; it is never made narrower.
+    /// </summary>
+    private void FitButtons()
+    {
+        foreach (var button in _fitButtons)
+        {
+            button.Width = Math.Max(button.Width, button.PreferredButtonWidth());
+        }
+
+        var needed = _buttonRows.Max(RowWidth);
+        if (needed > ClientSize.Width)
+        {
+            var screen = Screen.FromControl(this).WorkingArea;
+            Width = Math.Min(Width + needed - ClientSize.Width, screen.Width);
+            MinimumSize = new Size(Width, MinimumSize.Height);
+            if (Right > screen.Right)
+            {
+                Left = Math.Max(screen.Left, screen.Right - Width);
+            }
+        }
+    }
+
+    /// <summary>Client width the row needs: its controls side by side, plus the padding and margins around it.</summary>
+    private int RowWidth(FlowLayoutPanel row)
+    {
+        var width = row.Padding.Horizontal + row.Margin.Horizontal + row.Controls.Cast<Control>().Sum(c => c.Width + c.Margin.Horizontal);
+        for (var parent = row.Parent; parent is not null && parent != this; parent = parent.Parent)
+        {
+            width += parent.Padding.Horizontal + parent.Margin.Horizontal;
+        }
+
+        return width + Padding.Horizontal;
     }
 
     /// <summary>How many pixels the General page lacks to show everything without scrolling (0 when it fits; tests).</summary>
@@ -174,8 +213,12 @@ internal sealed class PreferencesForm : ThemedDialog
         };
         var reset = new ThemedButton { Text = "Program folder", Margin = new Padding(8, 0, 0, 0), Width = 120 };
         reset.Click += (_, _) => _folder.Text = _paths.DataDirectory;
-        _folder.Margin = new Padding(0, 4, 0, 0);
+        // Anchored neither top nor bottom: the box is centred on the buttons' height.
+        _folder.Margin = new Padding(0);
+        _folder.Anchor = AnchorStyles.Left;
         folderRow.Controls.AddRange([_folder, browse, reset]);
+        _fitButtons.AddRange([browse, reset]);
+        _buttonRows.Add(folderRow);
         var folderHint = new Label { Text = "New snapshots are saved here, and the main window lists the snapshots in it.", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
         ThemeManager.SetRole(folderHint, ThemeRole.Secondary);
         AddSection(layout, "Snapshot folder", Stack(folderRow, folderHint), first: true);
@@ -185,11 +228,13 @@ internal sealed class PreferencesForm : ThemedDialog
         var previews = new List<ThemePreview>();
         foreach (var (radio, theme) in new[] { (_themeSystem, ThemePreference.System), (_themeLight, ThemePreference.Light), (_themeDark, ThemePreference.Dark) })
         {
-            var preview = new ThemePreview(theme) { Margin = new Padding(0, 0, 0, 6) };
+            // Anchored to the top only: the picture and its choice are centred on each other.
+            var preview = new ThemePreview(theme) { Margin = new Padding(0, 0, 0, 6), Anchor = AnchorStyles.Top };
             var column = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 20, 0) };
             column.Controls.Add(preview);
             column.Controls.Add(radio);
-            radio.Margin = new Padding(2, 0, 0, 0);
+            radio.Margin = new Padding(0);
+            radio.Anchor = AnchorStyles.Top;
             preview.Click += (_, _) => radio.Checked = true;
             previews.Add(preview);
             themes.Controls.Add(column);
@@ -274,11 +319,14 @@ internal sealed class PreferencesForm : ThemedDialog
         top.Controls.Add(_remote);
         var remoteRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 4, 0, 0) };
         _remoteLocation.Text = _settings.IgnoreListRemoteLocation;
-        _remoteLocation.Margin = new Padding(0, 4, 0, 0);
+        _remoteLocation.Margin = new Padding(0);
+        _remoteLocation.Anchor = AnchorStyles.Left;
         _check.Click += async (_, _) => await ReadRemoteAsync();
         var defaultButton = new ThemedButton { Text = "Default", Margin = new Padding(8, 0, 0, 0) };
         defaultButton.Click += (_, _) => _remoteLocation.Text = RemoteIgnoreSource.DefaultLocation;
         remoteRow.Controls.AddRange([_remoteLocation, _check, defaultButton]);
+        _fitButtons.AddRange([_check, defaultButton]);
+        _buttonRows.Add(remoteRow);
         top.Controls.Add(remoteRow);
         _remoteResult.Margin = new Padding(20, 4, 0, 8);
         ThemeManager.SetRole(_remoteResult, ThemeRole.Secondary);
@@ -318,7 +366,10 @@ internal sealed class PreferencesForm : ThemedDialog
         {
             b.Margin = new Padding(0, 0, 8, 0);
             buttons.Controls.Add(b);
+            _fitButtons.Add(b);
         }
+
+        _buttonRows.Add(buttons);
 
         addRule.Click += (_, _) => AddTypedRules();
         _editRule.Click += (_, _) => EditSelected();
