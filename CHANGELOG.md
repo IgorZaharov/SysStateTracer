@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-11-05
+
 ### Download
 - Every release is scanned on VirusTotal: the result ("VirusTotal: 0/66 Detected", with a link to the report) is in
   the release notes, and a badge at the top of the README shows it for the latest release.

@@ -43,4 +43,4 @@ Requested Features:
 43. [DONE, not released yet] Comparison window: Tab order should be left pane, then right pane.
 44. [DONE, not released yet] Preferences: the default window does not fit the bottom text; make it taller by default.
 45. [DONE, not released yet] UI: transparency and colours closer to the Windows Settings window: Mica all over the window, in different shades of grey.
-46. [DONE, not released yet] Snapshots and comparison: changed permissions on folders, files and registry keys between snapshots.
+46. [DONE in v1.3.0] Snapshots and comparison: changed permissions on folders, files and registry keys between snapshots.

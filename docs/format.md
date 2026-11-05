@@ -29,7 +29,7 @@ renames the file. A `.stsnap` file therefore only exists once it is complete.
 | --- | --- | --- | --- |
 | 0 | 8 | Magic | `53 54 53 4E 41 50 0A 1A` = "STSNAP" LF Ctrl-Z |
 | 8 | 2 | Major version | 1. Readers reject other majors. |
-| 10 | 2 | Minor version | 1 (0 before 1.3, without environment variables). Newer minors only add sections; readers ignore unknown sections. |
+| 10 | 2 | Minor version | 2 (1.3.0 and later: permissions sections; 1 without them, 0 without environment variables). Newer minors only add sections; readers ignore unknown sections. |
 | 12 | 4 | Header size | 512 |
 | 16 | 8 | File length | Must equal the actual file length (detects truncated copies). |
 | 24 | 8 | Section table offset | |
