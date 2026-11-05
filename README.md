@@ -10,6 +10,7 @@ snapshots to show what was created, modified or deleted in between — for examp
 [![Download SysStateTracer.exe](https://img.shields.io/badge/Download-SysStateTracer.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/SysStateTracer.exe)
 [![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest/download/Manual.pdf)
 [![Latest version](https://img.shields.io/github/v/release/igorzakharovdev-design/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/igorzakharovdev-design/SysStateTracer/releases/latest)
+<!-- virustotal:start --><!-- virustotal:end -->
 
 **Before the first start:** the exe is not code-signed, so Windows blocks a downloaded exe. Put
 `SysStateTracer.exe` in a folder you can write to (it keeps its files beside itself), right-click it →

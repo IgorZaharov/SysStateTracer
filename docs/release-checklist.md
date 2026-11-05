@@ -39,4 +39,11 @@ Use the release candidate (`v1.0.0-rc.N` pre-release) and tick each row.
    `SysStateTracer.exe`, `SysStateTracer.exe.sha256`, `Manual.pdf` and the notes from the changelog (with the
    exe's SHA-256). Since 1.2.2 the exe is published on its own again (1.1.0–1.2.1 had it inside
    `SysStateTracer.zip`); users unblock it in its Properties before the first start.
-4. If Microsoft Defender ever flags a release, submit the exe to Microsoft as a false positive.
+4. The exe is uploaded to VirusTotal and the workflow waits for the analysis (up to 30 minutes). The result
+   ("VirusTotal: **0/66 Detected**" with a link to the report) is added to the release notes, and for a full
+   release the badge at the top of README.md (between `<!-- virustotal:start -->` and `<!-- virustotal:end -->`)
+   is updated and committed to `main` by `github-actions[bot]`. This needs the repository secret
+   `VIRUSTOTAL_API_KEY` (a free VirusTotal account's API key: Settings → Secrets and variables → Actions); without
+   it, or if VirusTotal does not answer in time, the release is published without a result and the run shows a
+   warning. Pull before your next push: that commit is on `main`.
+5. If Microsoft Defender or other engines ever flag a release, submit the exe to them as a false positive.

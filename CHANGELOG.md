@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Download
+- Every release is scanned on VirusTotal: the result ("VirusTotal: 0/66 Detected", with a link to the report) is in
+  the release notes, and a badge at the top of the README shows it for the latest release.
+
 ### Permission changes
 - **New Snapshot → Permissions** (off by default; ticking it warns that it significantly increases scanning time) also records each file's, folder's and registry key's own
   permissions: the owner, whether inheritance is disabled, and the entries set on the item itself. Inherited

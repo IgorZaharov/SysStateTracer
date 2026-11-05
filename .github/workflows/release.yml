@@ -4,6 +4,8 @@ name: release
 # publishes SysStateTracer.exe (the bare exe, so the download links lead straight to the program; since
 # 1.2.2, the zip-only releases 1.1.0-1.2.1 had it inside SysStateTracer.zip) with its SHA-256, Manual.pdf
 # and the release notes from CHANGELOG.md.
+# The exe is scanned on VirusTotal (secret VIRUSTOTAL_API_KEY); the result goes into the release notes and, for a
+# full release, into the VirusTotal badge at the top of README.md, committed to main.
 # It can also be started by hand (Actions -> release -> Run workflow) with a version; the tag is then
 # created on the chosen branch's latest commit.
 on:
@@ -122,6 +124,20 @@ jobs:
           **Manual.pdf**: the user manual, with screenshots of this version.
           "@ -replace '(?m)^          ', '' | Set-Content notes.md -Encoding utf8
 
+      - name: VirusTotal scan
+        id: virustotal
+        shell: pwsh
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: .github/scripts/virustotal.ps1 -File dist/SysStateTracer.exe
+
+      - name: VirusTotal result in the release notes
+        if: steps.virustotal.outputs.scanned == 'true'
+        shell: pwsh
+        run: |
+          $line = "VirusTotal: **${{ steps.virustotal.outputs.detected }}/${{ steps.virustotal.outputs.total }} Detected** ([report](${{ steps.virustotal.outputs.url }}))"
+          Add-Content notes.md "`n$line" -Encoding utf8
+
       - name: Create the GitHub release
         shell: pwsh
         env:
@@ -132,3 +148,25 @@ jobs:
           if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' } else { $flags += '--latest' }
           gh release create '${{ steps.version.outputs.tag }}' dist/SysStateTracer.exe dist/SysStateTracer.exe.sha256 dist/Manual.pdf @flags
           if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      # Only for full releases: the README's download buttons always lead to the latest one.
+      - name: VirusTotal result in README.md
+        if: steps.virustotal.outputs.scanned == 'true' && steps.version.outputs.prerelease == 'false'
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          $message = "README: VirusTotal ${{ steps.virustotal.outputs.detected }}/${{ steps.virustotal.outputs.total }} for v${{ steps.version.outputs.version }}"
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            git fetch --quiet origin main
+            git checkout --quiet -B main origin/main
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            .github/scripts/virustotal.ps1 -Readme README.md -Detected ${{ steps.virustotal.outputs.detected }} -Total ${{ steps.virustotal.outputs.total }} -Url '${{ steps.virustotal.outputs.url }}'
+            git diff --quiet -- README.md
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            git commit --quiet -m $message -- README.md
+            git push --quiet origin main
+            if ($LASTEXITCODE -eq 0) { Write-Host "::notice title=README::$message"; exit 0 }
+            Write-Host 'main moved meanwhile; trying again.'
+          }
+          Write-Host '::warning title=README::Could not push the VirusTotal badge to main.'
