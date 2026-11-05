@@ -93,8 +93,13 @@ try {
     $code = curl.exe --silent --show-error --max-time 900 --output $answer --write-out '%{http_code}' `
         --header "x-apikey: $key" --form "file=@$((Resolve-Path $File).Path)" $uploadUri
     $body = if (Test-Path $answer) { Get-Content $answer -Raw } else { '' }
-    if ($LASTEXITCODE -ne 0 -or $code -ne '200') { throw "upload answered $code $body" }
-    $analysis = ($body | ConvertFrom-Json).data.id
+    $analysis = $null
+    if ($code -eq '409' -and $body -match 'AlreadySubmittedError') {
+        # The same file is still being scanned from an earlier upload (5 Nov 2026): wait for the file's result.
+        Write-Host 'This file is already being scanned; waiting for its result.'
+    }
+    elseif ($LASTEXITCODE -ne 0 -or $code -ne '200') { throw "upload answered $code $body" }
+    else { $analysis = ($body | ConvertFrom-Json).data.id }
 
     $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
     $status = $null
@@ -102,12 +107,19 @@ try {
     do {
         Start-Sleep -Seconds 60
         try {
-            $result = Invoke-VT GET "https://www.virustotal.com/api/v3/analyses/$analysis"
-            $status = $result.data.attributes.status
-            if ($status -eq 'completed') { $stats = $result.data.attributes.stats }
+            if ($analysis) {
+                $result = Invoke-VT GET "https://www.virustotal.com/api/v3/analyses/$analysis"
+                $status = $result.data.attributes.status
+                if ($status -eq 'completed') { $stats = $result.data.attributes.stats }
+            }
+            else {
+                $latest = (Invoke-VT GET "https://www.virustotal.com/api/v3/files/$sha256").data.attributes.last_analysis_stats
+                $engines = if ($latest) { [int]$latest.malicious + [int]$latest.suspicious + [int]$latest.undetected + [int]$latest.harmless } else { 0 }
+                if ($engines -gt 0) { $stats = $latest; $status = 'completed' } else { $status = 'queued' }
+            }
         }
         catch {
-            # Right after an upload the analysis can be unknown for a while (404, seen on 5 Nov 2026): not ready yet.
+            # Right after an upload the analysis (or the file) can be unknown for a while (404, seen on 5 Nov 2026).
             if ([int]($_.Exception.Response.StatusCode) -ne 404) { throw }
             $status = 'not found yet'
         }
