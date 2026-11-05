@@ -2,7 +2,7 @@
 
 # SysStateTracer
 
-Portable Windows utility that takes snapshots of the file system, registry and services, and compares two
+Portable Windows snapshot comparison utility that takes snapshots of the file system, registry and services, and compares two
 snapshots to show what was created, modified or deleted in between — for example, what an installer really did.
 
 (Inspired by SysTracer from Blue Project Software which is highly regarded and worth checking out too if you like this software)
