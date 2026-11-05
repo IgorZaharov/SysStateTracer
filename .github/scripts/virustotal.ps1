@@ -3,7 +3,7 @@
 #   virustotal.ps1 -File dist/SysStateTracer.exe              uploads the file, waits for the analysis and writes
 #                                                              detected / total / url to $GITHUB_OUTPUT
 #   virustotal.ps1 -Readme README.md -Detected 0 -Total 66 -Url <report>
-#                                                              puts the badge between the README's VirusTotal markers
+#                                                              puts the badge on the README line marked <!-- virustotal -->
 #
 # The API key comes from the VIRUSTOTAL_API_KEY environment variable (repository secret). Without it the scan is
 # skipped with a warning, so a release never fails only because VirusTotal is not set up or not reachable.
@@ -19,8 +19,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$StartMarker = '<!-- virustotal:start -->'
-$EndMarker = '<!-- virustotal:end -->'
+# The badge line ends with this marker. The badge comes first on the line: a line that starts with "<!--" is an
+# HTML block in Markdown, which would show the badge as plain text (1.3.0).
+$Marker = '<!-- virustotal -->'
 
 function Get-Badge([int] $detected, [int] $total, [string] $url) {
     # Shields escapes: '/' as %2F, space as %20; green when nothing is detected, orange otherwise.
@@ -32,9 +33,10 @@ function Get-Badge([int] $detected, [int] $total, [string] $url) {
 
 function Update-Readme([string] $path, [string] $badge) {
     $text = [IO.File]::ReadAllText($path)
-    $pattern = [regex]::Escape($StartMarker) + '.*?' + [regex]::Escape($EndMarker)
-    if ($text -notmatch $pattern) { throw "$path has no $StartMarker … $EndMarker markers." }
-    $updated = [regex]::Replace($text, $pattern, { param($m) "$StartMarker$badge$EndMarker" }, 'Singleline')
+    # One line, without its line break (CRLF or LF): in .NET, $ matches only before \n.
+    $pattern = '(?m)^[^\r\n]*' + [regex]::Escape($Marker) + '[^\r\n]*(?=\r?$)'
+    if ($text -notmatch $pattern) { throw "$path has no line with $Marker." }
+    $updated = [regex]::Replace($text, $pattern, { param($m) "$badge $Marker" })
     [IO.File]::WriteAllText($path, $updated, [Text.UTF8Encoding]::new($false))
     return $updated -ne $text
 }

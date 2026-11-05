@@ -41,7 +41,7 @@ Use the release candidate (`v1.0.0-rc.N` pre-release) and tick each row.
    `SysStateTracer.zip`); users unblock it in its Properties before the first start.
 4. The exe is uploaded to VirusTotal and the workflow waits for the analysis (up to 30 minutes). The result
    ("VirusTotal: **0/66 Detected**" with a link to the report) is added to the release notes, and for a full
-   release the badge at the top of README.md (between `<!-- virustotal:start -->` and `<!-- virustotal:end -->`)
+   release the badge at the top of README.md (the line ending in `<!-- virustotal -->`)
    is updated and committed to `main` by `github-actions[bot]`. This needs the repository secret
    `VIRUSTOTAL_API_KEY` (a free VirusTotal account's API key: Settings → Secrets and variables → Actions); without
    it, or if VirusTotal does not answer in time, the release is published without a result and the run shows a
