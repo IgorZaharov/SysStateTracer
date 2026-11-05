@@ -48,6 +48,24 @@ internal static class FileIdentity
         return handle.IsInvalid ? null : Read(handle);
     }
 
+    /// <summary>Opens <paramref name="path"/> to read its permissions (READ_CONTROL only); check IsInvalid.</summary>
+    public static SafeFileHandle OpenForSecurity(string path)
+    {
+        var open = path.StartsWith(@"\\", StringComparison.Ordinal) ? path : @"\\?\" + (path.Length == 2 ? path + "\\" : path);
+        return NativeMethods.CreateFile(open, NativeMethods.ReadControl, ShareAll, 0, FileMode.Open, OpenFlags, 0);
+    }
+
+    /// <summary>Opens the file with reference number <paramref name="fileId"/> to read its permissions; check IsInvalid.</summary>
+    public static unsafe SafeFileHandle OpenForSecurity(SafeFileHandle volumeHint, long fileId)
+    {
+        byte* descriptor = stackalloc byte[24];
+        var span = new Span<byte>(descriptor, 24);
+        span.Clear();
+        BinaryPrimitives.WriteInt32LittleEndian(span, 24);
+        BinaryPrimitives.WriteInt64LittleEndian(span[8..], fileId);
+        return NativeMethods.OpenFileById(volumeHint, descriptor, NativeMethods.ReadControl, ShareAll, 0, OpenFlags);
+    }
+
     private static FileMetadata? Read(SafeFileHandle handle)
     {
         if (!NativeMethods.GetFileInformationByHandle(handle, out var info))

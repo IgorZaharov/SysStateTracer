@@ -322,6 +322,13 @@ public static class SnapshotComparer
         }
     }
 
+    /// <summary>
+    /// True when both sides read the item's permissions and they differ. Items whose permissions could not be
+    /// read on one side (-1) are not reported, since nothing is known about them.
+    /// </summary>
+    private static bool SecurityDiffers(int older, int newer, NameTable olderNames, NameTable newerNames) =>
+        older >= 0 && newer >= 0 && !olderNames[older].SequenceEqual(newerNames[newer]);
+
     private sealed class FileSystemWalk(Snapshot older, Snapshot newer, IgnoreMatcher ignore, CancellationToken cancellationToken)
     {
         private readonly FsTree _a = older.FileSystem;
@@ -330,6 +337,7 @@ public static class SnapshotComparer
         private readonly NameTable _bn = newer.Names;
         private readonly DiffTreeBuilder _out = new();
         private readonly PathBuffer _path = new();
+        private readonly bool _permissions = older.FileSystem.HasSecurity && newer.FileSystem.HasSecurity;
         private int _steps;
 
         public DiffTree Run()
@@ -401,9 +409,10 @@ public static class SnapshotComparer
         {
             var nameA = _an[_a.Name[x]];
             var nameB = _bn[_b.Name[y]];
-            if (_a.Digest[x] == _b.Digest[y] && nameA.SequenceEqual(nameB))
+            if (_a.Digest[x] == _b.Digest[y] && nameA.SequenceEqual(nameB) &&
+                (!_permissions || _a.SecurityDigest[x] == _b.SecurityDigest[y]))
             {
-                return; // identical subtree
+                return; // identical subtree (permissions too, when both snapshots have them)
             }
 
             var dirA = _a.IsDirectory(x);
@@ -430,6 +439,11 @@ public static class SnapshotComparer
                 if (_a.Attributes[x] != _b.Attributes[y])
                 {
                     fields |= ChangedFields.Attributes;
+                }
+
+                if (_permissions && SecurityDiffers(_a.Security[x], _b.Security[y], _an, _bn))
+                {
+                    fields |= ChangedFields.Permissions;
                 }
 
                 if (!dirA)
@@ -509,6 +523,7 @@ public static class SnapshotComparer
         private readonly NameTable _bn = newer.Names;
         private readonly DiffTreeBuilder _out = new();
         private readonly PathBuffer _path = new();
+        private readonly bool _permissions = older.Registry.HasSecurity && newer.Registry.HasSecurity;
         private int _steps;
 
         public DiffTree Run()
@@ -603,7 +618,8 @@ public static class SnapshotComparer
         private void Pair(int x, int y, int parentNode)
         {
             var nameB = _bn[_b.Name[y]];
-            if (_a.Digest[x] == _b.Digest[y] && _an[_a.Name[x]].SequenceEqual(nameB))
+            if (_a.Digest[x] == _b.Digest[y] && _an[_a.Name[x]].SequenceEqual(nameB) &&
+                (!_permissions || _a.SecurityDigest[x] == _b.SecurityDigest[y]))
             {
                 return;
             }
@@ -616,7 +632,16 @@ public static class SnapshotComparer
                     return;
                 }
 
-                var node = _out.Add(parentNode, DiffItemKind.Key, ChangeKind.Unchanged, ChangedFields.None, x, y, 0);
+                var fields = _permissions && SecurityDiffers(_a.Security[x], _b.Security[y], _an, _bn)
+                    ? ChangedFields.Permissions : ChangedFields.None;
+                var node = _out.Add(
+                    parentNode,
+                    DiffItemKind.Key,
+                    fields == ChangedFields.None ? ChangeKind.Unchanged : ChangeKind.Modified,
+                    fields,
+                    x,
+                    y,
+                    fields == ChangedFields.None ? 0 : 1);
                 Merge(x, y, node);
                 _out.Close(node);
             }

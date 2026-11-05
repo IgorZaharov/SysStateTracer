@@ -34,6 +34,17 @@ public class CliTests
     }
 
     [Fact]
+    public void Parse_PermissionsWithNew()
+    {
+        var command = CliParser.Parse(["/new", "/permissions", "Before install"]).Command!;
+        Assert.True(command.Permissions);
+        Assert.Equal(["Before install"], command.Names);
+
+        Assert.False(CliParser.Parse(["/new", "Before install"]).Command!.Permissions);
+        Assert.NotNull(CliParser.Parse(["/report", "/permissions"]).Error);
+    }
+
+    [Fact]
     public void Parse_Arguments()
     {
         Assert.Equal(["Before install"], CliParser.Parse(["/new", "Before install"]).Command!.Names);

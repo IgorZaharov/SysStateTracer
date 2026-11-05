@@ -1,4 +1,4 @@
-# Snapshot file format (`.stsnap`, version 1.0)
+# Snapshot file format (`.stsnap`, version 1.2)
 
 A snapshot is one self-contained binary file. It is always a full snapshot, never a delta, so any
 snapshot can be renamed, deleted or copied to another PC without affecting the others.
@@ -106,6 +106,8 @@ Parents are stored as **ParentDelta = i − parent** (0 for a root), which compr
 | 17 | FsChildFiles | int32 | Direct files |
 | 18 | FsDigest | uint64 | Subtree digest (below) |
 | 19 | FsFileId | int64 | NTFS file reference number (record number, sequence number in the top 16 bits). **SysStateTracer.cache only.** |
+| 20 | FsSecurity | int32 | Name index of the entry's own permissions (below), −1 = not read. Minor version 2; only when permissions were recorded |
+| 21 | FsSecurityDigest | uint64 | Subtree digest of the permissions alone (below); with section 20 |
 | 30 | RegParentDelta | int32 | 0 = root (`HKLM`, `HKU`) |
 | 31 | RegName | int32 | Name index |
 | 32 | RegLastWrite | int64 | Key last-write time, FILETIME (UTC) |
@@ -113,6 +115,14 @@ Parents are stored as **ParentDelta = i − parent** (0 for a root), which compr
 | 34 | RegValueCount | int32 | Values directly in the key |
 | 35 | RegDescendants | int32 | Keys below |
 | 36 | RegDigest | uint64 | Subtree digest (below) |
+| 37 | RegSecurity | int32 | Name index of the key's own permissions (below), −1 = not read. Minor version 2; only when permissions were recorded |
+| 38 | RegSecurityDigest | uint64 | Subtree digest of the key permissions alone (below); with section 37 |
+
+**Permissions** (sections 20 and 37) are names in the name table: Base64 of a self-relative security descriptor holding
+only what was set on the item itself — the owner, the DACL's protected flag (inheritance disabled) and the DACL
+entries without the INHERITED_ACE flag, in their stored order. The group and the SACL are not recorded. Binary, not
+SDDL, because SDDL writes some SIDs as aliases (DA, DU, LA) that stand for other accounts on another computer. Equal
+permissions share one name.
 
 ### Registry values and data
 
@@ -180,6 +190,11 @@ can prove two subtrees equal without reading them. The digest of entry *i* hashe
   `uint64 dataHash`, `int32 dataLength`. The key's own last-write time is **not** included, so a
   key rewritten with identical values is not reported as changed;
 - the `uint64` digests of its direct children in stored order.
+
+Permissions have digests of their own (sections 21 and 38), so the main digests stay the same with or without them:
+each entry hashes its permissions name (as above), or `int32 −1` when they were not read, then the `uint64`
+permission digests of its direct children. A comparison skips a subtree only when both digests match (the
+permission digest only when both snapshots recorded permissions).
 
 ## Meta (UTF-8 JSON)
 

@@ -34,6 +34,9 @@ public sealed class SnapshotRequest
     /// <summary>System and User environment variables (on by default).</summary>
     public bool IncludeEnvironment { get; init; } = true;
 
+    /// <summary>Also record the own permissions of files, folders and registry keys (off by default).</summary>
+    public bool IncludePermissions { get; init; }
+
     public GlobalIgnoreList Ignore { get; init; } = GlobalIgnoreList.Empty;
 
     /// <summary>Folders listed at the same time; null = chosen from the drive type (plan §8.2).</summary>
@@ -71,7 +74,7 @@ public sealed class SnapshotRequest
     /// Items unchecked in W3 (<see cref="Config.SnapshotScope.Excluded"/>) are added to the Global Ignore rules.
     /// </summary>
     public static SnapshotRequest ForScope(
-        string name, string outputDirectory, Config.SnapshotScope scope, GlobalIgnoreList ignore, string? cachePath, bool fullRescan = false)
+        string name, string outputDirectory, Config.SnapshotScope scope, GlobalIgnoreList ignore, string? cachePath, bool fullRescan = false, bool? permissions = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
         return new SnapshotRequest
@@ -85,6 +88,7 @@ public sealed class SnapshotRequest
             IncludeServices = scope.IncludeServices,
             IncludeDrivers = scope.IncludeDrivers,
             IncludeEnvironment = scope.IncludeEnvironment,
+            IncludePermissions = permissions ?? scope.IncludePermissions,
             Ignore = scope.Excluded.Count == 0
                 ? ignore
                 : GlobalIgnoreList.Build(ignore.Rules.Select(r => r.Text).Concat(scope.Excluded)),
@@ -209,6 +213,11 @@ public static class SnapshotOrchestrator
             meta.Scope.Add("Environment variables");
         }
 
+        if (request.IncludePermissions && (fsRoots.Count > 0 || regRoots.Count > 0))
+        {
+            meta.Scope.Add("Permissions");
+        }
+
         var estimate = EstimateEntries(fsRoots);
         var parallelism = request.FileSystemParallelism ?? ChooseParallelism(fsRoots);
 
@@ -219,7 +228,11 @@ public static class SnapshotOrchestrator
                 {
                     var options = new FileSystemScanOptions
                     {
-                        Roots = fsRoots, Ignore = request.Ignore.Matcher, MaxDegreeOfParallelism = parallelism, Method = request.FileSystemMethod,
+                        Roots = fsRoots,
+                        Ignore = request.Ignore.Matcher,
+                        MaxDegreeOfParallelism = parallelism,
+                        Method = request.FileSystemMethod,
+                        Permissions = request.IncludePermissions,
                     };
                     if (previous.FileSystemChanges is not null)
                     {
@@ -239,6 +252,7 @@ public static class SnapshotOrchestrator
                         Ignore = request.Ignore.Matcher,
                         Previous = previous.ReuseRegistry ? previous.Snapshot!.Registry : null,
                         PreviousNames = previous.ReuseRegistry ? previous.Snapshot!.Names : null,
+                        Permissions = request.IncludePermissions,
                     },
                     cancellationToken)),
                 cancellationToken),

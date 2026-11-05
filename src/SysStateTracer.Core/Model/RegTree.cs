@@ -24,11 +24,13 @@ public sealed class RegTree
     private readonly ulong[] _valueHash;
     private readonly int[] _valueBlob;
     private readonly int[] _valueLength;
+    private readonly int[] _security;
+    private readonly ulong[] _securityDigest;
 
     internal RegTree(
         int[] parent, int[] name, long[] lastWrite, int[] firstValue, int[] valueCount, int[] descendants, ulong[] digest,
         int[] valueName, uint[] valueType, ulong[] valueHash, int[] valueBlob, int[] valueLength,
-        BlobStore blobs)
+        BlobStore blobs, int[]? security = null, ulong[]? securityDigest = null)
     {
         var keys = parent.Length;
         if (name.Length != keys || lastWrite.Length != keys || firstValue.Length != keys ||
@@ -41,6 +43,18 @@ public sealed class RegTree
         if (valueType.Length != values || valueHash.Length != values || valueBlob.Length != values || valueLength.Length != values)
         {
             throw new ArgumentException("Registry value columns have different lengths.");
+        }
+
+        security ??= [];
+        if (security.Length != 0 && security.Length != keys)
+        {
+            throw new ArgumentException("Registry key permissions do not match the keys.");
+        }
+
+        securityDigest ??= [];
+        if (securityDigest.Length != security.Length)
+        {
+            throw new ArgumentException("Registry permission digests do not match the permissions.");
         }
 
         _parent = parent;
@@ -56,6 +70,8 @@ public sealed class RegTree
         _valueBlob = valueBlob;
         _valueLength = valueLength;
         Blobs = blobs;
+        _security = security;
+        _securityDigest = securityDigest;
     }
 
     public static RegTree Empty { get; } = new([], [], [], [], [], [], [], [], [], [], [], [], BlobStore.Empty);
@@ -84,6 +100,17 @@ public sealed class RegTree
 
     /// <summary>64-bit hash of the key's name, its values and everything below it (not its timestamp).</summary>
     public ReadOnlySpan<ulong> Digest => _digest;
+
+    /// <summary>
+    /// Name id of each key's own permissions (<see cref="Permissions"/> form), or -1 when they were not read.
+    /// Empty when the snapshot did not record permissions.
+    /// </summary>
+    public ReadOnlySpan<int> Security => _security;
+
+    public bool HasSecurity => _security.Length == _parent.Length && _parent.Length > 0;
+
+    /// <summary>64-bit hash of the permissions of the key and every key below it (with <see cref="Security"/>).</summary>
+    public ReadOnlySpan<ulong> SecurityDigest => _securityDigest;
 
     // ---- Values ----
 
@@ -170,6 +197,7 @@ public sealed class RegTreeBuilder
     private int[] _parent = new int[1024];
     private int[] _name = new int[1024];
     private long[] _lastWrite = new long[1024];
+    private int[]? _security;
     private int _keyCount;
 
     private int[] _vKey = new int[4096];
@@ -216,6 +244,12 @@ public sealed class RegTreeBuilder
             Array.Resize(ref _parent, capacity);
             Array.Resize(ref _name, capacity);
             Array.Resize(ref _lastWrite, capacity);
+            if (_security is not null)
+            {
+                var old = _security.Length;
+                Array.Resize(ref _security, capacity);
+                _security.AsSpan(old).Fill(-1);
+            }
         }
 
         var k = _keyCount++;
@@ -223,6 +257,26 @@ public sealed class RegTreeBuilder
         _name[k] = _names.Add(name);
         _lastWrite[k] = lastWriteTime;
         return k;
+    }
+
+    /// <summary>
+    /// Records the key's own permissions (<see cref="Permissions"/> form). Keys left without are
+    /// "not read" (-1); a tree with no call at all records no permissions.
+    /// </summary>
+    public void SetSecurity(int key, ReadOnlySpan<char> permissions)
+    {
+        if ((uint)key >= (uint)_keyCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(key));
+        }
+
+        if (_security is null)
+        {
+            _security = new int[_parent.Length];
+            _security.AsSpan().Fill(-1);
+        }
+
+        _security[key] = _names.Add(permissions);
     }
 
     public void AddValue(int key, ReadOnlySpan<char> name, uint type, ReadOnlySpan<byte> data)
@@ -293,12 +347,17 @@ public sealed class RegTreeBuilder
         var newIndex = new int[keys];
         var name = new int[keys];
         var lastWrite = new long[keys];
+        var security = _security is null ? null : new int[keys];
         for (var i = 0; i < keys; i++)
         {
             var old = order[i];
             newIndex[old] = i;
             name[i] = _name[old];
             lastWrite[i] = _lastWrite[old];
+            if (security is not null)
+            {
+                security[i] = _security![old];
+            }
         }
 
         // Group values by their key's new index, then sort each key's values by name.
@@ -348,6 +407,7 @@ public sealed class RegTreeBuilder
         }
 
         var digest = ComputeDigests(layout.Descendants, name, firstValue, valueCount, valueName, valueType, valueHash, valueLength);
+        var securityDigest = security is null ? null : Digests.Security(layout.Descendants, security, _names);
 
         var blobData = GC.AllocateUninitializedArray<byte>(checked((int)_blobLength));
         var position = 0;
@@ -363,7 +423,9 @@ public sealed class RegTreeBuilder
         return new RegTree(
             layout.Parent, name, lastWrite, firstValue, valueCount, layout.Descendants, digest,
             valueName, valueType, valueHash, valueBlob, valueLength,
-            new BlobStore(blobData, blobOffsets));
+            new BlobStore(blobData, blobOffsets),
+            security,
+            securityDigest);
     }
 
     private void Reset()
@@ -371,6 +433,7 @@ public sealed class RegTreeBuilder
         _parent = new int[16];
         _name = new int[16];
         _lastWrite = new long[16];
+        _security = null;
         _keyCount = 0;
         _vKey = new int[16];
         _vName = new int[16];

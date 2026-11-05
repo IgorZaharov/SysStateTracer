@@ -20,6 +20,9 @@ public sealed class FileSystemScanOptions
     public int MaxDegreeOfParallelism { get; init; }
 
     public FileSystemScanMethod Method { get; init; } = FileSystemScanMethod.Automatic;
+
+    /// <summary>Also record each file's and folder's own permissions (owner, inheritance, explicit entries).</summary>
+    public bool Permissions { get; init; }
 }
 
 public enum FileSystemScanMethod
@@ -64,6 +67,9 @@ public sealed partial class FileSystemScanner
     private int _pending;
     private string? _currentPath;
 
+    /// <summary>Set when permissions are recorded.</summary>
+    private SecurityReader? _security;
+
     /// <param name="builder">Receives the entries.</param>
     /// <param name="builderLock">Guards <paramref name="builder"/> and its name table, which other scanners may share.</param>
     /// <param name="skipped">Receives folders that could not be listed.</param>
@@ -85,6 +91,7 @@ public sealed partial class FileSystemScanner
     public void Scan(FileSystemScanOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
+        _security = options.Permissions ? new SecurityReader() : null;
         FindForeignFolders(NormalizeRoots(options.Roots), keepTables: true, cancellationToken);
         ScanCore(options, cancellationToken);
         FollowLinks(options, cancellationToken);
@@ -286,6 +293,76 @@ public sealed partial class FileSystemScanner
         return fallback;
     }
 
+    /// <summary>
+    /// Permissions for entries read from a file table: each distinct security id is read once, by opening one
+    /// record that has it (by file id); every other entry with that id gets the same text.
+    /// </summary>
+    private void AddFileTableSecurity(char drive, MftIndex index, List<(int Entry, int Record)> entries, CancellationToken cancellationToken)
+    {
+        if (_security is null || entries.Count == 0)
+        {
+            return;
+        }
+
+        const int MaxTries = 3;
+        using var hint = FileIdentity.OpenVolumeHint(drive);
+        var byId = new Dictionary<uint, string?>();
+        var failures = new Dictionary<uint, int>();
+        var texts = new string?[entries.Count];
+        for (var i = 0; i < entries.Count; i++)
+        {
+            if ((i & 0xFFF) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            var record = entries[i].Record;
+            var id = index.SecurityId(record);
+            if (hint.IsInvalid)
+            {
+                break;
+            }
+
+            if (id == 0)
+            {
+                // No shared id (an old record layout): read this file's own descriptor.
+                texts[i] = _security.ReadById(hint, index.FileReference(record));
+                continue;
+            }
+
+            if (byId.TryGetValue(id, out var text))
+            {
+                texts[i] = text;
+                continue;
+            }
+
+            // A record that cannot be opened (deleted meanwhile, in use) lets the next few with that id try;
+            // after that the id is given up, so a shared id that cannot be read costs only a few opens.
+            text = _security.ReadById(hint, index.FileReference(record));
+            if (text is not null)
+            {
+                byId[id] = text;
+            }
+            else if ((failures[id] = failures.GetValueOrDefault(id) + 1) >= MaxTries)
+            {
+                byId[id] = null;
+            }
+
+            texts[i] = text;
+        }
+
+        lock (_builderLock)
+        {
+            for (var i = 0; i < entries.Count; i++)
+            {
+                if (texts[i] is { } text)
+                {
+                    _builder.SetSecurity(entries[i].Entry, text);
+                }
+            }
+        }
+    }
+
     /// <summary>Adds everything below folder <paramref name="rootRecord"/>, one folder per locked batch.</summary>
     private void AddFromFileTable(
         MftIndex index, int rootRecord, int rootEntry, string rootPath, IgnoreMatcher ignore, WorkerState state, CancellationToken cancellationToken)
@@ -294,6 +371,7 @@ public sealed partial class FileSystemScanner
         folders.Push((rootRecord, rootEntry, rootPath));
         var keep = new List<int>();
         var descend = new List<(int Record, int Entry, int Link)>();
+        var secured = _security is null ? null : new List<(int Entry, int Record)>();
 
         while (folders.TryPop(out var folder))
         {
@@ -317,6 +395,7 @@ public sealed partial class FileSystemScanner
                     var record = index.LinkRecord(link);
                     var attributes = index.Attributes(record);
                     var entry = _builder.Add(folder.Entry, index.Name(link), attributes, index.Size(record), index.LastWriteTime(record), index.FileReference(record));
+                    secured?.Add((entry, record));
                     if (index.IsDirectory(record) &&
                         (attributes & (NativeMethods.FileAttributeReparsePoint | NativeMethods.FileAttributeRecallOnOpen)) == 0)
                     {
@@ -341,6 +420,11 @@ public sealed partial class FileSystemScanner
             {
                 folders.Push((record, entry, string.Concat(folder.Path, "\\", index.Name(link))));
             }
+        }
+
+        if (secured is not null)
+        {
+            AddFileTableSecurity(rootPath[0], index, secured, cancellationToken);
         }
     }
 
@@ -389,6 +473,7 @@ public sealed partial class FileSystemScanner
             {
                 var info = new DirectoryInfo(drive + "\\");
                 parent = _builder.AddRoot(drive, (uint)info.Attributes, info.LastWriteTimeUtc.ToFileTimeUtc(), FileIdentity.TryRead(drive)?.FileId ?? 0);
+                SetSecurityFromPath(parent, drive + "\\");
                 _chainIndex[drive] = parent;
             }
 
@@ -400,6 +485,7 @@ public sealed partial class FileSystemScanner
                 {
                     var info = new DirectoryInfo(path);
                     index = _builder.Add(parent, segment, (uint)info.Attributes, 0, info.LastWriteTimeUtc.ToFileTimeUtc(), FileIdentity.TryRead(path)?.FileId ?? 0);
+                    SetSecurityFromPath(index, path);
                     _chainIndex[path] = index;
                 }
 
@@ -407,6 +493,15 @@ public sealed partial class FileSystemScanner
             }
 
             return parent;
+        }
+    }
+
+    /// <summary>Reads and records one entry's permissions by path; call under the builder lock.</summary>
+    private void SetSecurityFromPath(int entry, string path)
+    {
+        if (_security?.ReadPath(path) is { } text)
+        {
+            _builder.SetSecurity(entry, text);
         }
     }
 
@@ -447,6 +542,18 @@ public sealed partial class FileSystemScanner
             entry.Ignored = ignore.IsIgnoredEntry(IgnoreTarget.FileSystem, fullPath);
         }
 
+        // Permissions are read before taking the lock: one open per entry, the slow part of this mode.
+        var security = _security is null ? null : state.Security(state.Count);
+        if (security is not null)
+        {
+            var parent = job.ReadPath ?? job.Path;
+            for (var i = 0; i < state.Count; i++)
+            {
+                ref var entry = ref state.Entries[i];
+                security[i] = entry.Ignored ? null : _security!.ReadPath(string.Concat(parent, "\\", state.Name(entry)));
+            }
+        }
+
         var subdirectories = state.Subdirectories;
         subdirectories.Clear();
         lock (_builderLock)
@@ -462,6 +569,10 @@ public sealed partial class FileSystemScanner
                 // Through a link the ids belong to another volume or a server: not kept, so the next
                 // incremental snapshot cannot mistake them for ids on this drive.
                 var index = _builder.Add(job.Index, state.Name(entry), entry.Attributes, entry.Size, entry.LastWriteTime, job.ReadPath is null ? entry.FileId : 0);
+                if (security?[i] is { } text)
+                {
+                    _builder.SetSecurity(index, text);
+                }
                 if ((entry.Attributes & NativeMethods.FileAttributeDirectory) != 0 &&
                     (entry.Attributes & (NativeMethods.FileAttributeReparsePoint | NativeMethods.FileAttributeRecallOnOpen)) == 0)
                 {
@@ -610,6 +721,19 @@ public sealed partial class FileSystemScanner
         public int Count { get; private set; }
 
         public List<(int Index, int Entry)> Subdirectories { get; } = [];
+
+        private string?[] _security = [];
+
+        /// <summary>A reused array for the listed entries' permissions.</summary>
+        public string?[] Security(int count)
+        {
+            if (_security.Length < count)
+            {
+                _security = new string?[Math.Max(count, _security.Length * 2)];
+            }
+
+            return _security;
+        }
 
         public void Clear()
         {

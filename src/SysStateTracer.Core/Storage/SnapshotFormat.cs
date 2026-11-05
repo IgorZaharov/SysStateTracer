@@ -7,7 +7,7 @@ namespace SysStateTracer.Core.Storage;
 internal static class SnapshotFormat
 {
     public const ushort MajorVersion = 1;
-    public const ushort MinorVersion = 1;
+    public const ushort MinorVersion = 2;
     public const int HeaderSize = 512;
     public const int BlockSize = 1 << 20;
 
@@ -137,6 +137,12 @@ internal enum SectionKind : ushort
     /// <summary>NTFS file reference numbers; written only to SysStateTracer.cache (plan §7.8).</summary>
     FsFileId = 19,
 
+    /// <summary>Name id of each entry's own permissions, -1 = not read (minor version 2; only when recorded).</summary>
+    FsSecurity = 20,
+
+    /// <summary>Subtree digest of the permissions alone (minor version 2; with FsSecurity).</summary>
+    FsSecurityDigest = 21,
+
     RegParentDelta = 30,
     RegName = 31,
     RegLastWrite = 32,
@@ -144,6 +150,12 @@ internal enum SectionKind : ushort
     RegValueCount = 34,
     RegDescendants = 35,
     RegDigest = 36,
+
+    /// <summary>Name id of each key's own permissions, -1 = not read (minor version 2; only when recorded).</summary>
+    RegSecurity = 37,
+
+    /// <summary>Subtree digest of the key permissions alone (minor version 2; with RegSecurity).</summary>
+    RegSecurityDigest = 38,
 
     ValName = 40,
     ValType = 41,

@@ -41,6 +41,9 @@ public sealed record CliCommand(CliCommandKind Kind, IReadOnlyList<string> Names
     /// <summary>/output: as given: the .html report, or for /export a folder or a .reg file.</summary>
     public string? OutputPath { get; init; }
 
+    /// <summary>/permissions with /new: record permissions this time even when New Snapshot leaves them out.</summary>
+    public bool Permissions { get; init; }
+
     public bool HasFilters => Files.Count + Registry.Count + Services.Count + Environment.Count > 0;
 }
 
@@ -93,6 +96,12 @@ public static class CliParser
         }
 
         var rest = args.Skip(1).ToList();
+        var permissions = rest.RemoveAll(IsPermissionsFlag) > 0;
+        if (permissions && kind != CliCommandKind.NewSnap)
+        {
+            return CliParseResult.Fail("/permissions works only with /new.");
+        }
+
         var options = rest.Where(IsOption).ToList();
         rest = [.. rest.Where(a => !IsOption(a))];
         var files = new List<string>();
@@ -166,7 +175,7 @@ public static class CliParser
 
             case CliCommandKind.NewSnap or CliCommandKind.DeleteSnap:
                 return rest.Count <= 1
-                    ? new CliParseResult(new CliCommand(kind, rest), null)
+                    ? new CliParseResult(new CliCommand(kind, rest) { Permissions = permissions }, null)
                     : CliParseResult.Fail($"{name} takes at most one snapshot name; put names with spaces in quotes.");
 
             case CliCommandKind.RenameSnap:
@@ -224,6 +233,9 @@ public static class CliParser
     /// "/files:…", "-registry:…", "--output:…": a word and a colon after one or two dashes or a slash. A snapshot path
     /// such as C:\a or /x/y has no colon right after a word, so it is never taken for an option.
     /// </summary>
+    private static bool IsPermissionsFlag(string arg) =>
+        arg.TrimStart('/', '-').Equals("permissions", StringComparison.OrdinalIgnoreCase) && arg.Length > "permissions".Length;
+
     private static bool IsOption(string arg)
     {
         var start = arg.StartsWith("--", StringComparison.Ordinal) ? 2 : arg.Length > 0 && arg[0] is '/' or '-' ? 1 : 0;

@@ -24,10 +24,13 @@ public sealed class FsTree
     private readonly int[] _childFiles;
     private readonly ulong[] _digest;
     private readonly long[] _fileId;
+    private readonly int[] _security;
+    private readonly ulong[] _securityDigest;
 
     internal FsTree(
         int[] parent, int[] name, uint[] attributes, long[] size, long[] lastWrite,
-        int[] descendants, int[] childFolders, int[] childFiles, ulong[] digest, long[]? fileId = null)
+        int[] descendants, int[] childFolders, int[] childFiles, ulong[] digest, long[]? fileId = null, int[]? security = null,
+        ulong[]? securityDigest = null)
     {
         var n = parent.Length;
         if (name.Length != n || attributes.Length != n || size.Length != n || lastWrite.Length != n ||
@@ -42,6 +45,18 @@ public sealed class FsTree
             throw new ArgumentException("File ids do not match the entries.");
         }
 
+        security ??= [];
+        if (security.Length != 0 && security.Length != n)
+        {
+            throw new ArgumentException("Permissions do not match the entries.");
+        }
+
+        securityDigest ??= [];
+        if (securityDigest.Length != security.Length)
+        {
+            throw new ArgumentException("Permission digests do not match the permissions.");
+        }
+
         _parent = parent;
         _name = name;
         _attributes = attributes;
@@ -52,6 +67,8 @@ public sealed class FsTree
         _childFiles = childFiles;
         _digest = digest;
         _fileId = fileId;
+        _security = security;
+        _securityDigest = securityDigest;
     }
 
     public static FsTree Empty { get; } = new([], [], [], [], [], [], [], [], []);
@@ -90,6 +107,17 @@ public sealed class FsTree
 
     public bool HasFileIds => _fileId.Length == _parent.Length && _parent.Length > 0;
 
+    /// <summary>
+    /// Name id of each entry's own permissions (<see cref="Permissions"/> form), or -1 when they were not read.
+    /// Empty when the snapshot did not record permissions.
+    /// </summary>
+    public ReadOnlySpan<int> Security => _security;
+
+    public bool HasSecurity => _security.Length == _parent.Length && _parent.Length > 0;
+
+    /// <summary>64-bit hash of the permissions of the entry and everything below it (with <see cref="Security"/>).</summary>
+    public ReadOnlySpan<ulong> SecurityDigest => _securityDigest;
+
     public bool IsDirectory(int entry) => (_attributes[entry] & DirectoryAttribute) != 0;
 
     /// <summary>Full path, e.g. <c>C:\Windows\notepad.exe</c>.</summary>
@@ -113,6 +141,7 @@ public sealed class FsTreeBuilder
     private long[] _size;
     private long[] _lastWrite;
     private long[] _fileId;
+    private int[]? _security;
     private int _count;
 
     public FsTreeBuilder(NameTable names, int capacity = 4096)
@@ -158,6 +187,26 @@ public sealed class FsTreeBuilder
         return i;
     }
 
+    /// <summary>
+    /// Records the entry's own permissions (<see cref="Permissions"/> form). Entries left without are
+    /// "not read" (-1); a tree with no call at all records no permissions.
+    /// </summary>
+    public void SetSecurity(int entry, ReadOnlySpan<char> permissions)
+    {
+        if ((uint)entry >= (uint)_count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(entry));
+        }
+
+        if (_security is null)
+        {
+            _security = new int[_parent.Length];
+            _security.AsSpan().Fill(-1);
+        }
+
+        _security[entry] = _names.Add(permissions);
+    }
+
     /// <summary>Builds the tree and empties the builder (its memory is released).</summary>
     public FsTree Build()
     {
@@ -170,6 +219,7 @@ public sealed class FsTreeBuilder
         var size = new long[n];
         var lastWrite = new long[n];
         var fileId = new long[n];
+        var security = _security is null ? null : new int[n];
         var anyFileId = false;
         for (var i = 0; i < n; i++)
         {
@@ -180,6 +230,10 @@ public sealed class FsTreeBuilder
             lastWrite[i] = _lastWrite[old];
             fileId[i] = _fileId[old];
             anyFileId |= fileId[i] != 0;
+            if (security is not null)
+            {
+                security[i] = _security![old];
+            }
         }
 
         // The builder's columns are copied; free them before the remaining allocations.
@@ -206,8 +260,10 @@ public sealed class FsTreeBuilder
         }
 
         var digest = ComputeDigests(layout.Descendants, name, attributes, size, lastWrite, _names);
+        var securityDigest = security is null ? null : Digests.Security(layout.Descendants, security, _names);
         return new FsTree(
-            layout.Parent, name, attributes, size, lastWrite, layout.Descendants, childFolders, childFiles, digest, anyFileId ? fileId : null);
+            layout.Parent, name, attributes, size, lastWrite, layout.Descendants, childFolders, childFiles, digest, anyFileId ? fileId : null, security,
+            securityDigest);
     }
 
     private void Reset()
@@ -219,6 +275,7 @@ public sealed class FsTreeBuilder
         _size = new long[16];
         _lastWrite = new long[16];
         _fileId = new long[16];
+        _security = null;
     }
 
     private static ulong[] ComputeDigests(
@@ -262,6 +319,12 @@ public sealed class FsTreeBuilder
         Array.Resize(ref _size, capacity);
         Array.Resize(ref _lastWrite, capacity);
         Array.Resize(ref _fileId, capacity);
+        if (_security is not null)
+        {
+            var old = _security.Length;
+            Array.Resize(ref _security, capacity);
+            _security.AsSpan(old).Fill(-1);
+        }
     }
 }
 

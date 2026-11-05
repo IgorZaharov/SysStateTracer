@@ -343,6 +343,19 @@ public class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
             scope = tree.ToScope();
             Assert.Contains(IgnoreRuleParser.Format(IgnoreTarget.FileSystem, windows.Name), scope.Excluded);
 
+            // Permissions start unticked; ticking them warns once, unticking does not.
+            var permissions = tree.Nodes.Cast<TreeNode>().SelectMany(n => n.Nodes.Cast<TreeNode>())
+                .Single(n => n.Tag is ScopeItem { Kind: ScopeKind.Permissions });
+            Assert.Equal(ScopeTree.Unchecked, ScopeTree.StateOf(permissions));
+            Assert.False(tree.ToScope().IncludePermissions);
+            var warnings = 0;
+            tree.PermissionsTurnedOn += (_, _) => warnings++;
+            tree.Toggle(permissions);
+            Assert.True(tree.ToScope().IncludePermissions);
+            tree.Toggle(permissions);
+            Assert.False(tree.ToScope().IncludePermissions);
+            Assert.Equal(1, warnings);
+
             // Unchecking a hive and the drivers.
             tree.Toggle(Find(tree.Nodes, "HKU"));
             scope = tree.ToScope();

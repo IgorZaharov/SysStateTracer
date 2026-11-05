@@ -707,7 +707,7 @@ internal sealed class ComparisonForm : Form
         model.Sort(column, descending);
         if (!_columns.TryGetValue(folder.Area, out var columns))
         {
-            columns = ComparisonListModel.ColumnsFor(folder.Area);
+            columns = ComparisonListModel.ColumnsFor(folder.Area, _data.HasPermissions(folder.Area));
             _columns[folder.Area] = columns;
         }
 

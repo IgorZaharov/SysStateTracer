@@ -700,6 +700,83 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
     public ChangedFields Fields(ViewItem item) =>
         item.Node >= 0 && item.Status == RowStatus.Modified ? Diff.Tree(item.Area).Fields(item.Node) : ChangedFields.None;
 
+    /// <summary>Both snapshots recorded permissions for this part, so they are compared and shown.</summary>
+    public bool HasPermissions(DiffArea area) => area switch
+    {
+        DiffArea.FileSystem => Diff.Left.FileSystem.HasSecurity && Diff.Right.FileSystem.HasSecurity,
+        DiffArea.Registry => Diff.Left.Registry.HasSecurity && Diff.Right.Registry.HasSecurity,
+        _ => false,
+    };
+
+    /// <summary>An item's recorded permissions in one snapshot (files, folders, keys); null when not recorded.</summary>
+    public static string? Security(Snapshot snapshot, DiffArea area, int index)
+    {
+        var ids = area switch
+        {
+            DiffArea.FileSystem => snapshot.FileSystem.Security,
+            DiffArea.Registry => snapshot.Registry.Security,
+            _ => [],
+        };
+        return (uint)index < (uint)ids.Length && ids[index] >= 0 ? snapshot.Names.GetString(ids[index]) : null;
+    }
+
+    /// <summary>
+    /// The list's Permissions column: what changed for a modified item ("Owner changed", "+ Allow · Users ·
+    /// Modify"), otherwise "Inherited" or "Own · unchanged".
+    /// </summary>
+    public string PermissionsText(ViewItem item)
+    {
+        if (!HasPermissions(item.Area) || item.IsCategory)
+        {
+            return string.Empty;
+        }
+
+        var target = item.Area == DiffArea.Registry ? PermissionTarget.Registry : PermissionTarget.FileSystem;
+        if (Fields(item).HasFlag(ChangedFields.Permissions))
+        {
+            return Permissions.Summarize(
+                Security(Diff.Left, item.Area, IndexOn(item, right: false)), Security(Diff.Right, item.Area, IndexOn(item, right: true)), target);
+        }
+
+        var (snapshot, index) = Shown(item);
+        return Permissions.DescribeKind(Security(snapshot, item.Area, index)) switch
+        {
+            "" => "(not read)",
+            "Own" => "Own · unchanged",
+            var kind => kind,
+        };
+    }
+
+    /// <summary>Owner, inheritance and the own entries on both sides (decision "Permission changes").</summary>
+    private void AddPermissionRows(List<DetailRow> rows, ViewItem item, int left, int right, bool isFolder)
+    {
+        if (!HasPermissions(item.Area))
+        {
+            return;
+        }
+
+        var target = item.Area == DiffArea.Registry ? PermissionTarget.Registry : PermissionTarget.FileSystem;
+        var a = left < 0 ? null : Security(Diff.Left, item.Area, left);
+        var b = right < 0 ? null : Security(Diff.Right, item.Area, right);
+        var setA = Permissions.Parse(a);
+        var setB = Permissions.Parse(b);
+        var parent = item.Area == DiffArea.Registry ? "the parent key" : "the parent folder";
+
+        string Side(int index, PermissionSet? set, Func<PermissionSet, string> text) =>
+            index < 0 ? "(does not exist)" : set is null ? "(not read)" : text(set);
+
+        string Owner(PermissionSet s) => Permissions.AccountName(s.OwnerSid);
+        string Inheritance(PermissionSet s) => s.InheritanceDisabled ? "Disabled" : "Inherits from " + parent;
+        string Entries(PermissionSet s) => s.Entries.Count == 0
+            ? "None"
+            : string.Join("; ", s.Entries.Select(e => isFolder ? $"{e.Describe(target)} ({e.DescribeAppliesTo(target)})" : e.Describe(target)));
+
+        var compare = setA is not null && setB is not null;
+        rows.Add(new DetailRow("Owner", Side(left, setA, Owner), Side(right, setB, Owner), compare && setA!.OwnerSid != setB!.OwnerSid));
+        rows.Add(new DetailRow("Inheritance", Side(left, setA, Inheritance), Side(right, setB, Inheritance), compare && setA!.InheritanceDisabled != setB!.InheritanceDisabled));
+        rows.Add(new DetailRow("Own entries", Side(left, setA, Entries), Side(right, setB, Entries), compare && !setA!.Entries.SequenceEqual(setB!.Entries)));
+    }
+
     /// <summary>One line of the details panel: a property, its value on the left and right, and whether it differs.</summary>
     internal readonly record struct DetailRow(string Label, string Left, string Right, bool Changed);
 
@@ -731,11 +808,13 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
                 Add("Date modified", (s, i) => ItemFormat.Time(s.FileSystem.LastWriteTime[i]), false);
                 Add("Contains", (s, i) => $"{DiffItems.Count(s.FileSystem.ChildFolders[i], "folder")}, {DiffItems.Count(s.FileSystem.ChildFiles[i], "file")}", false);
                 Add("Attributes", (s, i) => ItemFormat.Attributes(s.FileSystem.Attributes[i]), fields.HasFlag(ChangedFields.Attributes));
+                AddPermissionRows(rows, item, left, right, isFolder: true);
                 break;
             case DiffArea.FileSystem:
                 Add("Size", (s, i) => string.Create(CultureInfo.CurrentCulture, $"{ItemFormat.Size(s.FileSystem.Size[i])}  ({s.FileSystem.Size[i]:N0} bytes)"), fields.HasFlag(ChangedFields.Size));
                 Add("Date modified", (s, i) => ItemFormat.Time(s.FileSystem.LastWriteTime[i]), fields.HasFlag(ChangedFields.LastWriteTime));
                 Add("Attributes", (s, i) => ItemFormat.Attributes(s.FileSystem.Attributes[i]), fields.HasFlag(ChangedFields.Attributes));
+                AddPermissionRows(rows, item, left, right, isFolder: false);
                 break;
             case DiffArea.Registry when item.IsValue:
                 Add("Type", (s, i) => ItemFormat.ValueType(s.Registry.ValueDataType[i]), fields.HasFlag(ChangedFields.ValueType));
@@ -744,6 +823,7 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             case DiffArea.Registry:
                 Add("Last written", (s, i) => ItemFormat.Time(s.Registry.LastWriteTime[i]), false);
                 Add("Contains", (s, i) => $"{DiffItems.Count(SubkeyCount(s.Registry, i), "key")}, {DiffItems.Count(s.Registry.KeyValueCount[i], "value")}", false);
+                AddPermissionRows(rows, item, left, right, isFolder: true);
                 break;
             case DiffArea.Environment:
                 Add("Variables", (s, i) => EnvironmentTable.ScopeName(s.Environment.Scope[i]), false);

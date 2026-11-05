@@ -92,6 +92,7 @@ internal sealed class PreviousSnapshot
         {
             fileSystemReason = !SameRoots(info.FileSystemRoots, fsRoots) ? "different folders than last time"
                 : !snapshot.FileSystem.HasFileIds ? "the previous snapshot has no file ids"
+                : request.IncludePermissions && !snapshot.FileSystem.HasSecurity ? "permissions were not recorded last time"
                 : null;
             if (fileSystemReason is null)
             {

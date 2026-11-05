@@ -21,6 +21,9 @@ internal enum ScopeKind
 
     /// <summary>System and User environment variables.</summary>
     Environment,
+
+    /// <summary>Own permissions of files, folders and keys.</summary>
+    Permissions,
 }
 
 /// <summary>Data of one scope tree node.</summary>
@@ -76,6 +79,7 @@ internal sealed class ScopeTree : TreeView, IThemed
     private TreeNode? _registry;
     private TreeNode? _services;
     private TreeNode? _environment;
+    private TreeNode? _permissions;
 
     public ScopeTree()
     {
@@ -95,6 +99,9 @@ internal sealed class ScopeTree : TreeView, IThemed
 
     /// <summary>Raised when an item the current user cannot read is clicked.</summary>
     public event EventHandler<ScopeItem>? NoAccessItemClicked;
+
+    /// <summary>The user ticked Permissions (itself or its category): New Snapshot warns that scans get slower.</summary>
+    public event EventHandler? PermissionsTurnedOn;
 
     /// <summary>False for a standard user: sub-folders and sub-keys are checked for access as they load (F9).</summary>
     public bool Elevated { get; set; } = true;
@@ -158,6 +165,9 @@ internal sealed class ScopeTree : TreeView, IThemed
 
         _environment = AddNode(Nodes, new ScopeItem(ScopeKind.Category, string.Empty), "Environment variables", Unchecked);
         AddNode(_environment.Nodes, new ScopeItem(ScopeKind.Environment, string.Empty), "System variables and your user variables", scope.IncludeEnvironment ? Checked : Unchecked);
+
+        _permissions = AddNode(Nodes, new ScopeItem(ScopeKind.Category, string.Empty), "Permissions", Unchecked);
+        AddNode(_permissions.Nodes, new ScopeItem(ScopeKind.Permissions, string.Empty), "Owner and own entries of the files, folders and keys above (slower)", scope.IncludePermissions ? Checked : Unchecked);
 
         foreach (TreeNode category in Nodes)
         {
@@ -238,6 +248,11 @@ internal sealed class ScopeTree : TreeView, IThemed
             scope.IncludeEnvironment = StateOf(_environment.Nodes[0]) == Checked;
         }
 
+        if (_permissions is not null)
+        {
+            scope.IncludePermissions = StateOf(_permissions.Nodes[0]) == Checked;
+        }
+
         return scope;
     }
 
@@ -245,7 +260,8 @@ internal sealed class ScopeTree : TreeView, IThemed
     public static int StateOf(TreeNode node) => node.Tag is ScopeItem item ? item.State : Unchecked;
 
     /// <summary>True when nothing at all is checked.</summary>
-    public bool IsEmpty => Nodes.Cast<TreeNode>().All(n => StateOf(n) == Unchecked);
+    /// <remarks>Permissions alone record nothing: they belong to the files and keys checked above.</remarks>
+    public bool IsEmpty => Nodes.Cast<TreeNode>().Where(n => n != _permissions).All(n => StateOf(n) == Unchecked);
 
     /// <summary>Toggles a node as a click on its checkbox does (tests and keyboard).</summary>
     public void Toggle(TreeNode node)
@@ -265,6 +281,7 @@ internal sealed class ScopeTree : TreeView, IThemed
             return;
         }
 
+        var permissionsWereOn = _permissions is not null && StateOf(_permissions.Nodes[0]) == Checked;
         SetState(node, target, cascade: true);
         UpdateFromChildren(node);
         for (var parent = node.Parent; parent is not null; parent = parent.Parent)
@@ -273,6 +290,10 @@ internal sealed class ScopeTree : TreeView, IThemed
         }
 
         ScopeChanged?.Invoke(this, EventArgs.Empty);
+        if (!permissionsWereOn && _permissions is not null && StateOf(_permissions.Nodes[0]) == Checked)
+        {
+            PermissionsTurnedOn?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     protected override void OnHandleCreated(EventArgs e)

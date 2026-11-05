@@ -285,6 +285,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "<b>Services</b>: their state and startup type; kernel drivers on request.",
         "<b>Environment variables</b>: the System variables and your user variables, as the Environment Variables "
         "window shows them (for example Path with %SystemRoot% not expanded).",
+        "<b>Permissions</b>, when ticked in New Snapshot: each file's, folder's and key's owner, whether it inherits "
+        "permissions, and the entries set on it (not the inherited ones). It is off by default: ticking it warns that "
+        "it significantly increases scanning time.",
         "Anything Windows does not let it read is skipped and listed in the snapshot's properties.",
     ])
     story.append(p(
@@ -401,6 +404,9 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "Its full path is in the status bar.",
         "Environment variables are compared only when both snapshots have them; snapshots taken with an earlier "
         "version have none, and the category then says “not in both snapshots”.",
+        "Permissions are compared when both snapshots recorded them: a folder, file or key whose own permissions "
+        "changed is modified, the <b>Permissions</b> column says what changed, and the details show the owner, "
+        "inheritance and own entries on both sides. A change a folder passes down to its contents shows on the folder only.",
         "<b>OLDER</b> and <b>NEWER</b> before the snapshot names, at the top and above the details, show which "
         "snapshot was taken first, whichever side it is on.",
         "A new or deleted folder or key can be opened like any other: what it holds comes from the snapshot that has "

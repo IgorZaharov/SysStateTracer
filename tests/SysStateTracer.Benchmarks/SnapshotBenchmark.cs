@@ -51,6 +51,7 @@ internal static class SnapshotBenchmark
             FileSystemMethod = method,
             CachePath = Option(args, "--cache") is { } cache ? Path.GetFullPath(cache) : null,
             FullRescan = args.Contains("--full-rescan", StringComparer.OrdinalIgnoreCase),
+            IncludePermissions = args.Contains("--permissions", StringComparer.OrdinalIgnoreCase),
         };
 
         foreach (var root in request.FileSystemRoots)

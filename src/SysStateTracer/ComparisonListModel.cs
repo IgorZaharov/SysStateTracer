@@ -62,9 +62,14 @@ internal sealed class ComparisonListModel : ITreeGridModel
     public bool SortDescending { get; private set; }
 
     /// <summary>The columns for an area: header, width, alignment.</summary>
-    public static List<GridColumn> ColumnsFor(DiffArea area) => area switch
+    /// <param name="permissions">Both snapshots recorded permissions: files get a Permissions column.</param>
+    public static List<GridColumn> ColumnsFor(DiffArea area, bool permissions = false) => area switch
     {
         // About 610 px: the list fits the pane of a comparison window at its first size; the last column takes the rest.
+        DiffArea.FileSystem when permissions =>
+        [
+            new(string.Empty, 32), new("Name", 240), new("Size", 90, HorizontalAlignment.Right), new("Date modified", 150), new("Attributes", 90), new("Permissions", 200),
+        ],
         DiffArea.FileSystem =>
         [
             new(string.Empty, 32), new("Name", 240), new("Size", 90, HorizontalAlignment.Right), new("Date modified", 150), new("Attributes", 90),
@@ -142,7 +147,8 @@ internal sealed class ComparisonListModel : ITreeGridModel
                 {
                     2 => ItemFormat.Size(fs.Size[index]),
                     3 => ItemFormat.Time(fs.LastWriteTime[index]),
-                    _ => ItemFormat.Attributes(fs.Attributes[index]),
+                    4 => ItemFormat.Attributes(fs.Attributes[index]),
+                    _ => Data.PermissionsText(item),
                 };
             case DiffArea.Registry:
                 var reg = snapshot.Registry;
@@ -207,6 +213,7 @@ internal sealed class ComparisonListModel : ITreeGridModel
             (DiffArea.FileSystem, 2) => fields.HasFlag(ChangedFields.Size),
             (DiffArea.FileSystem, 3) => fields.HasFlag(ChangedFields.LastWriteTime),
             (DiffArea.FileSystem, 4) => fields.HasFlag(ChangedFields.Attributes),
+            (DiffArea.FileSystem, 5) => fields.HasFlag(ChangedFields.Permissions),
             (DiffArea.Registry, 2) => fields.HasFlag(ChangedFields.ValueType),
             (DiffArea.Registry, 3) => fields.HasFlag(ChangedFields.ValueData),
             (DiffArea.Environment, 3) => fields.HasFlag(ChangedFields.ValueType),

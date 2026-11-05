@@ -105,6 +105,9 @@ public sealed class SnapshotScope
     /// <summary>System and User environment variables (on by default).</summary>
     public bool IncludeEnvironment { get; set; } = true;
 
+    /// <summary>Own permissions of files, folders and keys (off by default: listing folders gets slower).</summary>
+    public bool IncludePermissions { get; set; }
+
     /// <summary>
     /// Folders and keys unchecked inside an included drive or hive in New Snapshot (W3), as rule lines
     /// ("FS:C:\Temp", "REG:HKLM\SOFTWARE\X"). They are left out like Global Ignore rules, for this scope only.

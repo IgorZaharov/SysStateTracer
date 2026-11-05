@@ -139,6 +139,19 @@ public static class DiffItems
             return string.Empty;
         }
 
+        var text = ColumnCore(tree, item, snapshot, index);
+        if (!tree.Fields(item.Node).HasFlag(ChangedFields.Permissions))
+        {
+            return text;
+        }
+
+        var ids = item.Area == DiffArea.Registry ? snapshot.Registry.Security : snapshot.FileSystem.Security;
+        var recorded = (uint)index < (uint)ids.Length && ids[index] >= 0 ? snapshot.Names.GetString(ids[index]) : null;
+        return $"{text} · {Permissions.Brief(recorded, item.Area == DiffArea.Registry ? PermissionTarget.Registry : PermissionTarget.FileSystem)}";
+    }
+
+    private static string ColumnCore(DiffTree tree, DiffItem item, Snapshot snapshot, int index)
+    {
         switch (tree.Kind(item.Node))
         {
             case DiffItemKind.Folder:

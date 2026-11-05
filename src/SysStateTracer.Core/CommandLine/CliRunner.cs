@@ -87,7 +87,7 @@ public static class CliRunner
 
                 return command.Kind switch
                 {
-                    CliCommandKind.NewSnap => NewSnap(command.Names.FirstOrDefault()),
+                    CliCommandKind.NewSnap => NewSnap(command.Names.FirstOrDefault(), command.Permissions),
                     CliCommandKind.DeleteSnap => DeleteSnap(command.Names.FirstOrDefault()),
                     CliCommandKind.RenameSnap => RenameSnap(command.Names[0], command.Names[1]),
                     CliCommandKind.CompareSnap => CompareSnap(command),
@@ -133,7 +133,7 @@ public static class CliRunner
             Log.Error("CLI: " + line);
         }
 
-        private CliExitCode NewSnap(string? argument)
+        private CliExitCode NewSnap(string? argument, bool permissions)
         {
             if (!TryTarget(argument ?? SnapshotNaming.DefaultName(), out var folder, out var name))
             {
@@ -147,12 +147,13 @@ public static class CliRunner
             }
 
             var ignore = LoadIgnoreList();
-            var request = SnapshotRequest.ForScope(name, folder, Settings.Scope, ignore.List, Paths.CacheFile);
+            var request = SnapshotRequest.ForScope(name, folder, Settings.Scope, ignore.List, Paths.CacheFile, permissions: permissions ? true : null);
             Say($"Taking snapshot \"{name}\"");
             Say("  Folders:  " + (request.FileSystemRoots.Count == 0 ? "(none)" : string.Join(", ", request.FileSystemRoots)));
             Say("  Registry: " + (request.RegistryRoots.Count == 0 ? "(none)" : string.Join(", ", request.RegistryRoots)));
             Say("  Services: " + (request.IncludeServices ? request.IncludeDrivers ? "services and drivers" : "yes" : "no"));
             Say("  Environment variables: " + (request.IncludeEnvironment ? "yes" : "no"));
+            Say("  Permissions: " + (request.IncludePermissions ? "yes" : "no"));
 
             var printer = new ScanPrinter(this, env.ProgressInterval);
             var result = SnapshotOrchestrator.Run(request, printer, cancellationToken);

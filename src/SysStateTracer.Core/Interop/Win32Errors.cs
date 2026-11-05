@@ -12,6 +12,7 @@ public static class Win32Errors
     public const int AccessDenied = 5;
     public const int InvalidHandle = 6;
     public const int SharingViolation = 32;
+    public const int InsufficientBuffer = 122;
     public const int NotAllAssigned = 1300;
     public const int NoSuchPrivilege = 1313;
     public const int PrivilegeNotHeld = 1314;

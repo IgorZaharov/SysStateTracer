@@ -32,6 +32,7 @@ public sealed partial class FileSystemScanner
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(options);
         ProcessPrivileges.TryEnable(ProcessPrivileges.Backup);
+        _security = options.Permissions ? new SecurityReader() : null;
 
         // Roots on drives without usable journal changes are scanned in full, at the same time as the walk.
         var roots = NormalizeRoots(options.Roots);
@@ -151,11 +152,16 @@ public sealed partial class FileSystemScanner
             // Listed names are copied to strings; names taken from the previous tree stay ids (no allocation).
             var batch = new List<(string? Name, int NameId, FileMetadata Meta, int Old, bool Moved)>();
 
+            // Permissions per batch entry: the previous text's id (unchanged entries), or freshly read text.
+            var security = new List<(int PreviousId, string? Text)>();
+            var copySecurity = scanner._security is not null && previous.HasSecurity;
+
             while (stack.TryPop(out var folder))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Volatile.Write(ref scanner._currentPath, folder.Path);
                 batch.Clear();
+                security.Clear();
 
                 // Old = -1: a folder that did not exist last time.
                 var folderId = folder.Old >= 0 ? previous.FileId[folder.Old] : 0;
@@ -199,6 +205,11 @@ public sealed partial class FileSystemScanner
                         }
 
                         batch.Add((name.ToString(), -1, meta, old, moved));
+                        if (scanner._security is not null)
+                        {
+                            // Listed again: files are not matched to the previous tree, so their permissions are read.
+                            security.Add((-1, ReadSecurity(meta, string.Concat(folder.Path, "\\", name), hint)));
+                        }
                     }
                 }
                 else
@@ -216,15 +227,36 @@ public sealed partial class FileSystemScanner
                         var meta = new FileMetadata(previous.FileId[c], previous.Attributes[c], previous.Size[c], previous.LastWriteTime[c]);
                         meta = Refresh(meta, changes, hint);
                         batch.Add((null, previous.Name[c], meta, previous.IsDirectory(c) ? c : -1, folder.Moved));
+                        if (scanner._security is not null)
+                        {
+                            // The journal reports permission changes (USN_REASON_SECURITY_CHANGE) like any other.
+                            var unchanged = copySecurity && previous.Security[c] >= 0 && !changes.Changed.Contains(meta.FileId);
+                            security.Add(unchanged
+                                ? (previous.Security[c], null)
+                                : (-1, ReadSecurity(meta, string.Concat(folder.Path, "\\", name), hint)));
+                        }
                     }
                 }
 
                 lock (scanner._builderLock)
                 {
-                    foreach (var (listedName, nameId, meta, old, moved) in batch)
+                    for (var b = 0; b < batch.Count; b++)
                     {
+                        var (listedName, nameId, meta, old, moved) = batch[b];
                         var name = listedName is not null ? listedName.AsSpan() : previousNames[nameId];
                         var index = scanner._builder.Add(folder.New, name, meta.Attributes, meta.Size, meta.LastWriteTime, meta.FileId);
+                        if (security.Count > b)
+                        {
+                            var (previousId, text) = security[b];
+                            if (previousId >= 0)
+                            {
+                                scanner._builder.SetSecurity(index, previousNames[previousId]);
+                            }
+                            else if (text is not null)
+                            {
+                                scanner._builder.SetSecurity(index, text);
+                            }
+                        }
                         if (meta.IsDirectory && IsLink(meta.Attributes))
                         {
                             scanner._links.Enqueue((index, string.Concat(folder.Path, "\\", name)));
@@ -259,6 +291,12 @@ public sealed partial class FileSystemScanner
                 handle.Dispose();
             }
         }
+
+        /// <summary>Permissions read by file id where known (works after renames), else by path.</summary>
+        private string? ReadSecurity(FileMetadata meta, string path, SafeFileHandle? hint) =>
+            meta.FileId != 0 && hint is not null && !hint.IsInvalid
+                ? scanner._security!.ReadById(hint, meta.FileId) ?? scanner._security.ReadPath(path)
+                : scanner._security!.ReadPath(path);
 
         /// <summary>Current metadata, read by file id, for anything the journal reports as changed.</summary>
         private static FileMetadata Refresh(FileMetadata meta, UsnChanges changes, SafeFileHandle? hint)

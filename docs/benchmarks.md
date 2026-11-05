@@ -143,3 +143,22 @@ WizTree work this way; on spinning disks and throttled virtual disks it is typic
 to tens of times faster than listing folders. It needs administrator rights (which the app already
 has) and works only on NTFS, so folder listing stays as the fallback for FAT32, exFAT and ReFS.
 Approved as decision D10 in [decisions.md](decisions.md): whole NTFS drives are now read this way.
+
+## Permissions (5 Nov 2026)
+
+Windows 11 Pro 21H2 (build 22000), 8 cores, SSD, **standard user** (no administrator rights, so the master file
+table was not used and C:\ was listed folder by folder). `SysStateTracer.Bench.exe snapshot … [--permissions]`, each
+run in its own process after one warm-up listing; two runs each.
+
+| Run | Items | Without permissions | With permissions | File size |
+| --- | --- | --- | --- | --- |
+| Registry (HKLM, HKU) | 456,984 keys, 836,408 values | 8.1 s, 8.4 s | 10.1 s, 8.6 s | 16.0 → 16.3–16.4 MB |
+| C:\ folder listing | 97,571 folders, 494,627 files | 3.5 s, 3.4 s | 16.3 s, 15.3 s | 13.0 → 13.2 MB |
+
+- **Registry:** about 2–20 % slower: one more call per key on the handle that is already open.
+- **Folder listing:** about 4.5 times slower: one more open per file and folder (≈ 21 µs each). This is why
+  Permissions is off by default.
+- Skipped items were the same with and without (1,014 keys, 121 folders: access denied).
+- Snapshots grow by about 2 %: equal permissions share one entry.
+- Not measured yet: the master file table path (needs administrator rights), where each distinct security id
+  is read once.

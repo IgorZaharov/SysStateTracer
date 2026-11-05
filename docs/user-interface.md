@@ -47,6 +47,10 @@ reasons. Each group is a card with its heading above it, as in Windows 11 Settin
 - **What to include:** drives, registry (HKLM, HKU with each user), services and environment variables, with
   tri-state checkboxes. **Environment variables** are the System variables and the user variables of the user who
   takes the snapshot, as the Environment Variables window shows them (values not expanded).
+  **Permissions** (off by default) also records each file's, folder's and key's own permissions: owner,
+  inheritance on or off, and the entries set on the item itself (inherited ones are left out). It costs little
+  with administrator rights on NTFS drives and for the registry, and one more read per file when folders are listed.
+  Ticking it shows a warning: "Enabling the permission scan significantly increases scanning time".
   Sub-folders and sub-keys load when expanded. Items in the Global Ignore list are unchecked and marked
   "(ignored)"; to include one, remove its rule in Preferences. The tree is on a card. Without administrator rights,
   folders and keys your user cannot read are greyed out as "(no access)", and a warning bar at the top offers
@@ -81,7 +85,7 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
   250,000 rows in the tree (Show all on a whole drive has millions); the status bar then says so.
 - **Right — the list:** the files of the selected folder, the values of the selected key, every service (select
   Services) or every environment variable (select Environment variables). Columns: change sign (F29), Name, then
-  Size · Date modified · Attributes, Type · Data, Display name · Status · Start type, or Variables (System or User) ·
+  Size · Date modified · Attributes (· Permissions when both snapshots recorded them), Type · Data, Display name · Status · Start type, or Variables (System or User) ·
   Type · Value, from the right-hand snapshot (the left one for an item only there). Click a heading to sort,
   again to reverse; by name at first. Values that differ are highlighted; the colour runs through the row (F27).
   **Include subfolders** (remembered) also lists the files of every folder below, named from the selected folder
@@ -97,6 +101,14 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
   inside, Unchanged, Changed value.
 - **Environment variables** are compared only when both snapshots have them (snapshots taken before 1.3 have none);
   otherwise the category says "not in both snapshots".
+- **Permissions** are compared only when both snapshots recorded them. A folder, file or key whose own permissions
+  changed is Modified; the Permissions column says what changed ("Owner changed", "+ Allow · Users · Modify",
+  "Inheritance disabled, +3 entries"), otherwise "Inherited" or "Own · unchanged". The details add **Owner**,
+  **Inheritance** and **Own entries** (with what each entry applies to). A change made on a folder and inherited by
+  its contents shows on that folder only.
+  One exception: in folders that do not use automatic inheritance (such as `%TEMP%`), new files hold copies of the
+  folder's entries that Windows does not mark as inherited. The first time the folder's permissions are written,
+  Windows turns those copies into inherited entries, and each such file is reported once with its own entries removed.
 - **Selection:** in either pane; Ctrl+click, Shift+click, arrow keys, Ctrl+A in the list; Tab moves between the panes.
   Right-click or the menu key for actions. Items that are unchanged or inside a whole new or deleted folder are for
   information: only Jump to works on them.
@@ -153,6 +165,8 @@ Run on a Windows PC with the published `SysStateTracer.exe`. It starts without a
 7. Right-click the Registry row → Export to .REG; open the file in a text editor.
 8. Right-click a service → Jump to: the Services console opens with it selected.
    Select Environment variables: change a user variable between two snapshots and check it is listed as modified.
+   Tick Permissions in New Snapshot, give Users Modify on a test folder (Properties → Security), take a second
+   snapshot: only that folder is Modified, its details show the new entry, and the files inside are not listed.
    In the tree, press \* on File system, then − a few times, then /; right-click a folder → Expand all.
 9. Mark an item as non-important; close and reopen the comparison: the mark is gone.
 10. Preferences: switch Dark/Light (all windows change at once), Cancel (it goes back); change the snapshot folder.

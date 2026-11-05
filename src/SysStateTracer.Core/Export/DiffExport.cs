@@ -156,7 +156,8 @@ public static class DiffExport
             var index = tree.NewerIndex(node);
             if (tree.Kind(node) == DiffItemKind.File)
             {
-                if (change is ChangeKind.New or ChangeKind.Modified)
+                // A file whose only change is its permissions has the same contents: nothing to copy.
+                if (change == ChangeKind.New || (change == ChangeKind.Modified && tree.Fields(node) != ChangedFields.Permissions))
                 {
                     Add(index);
                 }

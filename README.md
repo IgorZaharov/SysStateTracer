@@ -80,6 +80,8 @@ SysStateTracer.exe /export "Before Office 2024 install" "After Office 2024 insta
   `HKLM\SAM` and `HKLM\SECURITY` are left out by default.
 - **Services:** state and startup type; kernel drivers optionally.
 - **Environment variables:** the System variables and the user's own, as written (`%SystemRoot%` not expanded).
+- **Permissions (optional):** with **Permissions** ticked in New Snapshot, each file's, folder's and key's owner,
+  inheritance and own entries. Inherited entries are not recorded, so a change made on a folder shows on that folder only.
 - Anything that cannot be read is skipped and listed in the snapshot's properties.
 
 **Snapshots contain registry data, which can include sensitive settings such as product keys.** Treat `.stsnap`

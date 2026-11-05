@@ -22,6 +22,11 @@ internal sealed class NewSnapshotForm : ThemedDialog
     private readonly AppSettings _settings;
     private readonly TextBox _name = new() { BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill };
     private readonly Label _nameProblem = new() { AutoSize = true, Text = " " };
+    /// <summary>Shown when Permissions is ticked (owner, 5 Nov 2026).</summary>
+    internal const string PermissionsWarning =
+        "Enabling the permission scan significantly increases scanning time: every file and folder is read once more " +
+        "when folders are listed (about 4 to 5 times slower), and the registry takes up to a fifth longer.";
+
     private readonly InfoBar _notElevated = new()
     {
         Dock = DockStyle.Top,
@@ -96,6 +101,10 @@ internal sealed class NewSnapshotForm : ThemedDialog
             this,
             "No access",
             $"Your user account cannot read {item.Path}, so it is left out. Restart SysStateTracer as administrator to include it.");
+        _tree.PermissionsTurnedOn += (_, _) => MessageDialog.Inform(
+            this,
+            "Permissions",
+            PermissionsWarning);
         _clock.Tick += (_, _) => _elapsed.Text = FormatElapsed(_watch.Elapsed);
 
         IReadOnlyList<VolumeInfo> volumes;

@@ -103,6 +103,8 @@ public sealed class SnapshotReader : IDisposable
         var parent = FromParentDeltas(ReadColumn<int>(SectionKind.FsParentDelta, ct));
         var name = ReadColumn<int>(SectionKind.FsName, ct);
         ValidateIds(name, names.Count, "file-system names");
+        var security = ReadColumn<int>(SectionKind.FsSecurity, ct);
+        ValidateIds(security, names.Count, "file-system permissions", allowMissing: true);
         try
         {
             return new FsTree(
@@ -115,7 +117,9 @@ public sealed class SnapshotReader : IDisposable
                 ReadColumn<int>(SectionKind.FsChildFolders, ct),
                 ReadColumn<int>(SectionKind.FsChildFiles, ct),
                 ReadColumn<ulong>(SectionKind.FsDigest, ct),
-                ReadColumn<long>(SectionKind.FsFileId, ct));
+                ReadColumn<long>(SectionKind.FsFileId, ct),
+                security,
+                ReadColumn<ulong>(SectionKind.FsSecurityDigest, ct));
         }
         catch (ArgumentException ex)
         {
@@ -130,6 +134,8 @@ public sealed class SnapshotReader : IDisposable
         var valueName = ReadColumn<int>(SectionKind.ValName, ct);
         ValidateIds(name, names.Count, "registry key names");
         ValidateIds(valueName, names.Count, "registry value names");
+        var security = ReadColumn<int>(SectionKind.RegSecurity, ct);
+        ValidateIds(security, names.Count, "registry key permissions", allowMissing: true);
 
         var blobs = BlobStore.Empty;
         if (withData)
@@ -161,7 +167,9 @@ public sealed class SnapshotReader : IDisposable
                 ReadColumn<ulong>(SectionKind.ValDataHash, ct),
                 ReadColumn<int>(SectionKind.ValBlob, ct),
                 ReadColumn<int>(SectionKind.ValDataLength, ct),
-                blobs);
+                blobs,
+                security,
+                ReadColumn<ulong>(SectionKind.RegSecurityDigest, ct));
         }
         catch (ArgumentException ex)
         {
@@ -464,11 +472,11 @@ public sealed class SnapshotReader : IDisposable
         return delta;
     }
 
-    private void ValidateIds(int[] ids, int count, string what)
+    private void ValidateIds(int[] ids, int count, string what, bool allowMissing = false)
     {
         foreach (var id in ids)
         {
-            if ((uint)id >= (uint)count)
+            if ((uint)id >= (uint)count && !(allowMissing && id == -1))
             {
                 throw Corrupt($"The {what} refer to missing names.");
             }

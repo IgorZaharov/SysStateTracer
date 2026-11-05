@@ -24,8 +24,9 @@ Without a switch the main window opens.
 
 Switches:
   /?                                  Shows this help.
-  /new ["name"]                       Takes a snapshot with the scope saved in the New Snapshot window.
+  /new ["name"] [/permissions]        Takes a snapshot with the scope saved in the New Snapshot window.
                                       Without a name: YYYYMMDD_HH-MM-SS_COMPUTERNAME, e.g. 20261027_14-30-00_OFFICE-PC.
+                                      /permissions also records the own permissions of files, folders and keys (slower).
   /del ["name"]                       Deletes the snapshot; without a name, the newest one.
                                       Prints which snapshot was deleted.
   /rename "old name" "new name"       Renames a snapshot. Both names are required.

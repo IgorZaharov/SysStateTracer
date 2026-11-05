@@ -44,6 +44,9 @@ public enum ChangedFields : ushort
     State = 1 << 7,
     StartType = 1 << 8,
     ServiceFlags = 1 << 9,
+
+    /// <summary>The item's own permissions (owner, inheritance, explicit entries); only when both snapshots recorded them.</summary>
+    Permissions = 1 << 10,
 }
 
 /// <summary>

@@ -25,8 +25,9 @@ public static class CliHelp
         text.Append(nl);
         text.Append("Switches:").Append(nl);
         Item(text, "/?", "Shows this help.");
-        Item(text, "/new [\"name\"]", "Takes a snapshot with the scope saved in the New Snapshot window.",
-            "Without a name: YYYYMMDD_HH-MM-SS_COMPUTERNAME, e.g. " + Snapshots.SnapshotNaming.DefaultName(new DateTime(2026, 10, 27, 14, 30, 0), "OFFICE-PC") + ".");
+        Item(text, "/new [\"name\"] [/permissions]", "Takes a snapshot with the scope saved in the New Snapshot window.",
+            "Without a name: YYYYMMDD_HH-MM-SS_COMPUTERNAME, e.g. " + Snapshots.SnapshotNaming.DefaultName(new DateTime(2026, 10, 27, 14, 30, 0), "OFFICE-PC") + ".",
+            "/permissions also records the own permissions of files, folders and keys (slower).");
         Item(text, "/del [\"name\"]", "Deletes the snapshot; without a name, the newest one.", "Prints which snapshot was deleted.");
         Item(text, "/rename \"old name\" \"new name\"", "Renames a snapshot. Both names are required.");
         Item(text, "/report [\"name1\" \"name2\"] [filters] [/output:\"report.html\"]",

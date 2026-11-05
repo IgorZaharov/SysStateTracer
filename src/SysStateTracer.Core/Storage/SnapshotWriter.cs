@@ -152,6 +152,12 @@ public static class SnapshotWriter
         {
             w.Write(SectionKind.FsFileId, fs.FileId);
         }
+
+        if (fs.HasSecurity)
+        {
+            w.Write(SectionKind.FsSecurity, fs.Security);
+            w.Write(SectionKind.FsSecurityDigest, fs.SecurityDigest);
+        }
     }
 
     private static void WriteRegistry(SectionWriter w, RegTree reg)
@@ -163,6 +169,11 @@ public static class SnapshotWriter
         w.Write(SectionKind.RegValueCount, reg.KeyValueCount);
         w.Write(SectionKind.RegDescendants, reg.Descendants);
         w.Write(SectionKind.RegDigest, reg.Digest);
+        if (reg.HasSecurity)
+        {
+            w.Write(SectionKind.RegSecurity, reg.Security);
+            w.Write(SectionKind.RegSecurityDigest, reg.SecurityDigest);
+        }
 
         w.Write(SectionKind.ValName, reg.ValueName);
         w.Write(SectionKind.ValType, reg.ValueDataType);

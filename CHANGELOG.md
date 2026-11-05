@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Permission changes
+- **New Snapshot → Permissions** (off by default; ticking it warns that it significantly increases scanning time) also records each file's, folder's and registry key's own
+  permissions: the owner, whether inheritance is disabled, and the entries set on the item itself. Inherited
+  entries are left out, so a change made on a folder and passed down to its contents shows on that folder only.
+  In folders without automatic inheritance (e.g. `%TEMP%`) the first permission change can also list the files
+  inside once, when Windows turns their copied entries into inherited ones.
+- **Comparison window:** a folder, file or key whose permissions changed is **Modified**. Files get a
+  **Permissions** column ("Inherited", "Own · unchanged", or what changed, e.g. "+ Allow · Users · Modify"), and the
+  details show **Owner**, **Inheritance** and **Own entries** in both snapshots, with account names.
+  Permissions are compared only when both snapshots recorded them.
+- **Command line:** `/new /permissions` records permissions for that snapshot; `/report` lists the permissions of
+  items whose permissions changed.
+- Snapshot format 1.2: new sections for permissions and their digests; older versions read the files and ignore
+  them. Comparing a snapshot with permissions against one without is as fast as before.
+- **Export / Copy to .\Files** leave out files whose only change is their permissions (their contents are the same).
+- Reading permissions is cheap from an NTFS drive's file table and for registry keys, and slower when folders are
+  listed one by one (without administrator rights, other file systems, single folders): one more read per file.
+
 ## [1.2.4] — 2026-11-05
 
 ### Comparison window

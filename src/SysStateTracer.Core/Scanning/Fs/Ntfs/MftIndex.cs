@@ -46,6 +46,7 @@ internal sealed class MftIndex
     private readonly uint[] _attributes;
     private readonly long[] _lastWrite;
     private readonly long[] _size;
+    private readonly uint[] _securityId;
 
     // Names (hard links): record, its sequence number, parent record and sequence, name.
     // Sized from the record count up front (about one name per record, ~24 characters per name)
@@ -72,6 +73,7 @@ internal sealed class MftIndex
         _attributes = new uint[recordCount];
         _lastWrite = new long[recordCount];
         _size = new long[recordCount];
+        _securityId = new uint[recordCount];
 
         var links = Math.Max(1024, recordCount + (recordCount / 16));
         _linkRecord = new int[links];
@@ -198,6 +200,9 @@ internal sealed class MftIndex
 
     /// <summary>NTFS file reference number: record number plus sequence number in the top 16 bits.</summary>
     public long FileReference(int record) => ((long)_sequence[record] << 48) | (uint)record;
+
+    /// <summary>The record's security id: equal ids mean equal permissions on this volume; 0 = unknown.</summary>
+    public uint SecurityId(int record) => _securityId[record];
 
     public long Size(int record) => IsDirectory(record) ? 0 : _size[record];
 
@@ -469,6 +474,12 @@ internal sealed class MftIndex
                     {
                         _lastWrite[owner] = BinaryPrimitives.ReadInt64LittleEndian(info[8..]);
                         _attributes[owner] = BinaryPrimitives.ReadUInt32LittleEndian(info[32..]);
+                    }
+
+                    if (info.Length >= 56)
+                    {
+                        // NTFS 3.x: files with the same security descriptor share this id ($Secure).
+                        _securityId[owner] = BinaryPrimitives.ReadUInt32LittleEndian(info[52..]);
                     }
 
                     break;

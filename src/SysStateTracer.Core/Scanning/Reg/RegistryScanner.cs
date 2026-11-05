@@ -17,6 +17,9 @@ public sealed class RegistryScanOptions
     /// <summary>Keys read at the same time; 0 = automatic.</summary>
     public int MaxDegreeOfParallelism { get; init; }
 
+    /// <summary>Also record each key's own permissions (owner, inheritance, explicit entries).</summary>
+    public bool Permissions { get; init; }
+
     /// <summary>
     /// The previous scan (from SysStateTracer.cache, with value data). Keys whose last-write time and value
     /// count are unchanged take their values from it instead of reading them (plan §8.6).
@@ -52,6 +55,8 @@ public sealed class RegistryScanner
     private int _pending;
     private bool _backupPrivilege;
     private string? _currentPath;
+    private uint _access = Access;
+    private SecurityReader? _security;
 
     public RegistryScanner(RegTreeBuilder builder, Lock builderLock, SkippedCollector skipped)
     {
@@ -73,6 +78,8 @@ public sealed class RegistryScanner
     {
         ArgumentNullException.ThrowIfNull(options);
         _backupPrivilege = ProcessPrivileges.TryEnable(ProcessPrivileges.Backup);
+        _security = options.Permissions ? new SecurityReader() : null;
+        _access = options.Permissions ? Access | NativeMethods.ReadControl : Access;
         _previous = options.Previous is { KeyCount: > 0 } && options.PreviousNames is not null ? options.Previous : null;
         _previousNames = _previous is null ? null : options.PreviousNames;
         using var jobs = new BlockingCollection<KeyJob>(new ConcurrentQueue<KeyJob>());
@@ -250,13 +257,29 @@ public sealed class RegistryScanner
     /// Opens a key for reading. Keys whose permissions shut out administrators are opened again with
     /// backup semantics (SeBackupPrivilege), which reads them regardless of their permissions.
     /// </summary>
+    /// <remarks>
+    /// When permissions are recorded the key is opened with READ_CONTROL as well; a key that grants listing but
+    /// not reading its permissions is opened again without it (its permissions are then not recorded).
+    /// </remarks>
     private int Open(nint hive, string? relative, uint options, out SafeRegKeyHandle key)
     {
-        var error = NativeMethods.RegOpenKeyEx(hive, relative, options, Access, out key);
+        var error = OpenWith(hive, relative, options, _access, out key);
+        if (error == Win32Errors.AccessDenied && _access != Access)
+        {
+            key.Dispose();
+            error = OpenWith(hive, relative, options, Access, out key);
+        }
+
+        return error;
+    }
+
+    private int OpenWith(nint hive, string? relative, uint options, uint access, out SafeRegKeyHandle key)
+    {
+        var error = NativeMethods.RegOpenKeyEx(hive, relative, options, access, out key);
         if (error == Win32Errors.AccessDenied && _backupPrivilege)
         {
             key.Dispose();
-            error = NativeMethods.RegOpenKeyEx(hive, relative, options | NativeMethods.RegOptionBackupRestore, Access, out key);
+            error = NativeMethods.RegOpenKeyEx(hive, relative, options | NativeMethods.RegOptionBackupRestore, access, out key);
         }
 
         return error;
@@ -264,11 +287,23 @@ public sealed class RegistryScanner
 
     private unsafe int Open(SafeRegKeyHandle parent, char* name, uint options, out SafeRegKeyHandle key)
     {
-        var error = NativeMethods.RegOpenKeyEx(parent, name, options, Access, out key);
+        var error = OpenWith(parent, name, options, _access, out key);
+        if (error == Win32Errors.AccessDenied && _access != Access)
+        {
+            key.Dispose();
+            error = OpenWith(parent, name, options, Access, out key);
+        }
+
+        return error;
+    }
+
+    private unsafe int OpenWith(SafeRegKeyHandle parent, char* name, uint options, uint access, out SafeRegKeyHandle key)
+    {
+        var error = NativeMethods.RegOpenKeyEx(parent, name, options, access, out key);
         if (error == Win32Errors.AccessDenied && _backupPrivilege)
         {
             key.Dispose();
-            error = NativeMethods.RegOpenKeyEx(parent, name, options | NativeMethods.RegOptionBackupRestore, Access, out key);
+            error = NativeMethods.RegOpenKeyEx(parent, name, options | NativeMethods.RegOptionBackupRestore, access, out key);
         }
 
         return error;
@@ -356,10 +391,16 @@ public sealed class RegistryScanner
             ReadValues(key, valueCount, state, ignore);
         }
 
+        // A key's last-write time does not change when only its permissions do, so they are read every time.
+        var permissions = _security?.Read(key);
         int index;
         lock (_builderLock)
         {
             index = parentIndex < 0 ? _builder.AddRoot(name, lastWrite) : _builder.AddKey(parentIndex, name, lastWrite);
+            if (permissions is not null)
+            {
+                _builder.SetSecurity(index, permissions);
+            }
             if (reuse)
             {
                 CopyPreviousValues(previous, index);
