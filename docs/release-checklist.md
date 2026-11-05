@@ -46,4 +46,6 @@ Use the release candidate (`v1.0.0-rc.N` pre-release) and tick each row.
    `VIRUSTOTAL_API_KEY` (a free VirusTotal account's API key: Settings → Secrets and variables → Actions); without
    it, or if VirusTotal does not answer in time, the release is published without a result and the run shows a
    warning. Pull before your next push: that commit is on `main`.
+   To scan a published release again (the scan failed or timed out), run **Actions → virustotal → Run workflow**
+   with its version: it updates the release notes and, for the latest full release, the README badge.
 5. If Microsoft Defender or other engines ever flag a release, submit the exe to them as a false positive.

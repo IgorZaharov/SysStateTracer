@@ -85,7 +85,14 @@ try {
     $size = (Get-Item $File).Length
     $uploadUri = if ($size -gt 32MB) { (Invoke-VT GET 'https://www.virustotal.com/api/v3/files/upload_url').data } else { 'https://www.virustotal.com/api/v3/files' }
     Write-Host "Uploading $File ($([math]::Round($size / 1MB, 1)) MB) to VirusTotal"
-    $analysis = (Invoke-VT POST $uploadUri @{ file = Get-Item $File }).data.id
+    # curl, not Invoke-RestMethod -Form: PowerShell sends the form chunked, without a length, and the upload address
+    # for large files answers that with 400 Bad Request (release 1.3.0).
+    $answer = Join-Path ([IO.Path]::GetTempPath()) 'virustotal-upload.json'
+    $code = curl.exe --silent --show-error --max-time 900 --output $answer --write-out '%{http_code}' `
+        --header "x-apikey: $key" --form "file=@$((Resolve-Path $File).Path)" $uploadUri
+    $body = if (Test-Path $answer) { Get-Content $answer -Raw } else { '' }
+    if ($LASTEXITCODE -ne 0 -or $code -ne '200') { throw "upload answered $code $body" }
+    $analysis = ($body | ConvertFrom-Json).data.id
 
     $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
     do {

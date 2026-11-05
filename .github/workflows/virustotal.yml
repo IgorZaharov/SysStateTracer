@@ -1,0 +1,78 @@
+name: virustotal
+
+# Scans the SysStateTracer.exe of a published release on VirusTotal again (Actions -> virustotal -> Run workflow):
+# for a release whose scan in the release workflow failed or timed out. Adds the result to the release notes and,
+# for the latest full release, updates the badge in README.md on main. Needs the secret VIRUSTOTAL_API_KEY.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Released version, e.g. 1.3.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download the release
+        id: release
+        shell: pwsh
+        run: |
+          $tag = 'v${{ github.event.inputs.version }}'
+          gh release download $tag --pattern SysStateTracer.exe --dir dist
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $info = gh release view $tag --json isPrerelease | ConvertFrom-Json
+          $latest = (gh release list --exclude-pre-releases --limit 1 --json tagName | ConvertFrom-Json)[0].tagName
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "readme=$(if (-not $info.isPrerelease -and $latest -eq $tag) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
+
+      - name: VirusTotal scan
+        id: virustotal
+        shell: pwsh
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: .github/scripts/virustotal.ps1 -File dist/SysStateTracer.exe
+
+      - name: Result in the release notes
+        if: steps.virustotal.outputs.scanned == 'true'
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.release.outputs.tag }}'
+          $notes = (gh release view $tag --json body | ConvertFrom-Json).body
+          $line = "VirusTotal: **${{ steps.virustotal.outputs.detected }}/${{ steps.virustotal.outputs.total }} Detected** ([report](${{ steps.virustotal.outputs.url }}))"
+          $notes = ($notes -replace '(?m)^VirusTotal: .*$', '').TrimEnd() + "`n`n$line"
+          Set-Content notes.md $notes -Encoding utf8
+          gh release edit $tag --notes-file notes.md
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Result in README.md
+        if: steps.virustotal.outputs.scanned == 'true' && steps.release.outputs.readme == 'true'
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          $message = "README: VirusTotal ${{ steps.virustotal.outputs.detected }}/${{ steps.virustotal.outputs.total }} for ${{ steps.release.outputs.tag }}"
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            git fetch --quiet origin main
+            git checkout --quiet -B main origin/main
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            .github/scripts/virustotal.ps1 -Readme README.md -Detected ${{ steps.virustotal.outputs.detected }} -Total ${{ steps.virustotal.outputs.total }} -Url '${{ steps.virustotal.outputs.url }}'
+            git diff --quiet -- README.md
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            git commit --quiet -m $message -- README.md
+            git push --quiet origin main
+            if ($LASTEXITCODE -eq 0) { Write-Host "::notice title=README::$message"; exit 0 }
+            Write-Host 'main moved meanwhile; trying again.'
+          }
+          Write-Host '::warning title=README::Could not push the VirusTotal badge to main.'
