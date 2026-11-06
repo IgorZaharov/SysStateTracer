@@ -10,7 +10,7 @@ snapshots to show what was created, modified or deleted in between — for examp
 [![Download SysStateTracer.exe](https://img.shields.io/badge/Download-SysStateTracer.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/SysStateTracer.exe)
 [![Download the manual](https://img.shields.io/badge/Manual-PDF-0969da?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/IgorZaharov/SysStateTracer/releases/latest/download/Manual.pdf)
 [![Latest version](https://img.shields.io/github/v/release/IgorZaharov/SysStateTracer?style=for-the-badge&label=Latest)](https://github.com/IgorZaharov/SysStateTracer/releases/latest)
-[![VirusTotal: 0/68 Detected](https://img.shields.io/badge/VirusTotal-0%2F68%20Detected-2ea44f?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/f93669c58d6f2c6e9af5d9f4d2cfb931d153db6208f8121721f177af28f295a4) <!-- virustotal -->
+[![VirusTotal: 0/66 Detected](https://img.shields.io/badge/VirusTotal-0%2F66%20Detected-2ea44f?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/8ff5a119da6fd037dec12ddd5401800afe1c8d175b322b82042c055bf67cdc43) <!-- virustotal -->
 
 **Before the first start:** the exe is not code-signed, so Windows blocks a downloaded exe. Put
 `SysStateTracer.exe` in a folder you can write to (it keeps its files beside itself), right-click it →
