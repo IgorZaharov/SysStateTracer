@@ -454,6 +454,8 @@ def build(screens: Screens, help_text: str, version: str, icon_folder: Path) -> 
         "such as <i>+ Allow · Users · Modify</i> or <i>Owner changed</i>.",
         "The details below show <b>Owner</b>, <b>Inheritance</b> and <b>Own entries</b> in both snapshots, with account "
         "names, and what each entry applies to (this folder, subfolders and files). What differs is highlighted.",
+        "A <b>new</b> folder, file or key stays green, but when it does not just inherit its permissions — inheritance "
+        "is disabled, or it has entries of its own — its <b>Inheritance</b> and <b>Own entries</b> are highlighted in yellow.",
         "In folders that do not use automatic inheritance, such as %TEMP%, the first permission change can also list "
         "the files inside once, when Windows turns their copied entries into inherited ones.",
     ])

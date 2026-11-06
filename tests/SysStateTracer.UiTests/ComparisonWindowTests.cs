@@ -305,6 +305,39 @@ public class ComparisonWindowTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     /// <summary>Opens the tree down to a folder or key and selects it, as a click would; returns its row id.</summary>
+    [Fact]
+    public void Comparison_NewItemWithOwnPermissions_StaysNew_AndHighlightsItsPermissionDetails()
+    {
+        Ui.Run(() =>
+        {
+            using var app = new TestApp();
+            var before = app.AddSnapshot("Before", hoursAgo: 30, extraFiles: 3, withPermissions: true);
+            var after = app.AddSnapshot("After", hoursAgo: 29, extraFiles: 3, installed: true, withPermissions: true);
+            using var form = new ComparisonForm(app.Paths, app.Settings, before, after);
+            Ui.Show(form);
+            Assert.True(Ui.PumpUntil(() => form.Diff is not null && !form.IsLoading, 30_000), "comparison did not load");
+            var tree = (ComparisonTreeModel)form.Tree.Model!;
+
+            // The new folder does not inherit and has an entry of its own: still New, its permission rows highlighted.
+            foreach (var path in new[] { @"C:\Program Files\Microsoft Office", @"C:\Program Files\Microsoft Office\root" })
+            {
+                var id = Open(form, DiffArea.FileSystem, path);
+                Assert.Equal(ThemeManager.Current.New, tree.Style(id).TextColor);
+                var details = tree.Data.Details(tree.ItemOf(id));
+                Assert.False(Assert.Single(details, r => r.Label == "Owner").Changed);
+                Assert.True(Assert.Single(details, r => r.Label == "Inheritance").Changed, path);
+                Assert.True(Assert.Single(details, r => r.Label == "Own entries").Changed, path);
+            }
+
+            // A new file that only inherits: nothing highlighted.
+            var list = (ComparisonListModel)form.List.Model!;
+            var file = list.Data.Details(list.ItemOf(list.Roots[0]));
+            Assert.Equal("+", list.Text(list.Roots[0], ComparisonListModel.ChangeColumn));
+            Assert.DoesNotContain(file, r => r.Changed);
+            form.Close();
+        });
+    }
+
     internal static long Open(ComparisonForm form, DiffArea area, string path)
     {
         var tree = (ComparisonTreeModel)form.Tree.Model!;

@@ -216,7 +216,7 @@ internal sealed class TestApp : IDisposable
     public AppSettings Settings { get; }
 
     /// <summary>Writes a small snapshot taken "<paramref name="hoursAgo"/>" hours ago.</summary>
-    public string AddSnapshot(string name, double hoursAgo, string computer = "OFFICE-PC", int extraFiles = 0, bool withSkipped = false, bool installed = false)
+    public string AddSnapshot(string name, double hoursAgo, string computer = "OFFICE-PC", int extraFiles = 0, bool withSkipped = false, bool installed = false, bool withPermissions = false)
     {
         var names = new NameTable();
         var fs = new FsTreeBuilder(names);
@@ -232,10 +232,12 @@ internal sealed class TestApp : IDisposable
             fs.Add(app, $"plugin{i:D2}.dll", 0x20, updated ? 41_234 : 40_000 + i, updated ? time + TimeSpan.FromHours(1).Ticks : time);
         }
 
+        var ownPermissions = new HashSet<int>();
         if (installed)
         {
             var office = fs.Add(programs, "Microsoft Office", FsTree.DirectoryAttribute, 0, time);
             var root = fs.Add(office, "root", FsTree.DirectoryAttribute, 0, time);
+            ownPermissions.UnionWith([office, root]);
             for (var i = 0; i < 12; i++)
             {
                 fs.Add(root, $"office{i:D2}.dll", 0x20, 1_200_000 + (i * 1000), time);
@@ -248,6 +250,16 @@ internal sealed class TestApp : IDisposable
         {
             var temp = fs.Add(c, "Temp", FsTree.DirectoryAttribute, 0, time);
             fs.Add(temp, "old-installer.msi", 0x20, 48_000_000, time);
+        }
+
+        if (withPermissions)
+        {
+            // Everything inherits; the new Microsoft Office folder and its "root" do not inherit and gives Users Full control.
+            var inherited = Permissions.NormalizeSddl("O:BAD:AI");
+            for (var i = 0; i < fs.Count; i++)
+            {
+                fs.SetSecurity(i, ownPermissions.Contains(i) ? Permissions.NormalizeSddl("O:BAD:PAI(A;OICI;FA;;;BU)") : inherited);
+            }
         }
 
         var reg = new RegTreeBuilder(names);

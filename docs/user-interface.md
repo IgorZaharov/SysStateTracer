@@ -105,7 +105,8 @@ Two panes since 1.1.0 (mockup: the "SysStateTracer comparison window mockup" can
   changed is Modified; the Permissions column says what changed ("Owner changed", "+ Allow · Users · Modify",
   "Inheritance disabled, +3 entries"), otherwise "Inherited" or "Own · unchanged". The details add **Owner**,
   **Inheritance** and **Own entries** (with what each entry applies to). A change made on a folder and inherited by
-  its contents shows on that folder only.
+  its contents shows on that folder only. For a new item, Inheritance and Own entries are highlighted when it does
+  not just inherit (inheritance disabled, or entries of its own); the item itself stays New.
   One exception: in folders that do not use automatic inheritance (such as `%TEMP%`), new files hold copies of the
   folder's entries that Windows does not mark as inherited. The first time the folder's permissions are written,
   Windows turns those copies into inherited entries, and each such file is reported once with its own entries removed.

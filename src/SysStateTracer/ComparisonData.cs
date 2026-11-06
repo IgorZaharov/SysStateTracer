@@ -771,10 +771,14 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             ? "None"
             : string.Join("; ", s.Entries.Select(e => isFolder ? $"{e.Describe(target)} ({e.DescribeAppliesTo(target)})" : e.Describe(target)));
 
+        // A new item that does not just inherit (inheritance disabled, own entries) is marked as modified there.
         var compare = setA is not null && setB is not null;
+        var isNew = left < 0 && setB is not null;
         rows.Add(new DetailRow("Owner", Side(left, setA, Owner), Side(right, setB, Owner), compare && setA!.OwnerSid != setB!.OwnerSid));
-        rows.Add(new DetailRow("Inheritance", Side(left, setA, Inheritance), Side(right, setB, Inheritance), compare && setA!.InheritanceDisabled != setB!.InheritanceDisabled));
-        rows.Add(new DetailRow("Own entries", Side(left, setA, Entries), Side(right, setB, Entries), compare && !setA!.Entries.SequenceEqual(setB!.Entries)));
+        rows.Add(new DetailRow("Inheritance", Side(left, setA, Inheritance), Side(right, setB, Inheritance),
+            compare ? setA!.InheritanceDisabled != setB!.InheritanceDisabled : isNew && setB!.InheritanceDisabled));
+        rows.Add(new DetailRow("Own entries", Side(left, setA, Entries), Side(right, setB, Entries),
+            compare ? !setA!.Entries.SequenceEqual(setB!.Entries) : isNew && setB!.Entries.Count > 0));
     }
 
     /// <summary>One line of the details panel: a property, its value on the left and right, and whether it differs.</summary>
@@ -798,10 +802,11 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
             return index < 0 ? "(does not exist)" : read(r ? Diff.Right : Diff.Left, index);
         }
 
-        void Add(string label, Func<Snapshot, int, string> read, bool changed) =>
-            rows.Add(new DetailRow(label, On(false, read), On(true, read), changed));
-
+        // Only one side has it: nothing to compare, nothing marked (the permission rows mark a new item's own permissions).
         var bothSides = left >= 0 && right >= 0;
+        void Add(string label, Func<Snapshot, int, string> read, bool changed) =>
+            rows.Add(new DetailRow(label, On(false, read), On(true, read), changed && bothSides));
+
         switch (item.Area)
         {
             case DiffArea.FileSystem when IsFolder(item):
@@ -835,15 +840,6 @@ internal sealed class ComparisonData(DiffResult diff, ImportanceMarks marks, str
                 Add("Status", (s, i) => ItemFormat.ServiceState(s.Services.State[i]), fields.HasFlag(ChangedFields.State));
                 Add("Start type", (s, i) => ItemFormat.StartType(s.Services.StartType[i], s.Services.Flags[i]), fields.HasFlag(ChangedFields.StartType) || fields.HasFlag(ChangedFields.ServiceFlags));
                 break;
-        }
-
-        if (!bothSides)
-        {
-            // Only one side has it: nothing to compare, nothing marked.
-            for (var i = 0; i < rows.Count; i++)
-            {
-                rows[i] = rows[i] with { Changed = false };
-            }
         }
 
         return rows;
