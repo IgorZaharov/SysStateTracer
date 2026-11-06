@@ -44,3 +44,4 @@ Requested Features:
 44. [DONE, not released yet] Preferences: the default window does not fit the bottom text; make it taller by default.
 45. [DONE, not released yet] UI: transparency and colours closer to the Windows Settings window: Mica all over the window, in different shades of grey.
 46. [DONE in v1.3.0] Snapshots and comparison: changed permissions on folders, files and registry keys between snapshots.
+47. [DONE in v1.3.1] Comparison window: a NEW folder or registry key whose permissions are its own instead of inherited is marked yellow (modified) in the details below; the item stays green.
